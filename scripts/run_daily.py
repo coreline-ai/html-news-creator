@@ -46,8 +46,9 @@ async def run_cluster(run_date: date, dry_run: bool, logger) -> dict:
 
 
 async def run_verify(run_date: date, dry_run: bool, logger) -> dict:
-    logger.info("verify_step", status="not_implemented_yet")
-    return {}
+    from app.verification.verifier import SourceVerifier
+    logger.info("verify_step", status="stub_ready", note="Full implementation requires Phase 4 clusters")
+    return {"status": "skipped_no_clusters"}
 
 
 async def run_image_analyze(run_date: date, dry_run: bool, logger) -> dict:
