@@ -41,7 +41,9 @@ async def run_classify(run_date: date, dry_run: bool, logger) -> dict:
 
 
 async def run_cluster(run_date: date, dry_run: bool, logger) -> dict:
-    logger.info("cluster_step", status="not_implemented_yet")
+    from app.generation.embeddings import EmbeddingClient
+    from app.generation.clusterer import HDBSCANClusterer
+    logger.info("cluster_step", status="stub_ready")
     return {}
 
 
@@ -57,7 +59,9 @@ async def run_image_analyze(run_date: date, dry_run: bool, logger) -> dict:
 
 
 async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
-    logger.info("generate_step", status="not_implemented_yet")
+    from app.generation.section_generator import SectionGenerator
+    from app.generation.report_assembler import ReportAssembler
+    logger.info("generate_step", status="stub_ready")
     return {}
 
 
