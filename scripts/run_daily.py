@@ -22,14 +22,11 @@ STEPS = [
 ]
 
 
-async def run_collect(run_date: date, dry_run: bool, logger) -> dict:
+async def run_collect(run_date: date, dry_run: bool, logger, source_types=None) -> dict:
     from app.collectors.orchestrator import CollectorOrchestrator
-    # XCollector is available via app.collectors.x_collector and is included
-    # in sources_registry.yaml when x_enabled=True.  The orchestrator already
-    # handles source_type filtering, so no functional change is needed here.
     from app.collectors.x_collector import XCollector  # noqa: F401 — ensure importable
     orchestrator = CollectorOrchestrator()
-    result = await orchestrator.run(run_date, dry_run=dry_run)
+    result = await orchestrator.run(run_date, source_types=source_types, dry_run=dry_run)
     logger.info("collect_done", total=result.total, inserted=result.inserted, skipped=result.skipped)
     return {"total": result.total, "inserted": result.inserted}
 
@@ -148,7 +145,10 @@ async def run_pipeline(
         logger.info("step_start", step=step)
         try:
             fn = STEP_FUNCTIONS[step]
-            result = await fn(run_date, dry_run, logger)
+            kwargs: dict = {}
+            if step == "collect" and mode == "rss-only":
+                kwargs["source_types"] = ["rss", "arxiv"]
+            result = await fn(run_date, dry_run, logger, **kwargs)
             results[step] = result
             logger.info("step_done", step=step)
         except Exception as e:
