@@ -2,7 +2,7 @@
 from __future__ import annotations
 import pytest
 import unittest.mock as mock
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from app.rendering.html_sanitizer import HTMLSanitizer, _BLEACH_AVAILABLE
 from app.rendering.playwright_renderer import PlaywrightRenderer, PlaywrightUnavailableError
@@ -101,20 +101,9 @@ async def test_generative_html_render_mocked():
         "</body></html>"
     )
 
-    mock_choice = MagicMock()
-    mock_choice.message.content = fake_html
-
-    mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-
     renderer = GenerativeHTMLRenderer()
 
-    # Patch the internal AsyncOpenAI client's completions.create
-    with patch.object(
-        renderer.client.chat.completions,
-        "create",
-        new=AsyncMock(return_value=mock_response),
-    ):
+    with patch("app.rendering.generative_html.chat", new=AsyncMock(return_value=fake_html)):
         result = await renderer.render(
             report={"title": "Test", "report_date": "2026-04-27"},
             sections=[],

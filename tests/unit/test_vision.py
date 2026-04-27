@@ -146,26 +146,11 @@ async def test_ocr_orchestrator_both_unavailable():
 # TC-3.6: CaptionGenerator — mock OpenAI → returns dict with caption_ko
 # ===========================================================================
 async def test_caption_generator_returns_dict():
-    generator = CaptionGenerator.__new__(CaptionGenerator)
-    from app.utils.logger import get_logger
-    generator.logger = get_logger(step="image_analyze")
-
     expected_text = "이 이미지는 GPT-4 벤치마크 결과를 보여주는 차트입니다."
 
-    mock_message = MagicMock()
-    mock_message.content = expected_text
-
-    mock_choice = MagicMock()
-    mock_choice.message = mock_message
-
-    mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-
-    mock_client = MagicMock()
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
-    generator.client = mock_client
-
-    result = await generator.generate_caption(_TINY_PNG, context="AI benchmark results")
+    with patch("app.vision.caption_generator.chat", new=AsyncMock(return_value=expected_text)):
+        generator = CaptionGenerator()
+        result = await generator.generate_caption(_TINY_PNG, context="AI benchmark results")
 
     assert isinstance(result, dict)
     assert "caption_ko" in result
