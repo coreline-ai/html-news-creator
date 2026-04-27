@@ -1,0 +1,43 @@
+official:
+  - openai.com
+  - anthropic.com
+  - deepmind.google
+  - ai.meta.com
+  - research.google
+  - ai.google
+  - labs.google
+  - huggingface.co
+  - arxiv.org
+  - github.com/openai
+  - github.com/anthropics
+  - github.com/google-deepmind
+  - github.com/microsoft
+  - github.com/meta-llama
+  - github.com/huggingface
+  - blogs.microsoft.com/ai
+  - research.microsoft.com
+  - ai.facebook.com
+  - stability.ai
+  - mistral.ai
+  - cohere.com
+  - inflection.ai
+  - x.ai
+
+trusted_media:
+  - techcrunch.com
+  - venturebeat.com
+  - theverge.com
+  - wired.com
+  - arstechnica.com
+  - thenextweb.com
+  - zdnet.com
+  - forbes.com/sites/technology
+  - reuters.com
+  - bloomberg.com
+
+community:
+  - reddit.com/r/MachineLearning
+  - reddit.com/r/artificial
+  - news.ycombinator.com
+  - twitter.com
+  - x.com
