@@ -42,8 +42,6 @@ class CaptionGenerator:
             response = await self.client.chat.completions.create(
                 model=settings.openai_model,
                 messages=messages,
-                max_tokens=300,
-                temperature=0,
             )
 
             content = response.choices[0].message.content
