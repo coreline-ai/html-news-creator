@@ -1,16 +1,5 @@
 from __future__ import annotations
-import json
-import re
-from openai import AsyncOpenAI
-
-
-def _extract_json(text: str) -> dict:
-    text = re.sub(r"```(?:json)?\s*", "", text).strip().rstrip("`")
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        return json.loads(match.group())
-    return json.loads(text)
-from app.config import settings
+from app.utils.llm_client import chat, extract_json
 from app.utils.logger import get_logger
 from app.verification.domain_registry import DomainRegistry
 from app.verification.source_classifier import classify_source_type
@@ -38,7 +27,6 @@ VERIFY_USER = """클러스터 제목: {title}
 
 class SourceVerifier:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.domain_registry = DomainRegistry()
         self.logger = get_logger(step="verify")
 
@@ -81,18 +69,15 @@ class SourceVerifier:
         if auto_status is None:
             try:
                 sources_text = "\n".join(f"- {u}" for u in source_urls[:10])
-                response = await self.client.chat.completions.create(
-                    model=settings.openai_model,
-                    messages=[
-                        {"role": "system", "content": VERIFY_SYSTEM},
-                        {"role": "user", "content": VERIFY_USER.format(
-                            title=title,
-                            summary=summary[:500],
-                            sources=sources_text,
-                        )},
-                    ],
-                )
-                llm_result = _extract_json(response.choices[0].message.content)
+                text = await chat([
+                    {"role": "system", "content": VERIFY_SYSTEM},
+                    {"role": "user", "content": VERIFY_USER.format(
+                        title=title,
+                        summary=summary[:500],
+                        sources=sources_text,
+                    )},
+                ])
+                llm_result = extract_json(text)
                 verification_status = llm_result.get("verification_status", "unverified")
                 evidence_summary = llm_result.get("evidence_summary", "")
                 confirmed_facts = llm_result.get("confirmed_facts", [])

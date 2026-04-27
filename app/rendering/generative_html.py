@@ -1,7 +1,6 @@
 from __future__ import annotations
 import json
-from openai import AsyncOpenAI
-from app.config import settings
+from app.utils.llm_client import chat
 from app.utils.logger import get_logger
 from app.rendering.html_sanitizer import HTMLSanitizer
 
@@ -22,7 +21,6 @@ LAYOUT_PLANNER_SYSTEM = """당신은 AI 뉴스 리포트 HTML 레이아웃 전�
 
 class GenerativeHTMLRenderer:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.sanitizer = HTMLSanitizer()
         self.logger = get_logger(step="render")
 
@@ -51,14 +49,10 @@ class GenerativeHTMLRenderer:
         }, ensure_ascii=False)
 
         try:
-            response = await self.client.chat.completions.create(
-                model=settings.openai_model,
-                messages=[
-                    {"role": "system", "content": LAYOUT_PLANNER_SYSTEM},
-                    {"role": "user", "content": f"다음 데이터로 HTML 리포트를 생성하세요:\n\n{report_json}"},
-                ],
-            )
-            raw_html = response.choices[0].message.content
+            raw_html = await chat([
+                {"role": "system", "content": LAYOUT_PLANNER_SYSTEM},
+                {"role": "user", "content": f"다음 데이터로 HTML 리포트를 생성하세요:\n\n{report_json}"},
+            ])
             # Extract HTML if wrapped in code blocks
             if "```html" in raw_html:
                 raw_html = raw_html.split("```html")[1].split("```")[0].strip()

@@ -1,8 +1,6 @@
 from __future__ import annotations
 import base64
-import io
-from openai import AsyncOpenAI
-from app.config import settings
+from app.utils.llm_client import chat
 from app.utils.logger import get_logger
 
 
@@ -17,7 +15,6 @@ class CaptionGenerator:
 - image_type: chart|diagram|screenshot|photo|other"""
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.logger = get_logger(step="image_analyze")
 
     async def generate_caption(self, image_data: bytes, context: str = "") -> dict:
@@ -39,12 +36,7 @@ class CaptionGenerator:
                 },
             ]
 
-            response = await self.client.chat.completions.create(
-                model=settings.openai_model,
-                messages=messages,
-            )
-
-            content = response.choices[0].message.content
+            content = await chat(messages)
             self.logger.info("caption_generated", length=len(content))
 
             # Parse response (simple text parsing, not JSON mode since vision doesn't support it)

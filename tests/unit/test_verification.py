@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -81,13 +81,9 @@ def test_tc2_6_unverified_score_in_range():
 
 @pytest.mark.asyncio
 async def test_tc2_7_official_url_skips_llm():
-    with patch("app.verification.verifier.AsyncOpenAI") as mock_openai_cls:
-        mock_client = MagicMock()
-        mock_client.chat.completions.create = AsyncMock(
-            side_effect=AssertionError("LLM should not be called for official sources")
-        )
-        mock_openai_cls.return_value = mock_client
-
+    with patch("app.utils.llm_client.chat", new=AsyncMock(
+        side_effect=AssertionError("LLM should not be called for official sources")
+    )):
         from app.verification.verifier import SourceVerifier
         verifier = SourceVerifier()
         result = await verifier.verify(
@@ -107,19 +103,14 @@ async def test_tc2_7_official_url_skips_llm():
 
 @pytest.mark.asyncio
 async def test_tc2_8_empty_sources_unverified():
-    with patch("app.verification.verifier.AsyncOpenAI") as mock_openai_cls:
-        mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
-
-        from app.verification.verifier import SourceVerifier
-        verifier = SourceVerifier()
-        result = await verifier.verify(
-            cluster_id="tc-2-8",
-            title="Some unverified claim",
-            summary="No sources available.",
-            source_urls=[],
-        )
-
+    from app.verification.verifier import SourceVerifier
+    verifier = SourceVerifier()
+    result = await verifier.verify(
+        cluster_id="tc-2-8",
+        title="Some unverified claim",
+        summary="No sources available.",
+        source_urls=[],
+    )
     assert result["verification_status"] == "unverified"
 
 
@@ -129,17 +120,12 @@ async def test_tc2_8_empty_sources_unverified():
 
 @pytest.mark.asyncio
 async def test_tc2_e1_empty_sources_trust_score_is_5():
-    with patch("app.verification.verifier.AsyncOpenAI") as mock_openai_cls:
-        mock_client = MagicMock()
-        mock_openai_cls.return_value = mock_client
-
-        from app.verification.verifier import SourceVerifier
-        verifier = SourceVerifier()
-        result = await verifier.verify(
-            cluster_id="tc-2-e1",
-            title="Another unverified claim",
-            summary="No sources.",
-            source_urls=[],
-        )
-
+    from app.verification.verifier import SourceVerifier
+    verifier = SourceVerifier()
+    result = await verifier.verify(
+        cluster_id="tc-2-e1",
+        title="Another unverified claim",
+        summary="No sources.",
+        source_urls=[],
+    )
     assert result["trust_score"] == 5

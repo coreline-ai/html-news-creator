@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -134,7 +134,7 @@ async def test_tc4_5_section_generator_success():
     from unittest.mock import patch as mock_patch, AsyncMock
 
     items = [{"title": "GPT-5 Released", "content_text": "OpenAI released GPT-5.", "url": "https://example.com"}]
-    with mock_patch("app.utils.llm_client.chat", new=AsyncMock(return_value=json.dumps(payload))):
+    with mock_patch("app.generation.section_generator.chat", new=AsyncMock(return_value=json.dumps(payload))):
         result = await SectionGenerator().generate("cluster-1", items)
 
     assert "title_ko" in result
@@ -204,7 +204,7 @@ async def test_tc4_8_title_generator_success():
     import json
     from unittest.mock import patch as mock_patch, AsyncMock
 
-    with mock_patch("app.utils.llm_client.chat", new=AsyncMock(return_value=json.dumps(payload))):
+    with mock_patch("app.generation.title_generator.chat", new=AsyncMock(return_value=json.dumps(payload))):
         titles = await TitleGenerator().generate_titles("GPT-5 출시. 구글 Gemini 업데이트.")
 
     assert isinstance(titles, list)
