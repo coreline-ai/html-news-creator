@@ -24,6 +24,10 @@ STEPS = [
 
 async def run_collect(run_date: date, dry_run: bool, logger) -> dict:
     from app.collectors.orchestrator import CollectorOrchestrator
+    # XCollector is available via app.collectors.x_collector and is included
+    # in sources_registry.yaml when x_enabled=True.  The orchestrator already
+    # handles source_type filtering, so no functional change is needed here.
+    from app.collectors.x_collector import XCollector  # noqa: F401 — ensure importable
     orchestrator = CollectorOrchestrator()
     result = await orchestrator.run(run_date, dry_run=dry_run)
     logger.info("collect_done", total=result.total, inserted=result.inserted, skipped=result.skipped)
