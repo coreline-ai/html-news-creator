@@ -29,7 +29,7 @@ VERIFY_USER = """클러스터 제목: {title}
 
 class SourceVerifier:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.domain_registry = DomainRegistry()
         self.logger = get_logger(step="verify")
 
