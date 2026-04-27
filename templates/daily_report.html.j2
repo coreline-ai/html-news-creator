@@ -1,0 +1,23 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<main>
+  {% if report.summary_ko %}
+  <div class="summary">
+    <h2>오늘의 AI 트렌드 요약</h2>
+    <p>{{ report.summary_ko }}</p>
+  </div>
+  {% endif %}
+
+  {% if sections %}
+  <div class="sections">
+    {% for section in sections %}
+    {% include "section_card.html.j2" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="summary">
+    <p>오늘 수집된 AI 트렌드 뉴스가 없습니다.</p>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

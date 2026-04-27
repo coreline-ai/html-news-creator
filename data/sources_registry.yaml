@@ -1,0 +1,65 @@
+sources:
+  - name: OpenAI Blog
+    source_type: rss
+    url: https://openai.com/news/rss.xml
+    trust_level: official
+  - name: Anthropic News
+    source_type: rss
+    url: https://www.anthropic.com/news/rss.xml
+    trust_level: official
+  - name: Google DeepMind Blog
+    source_type: rss
+    url: https://deepmind.google/blog/rss.xml
+    trust_level: official
+  - name: Hugging Face Blog
+    source_type: rss
+    url: https://huggingface.co/blog/feed.xml
+    trust_level: official
+  - name: Meta AI Blog
+    source_type: rss
+    url: https://ai.meta.com/blog/rss/
+    trust_level: official
+  - name: Microsoft AI Blog
+    source_type: rss
+    url: https://blogs.microsoft.com/ai/feed/
+    trust_level: official
+  - name: GitHub openai
+    source_type: github
+    org: openai
+    trust_level: official
+  - name: GitHub anthropics
+    source_type: github
+    org: anthropics
+    trust_level: official
+  - name: GitHub google-deepmind
+    source_type: github
+    org: google-deepmind
+    trust_level: official
+  - name: GitHub microsoft
+    source_type: github
+    org: microsoft
+    trust_level: official
+  - name: GitHub meta-llama
+    source_type: github
+    org: meta-llama
+    trust_level: official
+  - name: GitHub huggingface
+    source_type: github
+    org: huggingface
+    trust_level: official
+  - name: arXiv cs.AI
+    source_type: arxiv
+    category: cs.AI
+    trust_level: official
+  - name: arXiv cs.LG
+    source_type: arxiv
+    category: cs.LG
+    trust_level: official
+  - name: arXiv cs.CL
+    source_type: arxiv
+    category: cs.CL
+    trust_level: official
+  - name: arXiv cs.CV
+    source_type: arxiv
+    category: cs.CV
+    trust_level: official
