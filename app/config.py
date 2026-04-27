@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     netlify_auth_token: str = ""
     netlify_site_id: str = ""
 
+    slack_webhook_url: str = ""
+
     timezone: str = "Asia/Seoul"
     log_level: str = "info"
     max_sources_per_run: int = 500

@@ -67,6 +67,7 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
 
 async def run_render(run_date: date, dry_run: bool, logger) -> dict:
     from app.rendering.jinja_renderer import JinjaRenderer
+    from app.rendering.html_sanitizer import HTMLSanitizer  # available for section content
     renderer = JinjaRenderer()
 
     # Build minimal report object for dry-run/stub
