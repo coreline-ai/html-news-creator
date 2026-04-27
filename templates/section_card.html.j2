@@ -1,0 +1,57 @@
+<article class="section-card" style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+  <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+    <h3 style="font-size: 1.125rem; font-weight: 600; flex: 1;">{{ section.title | default('') }}</h3>
+    {% if section.verification_status == 'official_confirmed' %}
+    <span style="background: var(--color-official); color: white; font-size: 0.75rem; font-weight: 600; padding: 2px 10px; border-radius: 9999px; white-space: nowrap;">공식 확인</span>
+    {% elif section.verification_status == 'unverified' %}
+    <span style="background: var(--color-unverified); color: white; font-size: 0.75rem; font-weight: 600; padding: 2px 10px; border-radius: 9999px; white-space: nowrap;">미검증</span>
+    {% endif %}
+  </div>
+
+  {% if section.summary_ko %}
+  <p style="color: #475569; margin-bottom: 16px;">{{ section.summary_ko }}</p>
+  {% endif %}
+
+  {% if section.fact_summary %}
+  <div style="background: #f0fdf4; border-left: 4px solid var(--color-official); border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">
+    <div style="font-size: 0.75rem; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">팩트</div>
+    <p style="font-size: 0.9rem; color: #166534;">{{ section.fact_summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if section.social_signal_summary %}
+  <div style="background: #eff6ff; border-left: 4px solid var(--color-accent); border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">
+    <div style="font-size: 0.75rem; font-weight: 700; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">소셜 신호</div>
+    <p style="font-size: 0.9rem; color: #1e3a8a;">{{ section.social_signal_summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if section.inference_summary %}
+  <div style="background: #fff7ed; border-left: 4px solid var(--color-unverified); border-radius: 4px; padding: 12px 16px; margin-bottom: 12px;">
+    <div style="font-size: 0.75rem; font-weight: 700; color: #b45309; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">⚠️ 추론</div>
+    <p style="font-size: 0.9rem; color: #92400e;">{{ section.inference_summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if section.sources_json %}
+  <div style="margin-top: 16px; border-top: 1px solid var(--color-border); padding-top: 12px;">
+    <div style="font-size: 0.75rem; font-weight: 600; color: #64748b; margin-bottom: 8px;">출처</div>
+    <ul style="list-style: none; display: flex; flex-wrap: wrap; gap: 8px;">
+      {% for source in section.sources_json %}
+      <li>
+        {% if source.url %}
+        <a href="{{ source.url }}" target="_blank" rel="noopener noreferrer"
+           style="font-size: 0.8rem; color: var(--color-accent); text-decoration: none; background: #eff6ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #bfdbfe;">
+          {{ source.name | default(source.url) }}
+        </a>
+        {% else %}
+        <span style="font-size: 0.8rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--color-border);">
+          {{ source.name | default('') }}
+        </span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</article>
