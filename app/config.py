@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # OpenAI-compatible proxy (multi_model_tui local proxy: http://127.0.0.1:4317)
     openai_api_key: str = "local-proxy"
     openai_base_url: str = "http://127.0.0.1:4317/openai/v1"
-    openai_model: str = "gpt-4o"
+    openai_model: str = "gpt-5.5"
     openai_embedding_model: str = "text-embedding-3-small"
 
     firecrawl_api_key: str = ""

@@ -57,8 +57,6 @@ class GenerativeHTMLRenderer:
                     {"role": "system", "content": LAYOUT_PLANNER_SYSTEM},
                     {"role": "user", "content": f"다음 데이터로 HTML 리포트를 생성하세요:\n\n{report_json}"},
                 ],
-                max_tokens=4000,
-                temperature=0.2,
             )
             raw_html = response.choices[0].message.content
             # Extract HTML if wrapped in code blocks

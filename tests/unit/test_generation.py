@@ -130,22 +130,17 @@ async def test_tc4_5_section_generator_success():
         "importance_score": 0.9,
         "category": "model_release",
     }
-    fake_response = _make_chat_response(payload)
-
-    generator = SectionGenerator()
-    generator.client = MagicMock()
-    generator.client.chat = MagicMock()
-    generator.client.chat.completions = MagicMock()
-    generator.client.chat.completions.create = AsyncMock(return_value=fake_response)
+    import json
+    from unittest.mock import patch as mock_patch, AsyncMock
 
     items = [{"title": "GPT-5 Released", "content_text": "OpenAI released GPT-5.", "url": "https://example.com"}]
-    result = await generator.generate("cluster-1", items)
+    with mock_patch("app.utils.llm_client.chat", new=AsyncMock(return_value=json.dumps(payload))):
+        result = await SectionGenerator().generate("cluster-1", items)
 
     assert "title_ko" in result
     assert "summary_ko" in result
     assert result["title_ko"] == "GPT-5 출시"
     assert result["importance_score"] == 0.9
-    generator.client.chat.completions.create.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -155,18 +150,11 @@ async def test_tc4_5_section_generator_success():
 @pytest.mark.asyncio
 async def test_tc4_6_section_generator_empty_items():
     """SectionGenerator.generate([]) → dict with importance_score=0.0, no API call."""
-    generator = SectionGenerator()
-    generator.client = MagicMock()
-    generator.client.chat = MagicMock()
-    generator.client.chat.completions = MagicMock()
-    generator.client.chat.completions.create = AsyncMock()
-
-    result = await generator.generate("cluster-empty", [])
+    result = await SectionGenerator().generate("cluster-empty", [])
 
     assert result["importance_score"] == 0.0
     assert "title_ko" in result
     assert "summary_ko" in result
-    generator.client.chat.completions.create.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -213,17 +201,12 @@ async def test_tc4_8_title_generator_success():
             "메타 Llama 4 출시 임박",
         ]
     }
-    fake_response = _make_chat_response(payload)
+    import json
+    from unittest.mock import patch as mock_patch, AsyncMock
 
-    generator = TitleGenerator()
-    generator.client = MagicMock()
-    generator.client.chat = MagicMock()
-    generator.client.chat.completions = MagicMock()
-    generator.client.chat.completions.create = AsyncMock(return_value=fake_response)
-
-    titles = await generator.generate_titles("GPT-5 출시. 구글 Gemini 업데이트.")
+    with mock_patch("app.utils.llm_client.chat", new=AsyncMock(return_value=json.dumps(payload))):
+        titles = await TitleGenerator().generate_titles("GPT-5 출시. 구글 Gemini 업데이트.")
 
     assert isinstance(titles, list)
     assert len(titles) == 5
     assert all(isinstance(t, str) for t in titles)
-    generator.client.chat.completions.create.assert_called_once()

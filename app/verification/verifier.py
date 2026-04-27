@@ -1,6 +1,15 @@
 from __future__ import annotations
 import json
+import re
 from openai import AsyncOpenAI
+
+
+def _extract_json(text: str) -> dict:
+    text = re.sub(r"```(?:json)?\s*", "", text).strip().rstrip("`")
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return json.loads(match.group())
+    return json.loads(text)
 from app.config import settings
 from app.utils.logger import get_logger
 from app.verification.domain_registry import DomainRegistry
@@ -82,11 +91,8 @@ class SourceVerifier:
                             sources=sources_text,
                         )},
                     ],
-                    response_format={"type": "json_object"},
-                    max_tokens=400,
-                    temperature=0,
                 )
-                llm_result = json.loads(response.choices[0].message.content)
+                llm_result = _extract_json(response.choices[0].message.content)
                 verification_status = llm_result.get("verification_status", "unverified")
                 evidence_summary = llm_result.get("evidence_summary", "")
                 confirmed_facts = llm_result.get("confirmed_facts", [])
