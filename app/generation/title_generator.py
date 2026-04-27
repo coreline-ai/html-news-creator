@@ -19,7 +19,7 @@ TITLE_SYSTEM = """당신은 AI 트렌드 뉴스 편집장입니다.
 
 class TitleGenerator:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.logger = get_logger(step="generate")
 
     async def generate_titles(self, sections_summary: str) -> list[str]:

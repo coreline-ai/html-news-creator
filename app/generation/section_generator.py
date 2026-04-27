@@ -27,7 +27,7 @@ SECTION_USER = """클러스터 기사 목록:
 
 class SectionGenerator:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.logger = get_logger(step="generate")
 
     async def generate(self, cluster_id: str, items: list[dict]) -> dict:

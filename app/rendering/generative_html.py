@@ -22,7 +22,7 @@ LAYOUT_PLANNER_SYSTEM = """당신은 AI 뉴스 리포트 HTML 레이아웃 전�
 
 class GenerativeHTMLRenderer:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.sanitizer = HTMLSanitizer()
         self.logger = get_logger(step="render")
 

@@ -9,7 +9,7 @@ class EmbeddingClient:
     BATCH_SIZE = 100  # OpenAI allows up to 2048, keep conservative
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.model = settings.openai_embedding_model  # text-embedding-3-small
         self.logger = get_logger(step="cluster")
 

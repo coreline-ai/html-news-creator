@@ -25,7 +25,7 @@ CLASSIFY_USER = """제목: {title}
 
 class RelevanceClassifier:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.logger = get_logger(step="classify")
 
     async def classify(self, title: str, content: str, item_id: str = "") -> dict:

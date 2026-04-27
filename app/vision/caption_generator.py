@@ -17,7 +17,7 @@ class CaptionGenerator:
 - image_type: chart|diagram|screenshot|photo|other"""
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
         self.logger = get_logger(step="image_analyze")
 
     async def generate_caption(self, image_data: bytes, context: str = "") -> dict:
