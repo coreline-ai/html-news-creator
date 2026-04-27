@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+data/raw/
+data/processed/
+public/news/*.html
+public/news/*.json
+public/news/*.pdf
+public/news/*.png
+*.egg-info/
+dist/
+build/
+.DS_Store

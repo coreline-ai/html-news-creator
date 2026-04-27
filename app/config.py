@@ -1,0 +1,44 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    app_env: str = "local"
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_trend"
+    redis_url: str = "redis://localhost:6379"
+    report_public_base_url: str = "http://localhost:3000"
+
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o"
+    openai_embedding_model: str = "text-embedding-3-small"
+
+    firecrawl_api_key: str = ""
+    crawl4ai_enabled: bool = True
+    trafilatura_enabled: bool = True
+
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+
+    github_token: str = ""
+
+    x_bearer_token: str = ""
+    x_enabled: bool = False
+
+    s3_endpoint: str = "http://localhost:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket: str = "ai-trend-assets"
+    s3_region: str = "us-east-1"
+
+    netlify_auth_token: str = ""
+    netlify_site_id: str = ""
+
+    timezone: str = "Asia/Seoul"
+    log_level: str = "info"
+    max_sources_per_run: int = 500
+    max_images_per_run: int = 50
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+
+settings = Settings()
