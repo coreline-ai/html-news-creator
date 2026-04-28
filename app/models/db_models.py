@@ -1,24 +1,35 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float, ForeignKey,
     Integer, String, Text, UniqueConstraint, text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID, ENUM
 from sqlalchemy.orm import relationship
 from app.db import Base
 
-# Enum 타입은 String으로 단순화 (PostgreSQL enum은 마이그레이션으로 관리)
+# Enum columns use create_type=False — types are already created by migration SQL
+_source_type      = ENUM("rss", "website", "github", "arxiv", "x", "manual",
+                         name="source_type", create_type=False)
+_trust_level      = ENUM("official", "trusted_media", "community", "unknown",
+                         name="trust_level", create_type=False)
+_verification_st  = ENUM("official_confirmed", "github_confirmed", "paper_confirmed",
+                         "trusted_media_only", "social_only", "image_only", "unverified",
+                         name="verification_status", create_type=False)
+_report_status    = ENUM("draft", "review", "published", "failed", "archived",
+                         name="report_status", create_type=False)
+_job_status       = ENUM("queued", "running", "completed", "failed", "cancelled",
+                         name="job_status", create_type=False)
 
 
 class Source(Base):
     __tablename__ = "sources"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(Text, nullable=False)
-    source_type = Column(String(20), nullable=False)  # rss|website|github|arxiv|x|manual
+    source_type = Column(_source_type, nullable=False)
     url = Column(Text, nullable=False, unique=True)
     homepage_url = Column(Text)
-    trust_level = Column(String(20), nullable=False, default="unknown")
+    trust_level = Column(_trust_level, nullable=False, default="unknown")
     enabled = Column(Boolean, nullable=False, default=True)
     metadata_json = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
@@ -29,7 +40,7 @@ class RawItem(Base):
     __tablename__ = "raw_items"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id = Column(UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"))
-    source_type = Column(String(20), nullable=False)
+    source_type = Column(_source_type, nullable=False)
     title = Column(Text)
     raw_text = Column(Text)
     url = Column(Text)
@@ -117,7 +128,7 @@ class Verification(Base):
     cluster_id = Column(UUID(as_uuid=True), ForeignKey("clusters.id", ondelete="CASCADE"))
     raw_item_id = Column(UUID(as_uuid=True), ForeignKey("raw_items.id", ondelete="SET NULL"))
     entity_name = Column(Text)
-    verification_status = Column(String(30), nullable=False, default="unverified")
+    verification_status = Column(_verification_st, nullable=False, default="unverified")
     source_url = Column(Text)
     source_title = Column(Text)
     source_type_label = Column(Text)
@@ -149,7 +160,7 @@ class Report(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     report_date = Column(Date, nullable=False, unique=True)
     title = Column(Text, nullable=False)
-    status = Column(String(20), nullable=False, default="draft")
+    status = Column(_report_status, nullable=False, default="draft")
     summary_ko = Column(Text)
     stats_json = Column(JSONB, nullable=False, default=dict)
     method_json = Column(JSONB, nullable=False, default=dict)
@@ -194,7 +205,7 @@ class JobRun(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_name = Column(Text, nullable=False)
     report_date = Column(Date)
-    status = Column(String(20), nullable=False, default="queued")
+    status = Column(_job_status, nullable=False, default="queued")
     started_at = Column(DateTime(timezone=True))
     completed_at = Column(DateTime(timezone=True))
     error_code = Column(Text)
