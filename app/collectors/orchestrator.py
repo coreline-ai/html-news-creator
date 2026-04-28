@@ -32,6 +32,30 @@ class CollectorOrchestrator:
             return ArxivCollector(source)
         return None
 
+    async def collect_items(
+        self,
+        run_date: date,
+        source_types: list[str] | None = None,
+    ) -> list[CollectedItem]:
+        sources = self._load_registry()
+        if source_types:
+            sources = [s for s in sources if s.get("source_type") in source_types]
+
+        date_from = datetime(run_date.year, run_date.month, run_date.day, 0, 0, 0, tzinfo=timezone.utc)
+        date_to = datetime(run_date.year, run_date.month, run_date.day, 23, 59, 59, tzinfo=timezone.utc)
+
+        collectors = [c for s in sources if (c := self._make_collector(s)) is not None]
+
+        async def _collect_one(collector: BaseCollector) -> list[CollectedItem]:
+            try:
+                return await collector.collect(date_from, date_to)
+            except Exception as e:
+                self.logger.error("collector_failed", error=str(e))
+                return []
+
+        results = await asyncio.gather(*[_collect_one(c) for c in collectors])
+        return [item for batch in results for item in batch]
+
     async def run(
         self,
         run_date: date,

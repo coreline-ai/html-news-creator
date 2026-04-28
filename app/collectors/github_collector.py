@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from github import Github, GithubException, RateLimitExceededException
+from github import GithubRetry
 
 from app.collectors.base import BaseCollector, CollectedItem
 from app.config import settings
@@ -27,7 +28,9 @@ class GitHubCollector(BaseCollector):
 
     async def collect(self, date_from: datetime, date_to: datetime) -> list[CollectedItem]:
         token = settings.github_token or None
-        gh = Github(token) if token else Github()
+        # total=0 disables PyGitHub's exponential-backoff on rate-limit — fail fast instead
+        retry = GithubRetry(total=0)
+        gh = Github(login_or_token=token, retry=retry) if token else Github(retry=retry)
 
         items: list[CollectedItem] = []
 

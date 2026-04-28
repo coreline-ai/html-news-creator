@@ -33,7 +33,7 @@ class TrafilaturaExtractor(BaseExtractor):
         html = response.text
 
         content_text: str = trafilatura.extract(
-            html, include_comments=False, output_format="text"
+            html, include_comments=False, output_format="txt"
         ) or ""
         content_markdown: str = trafilatura.extract(
             html, include_comments=False, output_format="markdown"
