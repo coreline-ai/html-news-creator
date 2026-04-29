@@ -11,9 +11,16 @@ APP_ENV=local
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ai_trend
 REPORT_PUBLIC_BASE_URL=http://localhost:3000
 
-# LLM
+# LLM / AI Gateway
+# local 기본값은 multi-model-tui 같은 OpenAI-compatible proxy를 사용한다.
+# 이 경우 OPENAI_API_KEY 대신 AI_GATEWAY_API_KEY dummy/proxy key와 Codex auth(~/.codex/auth.json)를 사용한다.
+AI_PROVIDER=openai-compatible
+AI_GATEWAY_BASE_URL=http://127.0.0.1:4317/openai/v1
+AI_GATEWAY_API_KEY=local-dev-only
 OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5.5
+OPENAI_MODEL=gpt-5
+EMBEDDING_PROVIDER=local-hashing
+EMBEDDING_DIM=1536
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 
 # Web extraction
@@ -2117,13 +2124,28 @@ python scripts/run_daily.py --date 2026-04-27 --mode rss-only
 
 ```text
 DATABASE_URL
-OPENAI_API_KEY
 REPORT_PUBLIC_BASE_URL
+AI_PROVIDER
 ```
+
+로컬 `AI_PROVIDER=openai-compatible` 모드에서는 `OPENAI_API_KEY`가 필수가 아니다. 이때 LLM 호출은 `AI_GATEWAY_BASE_URL`과 `AI_GATEWAY_API_KEY`를 통해 local OpenAI-compatible proxy로 전달하고, Codex 인증은 `codex login` 또는 `~/.codex/auth.json`에 의존한다.
+
+`OPENAI_API_KEY`는 다음 경우에만 필수다.
+
+- `AI_PROVIDER=openai`로 공식 OpenAI API를 직접 호출하는 경우
+- GitHub Actions/운영 환경에서 local proxy 없이 공식 OpenAI API를 사용하는 경우
+- `EMBEDDING_PROVIDER=openai`로 `/embeddings`와 `text-embedding-3-small`을 직접 호출하는 경우
+
+Phase 4 embedding 포함 full pipeline도 기본값 `EMBEDDING_PROVIDER=local-hashing`이면 `OPENAI_API_KEY` 없이 실행 가능해야 한다. 이 fallback은 `HashingVectorizer(n_features=1536, alternate_sign=False, norm="l2")` 같은 deterministic local vectorizer로 `vector(1536)` 스키마와 차원을 맞춘다. 운영 품질이 필요할 때만 `EMBEDDING_PROVIDER=openai`로 전환한다.
 
 선택:
 
 ```text
+AI_GATEWAY_BASE_URL
+AI_GATEWAY_API_KEY
+EMBEDDING_PROVIDER
+EMBEDDING_DIM
+OPENAI_API_KEY
 FIRECRAWL_API_KEY
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
@@ -2171,7 +2193,7 @@ npx netlify deploy --prod --dir=public
 ### Secrets
 
 ```text
-OPENAI_API_KEY
+OPENAI_API_KEY  # 공식 OpenAI API 직접 호출 또는 운영 fallback 사용 시
 DATABASE_URL
 FIRECRAWL_API_KEY
 NETLIFY_AUTH_TOKEN
@@ -2432,6 +2454,9 @@ jobs:
       - name: Run daily report
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER || 'openai' }}
+          AI_GATEWAY_BASE_URL: ${{ vars.AI_GATEWAY_BASE_URL }}
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -2701,4 +2726,3 @@ create table if not exists job_logs (
 );
 
 create index if not exists job_logs_job_run_idx on job_logs(job_run_id, created_at);
-
