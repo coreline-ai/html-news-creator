@@ -14,8 +14,10 @@ logger = get_logger(step="collect")
 
 # Maximum number of repos to inspect per org to avoid exhausting rate limit.
 _MAX_REPOS = 30
+_MAX_REPOS_ANONYMOUS = 5
 # Maximum releases to fetch per repo.
 _MAX_RELEASES_PER_REPO = 10
+_MAX_RELEASES_PER_REPO_ANONYMOUS = 3
 
 
 class GitHubCollector(BaseCollector):
@@ -25,9 +27,15 @@ class GitHubCollector(BaseCollector):
         self.source = source
         self.org: str = source["org"]
         self.source_id: str = source.get("name", self.org)
+        self.max_repos: int | None = source.get("max_repos")
+        self.max_releases_per_repo: int | None = source.get("max_releases_per_repo")
 
     async def collect(self, date_from: datetime, date_to: datetime) -> list[CollectedItem]:
         token = settings.github_token or None
+        max_repos = self.max_repos or (_MAX_REPOS if token else _MAX_REPOS_ANONYMOUS)
+        max_releases = self.max_releases_per_repo or (
+            _MAX_RELEASES_PER_REPO if token else _MAX_RELEASES_PER_REPO_ANONYMOUS
+        )
         # total=0 disables PyGitHub's exponential-backoff on rate-limit — fail fast instead
         retry = GithubRetry(total=0)
         gh = Github(login_or_token=token, retry=retry) if token else Github(retry=retry)
@@ -40,7 +48,7 @@ class GitHubCollector(BaseCollector):
 
             repo_count = 0
             for repo in repos:
-                if repo_count >= _MAX_REPOS:
+                if repo_count >= max_repos:
                     break
                 repo_count += 1
 
@@ -48,7 +56,7 @@ class GitHubCollector(BaseCollector):
                     releases = repo.get_releases()
                     release_count = 0
                     for release in releases:
-                        if release_count >= _MAX_RELEASES_PER_REPO:
+                        if release_count >= max_releases:
                             break
                         release_count += 1
 

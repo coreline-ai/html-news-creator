@@ -22,9 +22,13 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
 
     github_token: str = ""
+    github_allow_unauthenticated: bool = True
 
     x_bearer_token: str = ""
     x_enabled: bool = False
+
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
 
     s3_endpoint: str = "http://localhost:9000"
     s3_access_key: str = "minioadmin"
@@ -41,6 +45,7 @@ class Settings(BaseSettings):
     log_level: str = "info"
     max_sources_per_run: int = 500
     max_images_per_run: int = 50
+    generated_image_fallback_enabled: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -1,0 +1,94 @@
+# Editorial policy for AI Daily News ranking.
+# Scores are intentionally transparent so tests and operators can tune them.
+source_tiers:
+  official:
+    boost: 18
+    eligible_for_main: true
+    description: Vendor/company blogs, docs, release notes, verified GitHub/HF orgs.
+  mainstream:
+    boost: 12
+    eligible_for_main: true
+    description: Established technology/business media with editorial process.
+  research:
+    boost: 4
+    eligible_for_main: false
+    description: arXiv and academic preprints/papers.
+  developer_signal:
+    boost: 14
+    eligible_for_main: true
+    description: GitHub releases and developer-community implementation signals.
+  community:
+    boost: -4
+    eligible_for_main: false
+    description: Social/community aggregators.
+  unknown:
+    boost: -18
+    eligible_for_main: false
+    description: Unclassified or unverifiable sources.
+
+section_quotas:
+  product: 4
+  tooling: 4
+  research: 1
+  industry: 1
+  policy: 1
+
+report_selection:
+  max_sections: 10
+  min_section_score: 35
+  max_arxiv_only_sections: 1
+  max_community_sections: 1
+  max_same_source_name: 2
+  max_same_source_tier_ratio: 0.75
+  prefer_mainstream_first: true
+
+scoring_weights:
+  base_score: 50
+  source_tier: 1.0
+  official_source_boost: 10
+  mainstream_source_boost: 6
+  product_signal: 8
+  research_signal: 3
+  metrics_signal: 0.25
+  cluster_size_boost_per_item: 5
+  cluster_size_boost_max: 20
+
+penalties:
+  obscure_research_penalty: 22
+  arxiv_only_main_penalty: 100
+  community_penalty: 8
+  missing_url_penalty: 40
+  missing_title_penalty: 30
+
+quality_gates:
+  require_source: true
+  require_url: true
+  min_title_length: 8
+  reject_unknown_source_without_url: true
+
+main_headline:
+  allow_arxiv_only: false
+  minimum_score: 55
+
+source_aliases:
+  official:
+    - official
+    - official_site
+    - official_docs
+    - official_github
+    - official_huggingface
+  mainstream:
+    - mainstream
+    - trusted_media
+    - media
+  research:
+    - research
+    - paper_arxiv
+    - arxiv
+  developer_signal:
+    - developer_signal
+    - github
+    - official_github
+    - developer
+  community:
+    - community

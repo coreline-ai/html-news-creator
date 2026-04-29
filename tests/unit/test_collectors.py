@@ -8,16 +8,22 @@ TC-1.E1 RSSCollector returns empty list (no exception) when feedparser always ra
 """
 from __future__ import annotations
 
+import calendar as _cal
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from app.collectors.rss_collector import RSSCollector
 from app.collectors.arxiv_collector import ArxivCollector
 from app.collectors.base import CollectedItem
+from app.collectors.github_collector import GitHubCollector
+from app.collectors.hackernews_collector import HackerNewsCollector
+from app.collectors.naver_news_collector import NaverNewsCollector
+from app.collectors.orchestrator import CollectorOrchestrator
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -29,7 +35,6 @@ _DATE_TO = datetime(2026, 4, 27, 23, 59, 59, tzinfo=timezone.utc)
 
 # time.struct_time for 2026-04-27 12:00 UTC, built via calendar so it is
 # unambiguously UTC (calendar.timegm is the inverse of time.gmtime).
-import calendar as _cal
 _PUBLISHED_UTC_TS = _cal.timegm((2026, 4, 27, 12, 0, 0, 0, 0, 0))
 _PUBLISHED_STRUCT = time.gmtime(_PUBLISHED_UTC_TS)
 
@@ -108,6 +113,252 @@ async def test_rss_collector_duplicate_hash():
     assert items[0].canonical_url_hash == items[1].canonical_url_hash
     # And their canonical_url should be the same (stripped of UTM params)
     assert items[0].canonical_url == items[1].canonical_url
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_preserves_feed_image_url():
+    """RSS media image candidates must survive into raw_json for report cards."""
+    image_url = "https://example.com/images/hero.jpg"
+    entry = _make_feed_entry("https://example.com/post/with-image")
+    entry["media_thumbnail"] = [{"url": image_url}]
+
+    fake_feed = MagicMock()
+    fake_feed.get = lambda key, default=None: [entry] if key == "entries" else default
+
+    source = _make_rss_source()
+    collector = RSSCollector(source)
+
+    with patch("app.collectors.rss_collector.feedparser.parse", return_value=fake_feed):
+        items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert len(items) == 1
+    assert items[0].raw_json["image_url"] == image_url
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_preserves_youtube_video_id():
+    """YouTube RSS video id should survive into raw_json for rendering hints."""
+    entry = _make_feed_entry("https://www.youtube.com/watch?v=abc123", "YouTube demo")
+    entry["yt_videoid"] = "abc123"
+
+    fake_feed = MagicMock()
+    fake_feed.get = lambda key, default=None: [entry] if key == "entries" else default
+
+    collector = RSSCollector(_make_rss_source("https://www.youtube.com/feeds/videos.xml"))
+
+    with patch("app.collectors.rss_collector.feedparser.parse", return_value=fake_feed):
+        items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert len(items) == 1
+    assert items[0].raw_json["video_id"] == "abc123"
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_falls_back_to_httpx_bytes_when_url_parse_has_no_entries():
+    """Some valid feeds parse only after fetching bytes with a normal UA."""
+    entry = _make_feed_entry("https://example.com/fallback-feed")
+
+    bozo_feed = MagicMock()
+    bozo_feed.get = lambda key, default=None: {
+        "bozo": True,
+        "entries": [],
+        "bozo_exception": ValueError("syntax error"),
+    }.get(key, default)
+
+    parsed_feed = MagicMock()
+    parsed_feed.get = lambda key, default=None: [entry] if key == "entries" else default
+
+    def fake_httpx_get(url, **_kwargs):
+        return httpx.Response(
+            200,
+            content=b"<?xml version='1.0'?><rss><channel></channel></rss>",
+            request=httpx.Request("GET", url),
+        )
+
+    source = _make_rss_source("https://example.com/feed-needs-httpx.xml")
+    collector = RSSCollector(source)
+
+    with patch(
+        "app.collectors.rss_collector.feedparser.parse",
+        side_effect=[bozo_feed, parsed_feed],
+    ), patch("app.collectors.rss_collector.httpx.get", side_effect=fake_httpx_get):
+        items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert [item.url for item in items] == ["https://example.com/fallback-feed"]
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_uses_source_timeout_for_httpx_byte_fallback():
+    """source.timeout should be used when feedparser URL parsing needs httpx byte fallback."""
+    entry = _make_feed_entry("https://example.com/timeout-feed")
+
+    bozo_feed = MagicMock()
+    bozo_feed.get = lambda key, default=None: {
+        "bozo": True,
+        "entries": [],
+        "bozo_exception": ValueError("syntax error"),
+    }.get(key, default)
+
+    parsed_feed = MagicMock()
+    parsed_feed.get = lambda key, default=None: [entry] if key == "entries" else default
+
+    seen_timeouts = []
+
+    def fake_httpx_get(url, **kwargs):
+        seen_timeouts.append(kwargs.get("timeout"))
+        return httpx.Response(
+            200,
+            content=b"<?xml version='1.0'?><rss><channel></channel></rss>",
+            request=httpx.Request("GET", url),
+        )
+
+    source = {**_make_rss_source("https://example.com/feed.xml"), "timeout": 7}
+    collector = RSSCollector(source)
+
+    with patch(
+        "app.collectors.rss_collector.feedparser.parse",
+        side_effect=[bozo_feed, parsed_feed],
+    ), patch("app.collectors.rss_collector.httpx.get", side_effect=fake_httpx_get):
+        items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert [item.url for item in items] == ["https://example.com/timeout-feed"]
+    assert seen_timeouts == [7.0]
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_tries_fallback_url_when_primary_fetch_fails():
+    """fallback_url should be collected when the primary feed cannot be fetched."""
+    entry = _make_feed_entry("https://example.com/from-fallback")
+    fallback_feed = MagicMock()
+    fallback_feed.get = lambda key, default=None: [entry] if key == "entries" else default
+
+    source = {
+        **_make_rss_source("https://example.com/primary.xml"),
+        "fallback_url": "https://example.com/fallback.xml",
+    }
+    collector = RSSCollector(source)
+    collector._fetch_feed_for_url = MagicMock(side_effect=[RuntimeError("down"), fallback_feed])
+
+    items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert [item.url for item in items] == ["https://example.com/from-fallback"]
+    assert collector._fetch_feed_for_url.call_args_list[0].args == ("https://example.com/primary.xml",)
+    assert collector._fetch_feed_for_url.call_args_list[1].args == ("https://example.com/fallback.xml",)
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_returns_empty_when_primary_and_fallback_fail():
+    """If both primary and fallback feeds fail, collect should keep returning []."""
+    source = {
+        **_make_rss_source("https://example.com/primary.xml"),
+        "fallback_url": "https://example.com/fallback.xml",
+    }
+    collector = RSSCollector(source)
+    collector._fetch_feed_for_url = MagicMock(side_effect=[RuntimeError("down"), RuntimeError("also down")])
+
+    items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_rss_collector_ai_filter_keeps_only_ai_related_entries():
+    """ai_filter should filter by default AI keywords plus source keywords."""
+    ai_entry = _make_feed_entry("https://example.com/openai-release", "OpenAI releases new model")
+    custom_keyword_entry = _make_feed_entry("https://example.com/robotics-update", "Automation update")
+    custom_keyword_entry["content"] = [{"value": "New robotics benchmark results were published."}]
+    non_ai_entry = _make_feed_entry("https://example.com/garden-update", "Gardening tips")
+    non_ai_entry["summary"] = "Spring planting guide for vegetables."
+
+    fake_feed = MagicMock()
+    fake_feed.get = lambda key, default=None: [
+        ai_entry,
+        custom_keyword_entry,
+        non_ai_entry,
+    ] if key == "entries" else default
+
+    source = {**_make_rss_source(), "ai_filter": True, "keywords": ["robotics"]}
+    collector = RSSCollector(source)
+
+    with patch("app.collectors.rss_collector.feedparser.parse", return_value=fake_feed):
+        items = await collector.collect(_DATE_FROM, _DATE_TO)
+
+    assert [item.url for item in items] == [
+        "https://example.com/openai-release",
+        "https://example.com/robotics-update",
+    ]
+
+
+def test_collector_orchestrator_date_window_uses_configured_timezone(monkeypatch):
+    """2026-04-28 KST should query 2026-04-27 15:00 UTC onward."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "timezone", "Asia/Seoul")
+
+    date_from, date_to = CollectorOrchestrator()._date_window_utc(date(2026, 4, 28))
+
+    from app.pipeline.date_window import _SLACK_HOURS_AFTER, _SLACK_HOURS_BEFORE
+
+    # KST midnight = 15:00 UTC; window starts SLACK_HOURS_BEFORE hours earlier
+    assert date_from == datetime(2026, 4, 27, 15 - _SLACK_HOURS_BEFORE, 0, 0, tzinfo=timezone.utc)
+    assert date_to == datetime(
+        2026, 4, 28, 14 + _SLACK_HOURS_AFTER, 59, 59, 999999, tzinfo=timezone.utc
+    )
+
+
+def test_collector_orchestrator_uses_github_anonymous_fallback(monkeypatch):
+    """GitHub source should not be skipped when anonymous fallback is enabled."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "github_token", "")
+    monkeypatch.setattr(settings, "github_allow_unauthenticated", True)
+
+    collector = CollectorOrchestrator()._make_collector(
+        {"name": "GitHub openai", "source_type": "github", "org": "openai"}
+    )
+
+    assert isinstance(collector, GitHubCollector)
+
+
+def test_collector_orchestrator_can_disable_github_anonymous_fallback(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "github_token", "")
+    monkeypatch.setattr(settings, "github_allow_unauthenticated", False)
+
+    collector = CollectorOrchestrator()._make_collector(
+        {"name": "GitHub openai", "source_type": "github", "org": "openai"}
+    )
+
+    assert collector is None
+
+
+def test_collector_orchestrator_routes_hackernews_collector_type():
+    """Special collectors use collector_type while keeping DB-safe source_type."""
+    collector = CollectorOrchestrator()._make_collector(
+        {
+            "name": "Hacker News AI",
+            "source_type": "website",
+            "collector_type": "hackernews",
+            "keywords": ["ai"],
+        }
+    )
+
+    assert isinstance(collector, HackerNewsCollector)
+
+
+def test_collector_orchestrator_routes_naver_news_collector_type():
+    """NAVER Search API source must not require a new source_type enum value."""
+    collector = CollectorOrchestrator()._make_collector(
+        {
+            "name": "NAVER AI News",
+            "source_type": "website",
+            "collector_type": "naver_news",
+            "query": "AI",
+        }
+    )
+
+    assert isinstance(collector, NaverNewsCollector)
 
 
 # ---------------------------------------------------------------------------

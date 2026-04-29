@@ -3,63 +3,439 @@ sources:
     source_type: rss
     url: https://openai.com/news/rss.xml
     trust_level: official
+    source_tier: official
+    category: official
+    priority: 100
+    max_items: 20
+
   - name: Anthropic News
-    source_type: rss
-    url: https://www.anthropic.com/news/rss.xml
+    source_type: website
+    url: https://www.anthropic.com/news
+    listing_url: https://www.anthropic.com/news
+    sitemap_url: https://www.anthropic.com/sitemap.xml
+    include_url_patterns:
+      - https://www.anthropic.com/news/
+      - https://www.anthropic.com/research/
+      - https://www.anthropic.com/engineering/
+    max_candidates: 40
+    max_items: 20
     trust_level: official
+    source_tier: official
+    category: official
+    priority: 100
+
   - name: Google DeepMind Blog
     source_type: rss
     url: https://deepmind.google/blog/rss.xml
     trust_level: official
+    source_tier: official
+    category: official
+    priority: 100
+    max_items: 20
+
   - name: Hugging Face Blog
     source_type: rss
     url: https://huggingface.co/blog/feed.xml
     trust_level: official
+    source_tier: official
+    category: official
+    priority: 90
+    max_items: 20
+
   - name: Meta AI Blog
-    source_type: rss
-    url: https://ai.meta.com/blog/rss/
+    source_type: website
+    url: https://ai.meta.com/blog/
+    listing_url: https://ai.meta.com/blog/
+    include_url_patterns:
+      - https://ai.meta.com/blog/
+    max_candidates: 30
+    max_items: 20
     trust_level: official
+    source_tier: official
+    category: official
+    priority: 90
+
   - name: Microsoft AI Blog
     source_type: rss
     url: https://blogs.microsoft.com/ai/feed/
     trust_level: official
+    source_tier: official
+    category: official
+    priority: 90
+    max_items: 20
+
+  - name: TechCrunch AI
+    source_type: rss
+    url: https://techcrunch.com/category/artificial-intelligence/feed/
+    max_items: 18
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    priority: 95
+
+  - name: MIT News AI
+    source_type: rss
+    url: https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    priority: 85
+    max_items: 12
+
+  - name: The Verge AI
+    source_type: rss
+    url: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+    max_items: 18
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    priority: 95
+
+  - name: The Decoder AI
+    source_type: rss
+    url: https://the-decoder.com/feed/
+    max_items: 15
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    priority: 85
+
+  - name: MIT Technology Review AI
+    source_type: rss
+    url: https://www.technologyreview.com/topic/artificial-intelligence/feed/
+    max_items: 12
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    priority: 80
+
   - name: GitHub openai
     source_type: github
     org: openai
     trust_level: official
+    source_tier: developer_signal
+    category: developer_signal
+    priority: 55
+    max_items: 8
+
   - name: GitHub anthropics
     source_type: github
     org: anthropics
     trust_level: official
+    source_tier: developer_signal
+    category: developer_signal
+    priority: 50
+    max_items: 8
+
   - name: GitHub google-deepmind
     source_type: github
     org: google-deepmind
     trust_level: official
+    source_tier: developer_signal
+    category: developer_signal
+    priority: 50
+    max_items: 8
+
   - name: GitHub microsoft
     source_type: github
     org: microsoft
     trust_level: official
+    source_tier: developer_signal
+    category: developer_signal
+    priority: 45
+    max_items: 8
+
   - name: GitHub meta-llama
     source_type: github
     org: meta-llama
     trust_level: official
+    source_tier: developer_signal
+    category: developer_signal
+    priority: 50
+    max_items: 8
+
   - name: GitHub huggingface
     source_type: github
     org: huggingface
     trust_level: official
+    source_tier: developer_signal
+    category: developer_signal
+    priority: 45
+    max_items: 8
+
   - name: arXiv cs.AI
     source_type: arxiv
     category: cs.AI
+    content_category: research
     trust_level: official
+    source_tier: research
+    priority: 30
+    max_items: 5
+
   - name: arXiv cs.LG
     source_type: arxiv
     category: cs.LG
+    content_category: research
     trust_level: official
+    source_tier: research
+    priority: 30
+    max_items: 5
+
   - name: arXiv cs.CL
     source_type: arxiv
     category: cs.CL
+    content_category: research
     trust_level: official
+    source_tier: research
+    priority: 25
+    max_items: 4
+
   - name: arXiv cs.CV
     source_type: arxiv
     category: cs.CV
+    content_category: research
     trust_level: official
+    source_tier: research
+    priority: 25
+    max_items: 4
+
+  - name: Google AI Blog
+    source_type: rss
+    url: https://blog.google/technology/ai/rss/
+    trust_level: official
+    source_tier: official
+    category: official
+    content_category: product
+    priority: 95
+    max_items: 18
+    required: false
+    purpose: Track official Google AI product, research, and policy announcements.
+    keywords:
+      - Gemini
+      - Google AI
+      - DeepMind
+      - AI
+
+  - name: NVIDIA AI Blog
+    source_type: rss
+    url: https://developer.nvidia.com/blog/category/artificial-intelligence/feed/
+    trust_level: official
+    source_tier: official
+    category: official
+    content_category: tooling
+    priority: 90
+    max_items: 15
+    required: false
+    purpose: Track NVIDIA AI platform, GPU, inference, robotics, and developer tooling updates.
+    keywords:
+      - NVIDIA
+      - GPU
+      - inference
+      - robotics
+      - AI
+
+  - name: AWS Machine Learning Blog
+    source_type: rss
+    url: https://aws.amazon.com/blogs/machine-learning/feed/
+    trust_level: official
+    source_tier: official
+    category: official
+    content_category: tooling
+    priority: 85
+    max_items: 15
+    required: false
+    purpose: Track official AWS machine learning, Bedrock, SageMaker, and enterprise AI updates.
+    keywords:
+      - AWS
+      - Bedrock
+      - SageMaker
+      - machine learning
+      - AI
+
+  - name: Google Cloud Tech YouTube
+    source_type: rss
+    url: https://www.youtube.com/feeds/videos.xml?channel_id=UCJS9pqu9BzkAMNTmzNMNhvg
+    trust_level: official
+    source_tier: official
+    category: official
+    content_category: tooling
+    priority: 70
+    max_items: 8
+    required: false
+    purpose: Track official Google Cloud technical video updates for AI and data products.
+    keywords:
+      - Google Cloud
+      - Vertex AI
+      - Gemini
+      - machine learning
+
+  - name: OpenAI YouTube
+    source_type: rss
+    url: https://www.youtube.com/feeds/videos.xml?channel_id=UCXZCJLdBC09xxGZ6gcdrc6A
+    trust_level: official
+    source_tier: official
+    category: official
+    content_category: product
+    priority: 75
+    max_items: 8
+    required: false
+    purpose: Track official OpenAI launches, demos, developer talks, and event videos.
+    keywords:
+      - OpenAI
+      - ChatGPT
+      - API
+      - model
+
+  - name: VentureBeat AI
+    source_type: rss
+    url: https://venturebeat.com/category/ai/feed/
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    content_category: industry
+    priority: 82
+    max_items: 15
+    required: false
+    purpose: Track mainstream enterprise AI, startup, funding, and market coverage.
+    keywords:
+      - artificial intelligence
+      - enterprise AI
+      - startup
+      - model
+
+  - name: Yahoo Finance AI
+    source_type: rss
+    url: https://finance.yahoo.com/news/rssindex
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    content_category: industry
+    priority: 78
+    max_items: 12
+    ai_filter: true
+    required: false
+    purpose: Track mainstream market and business coverage around AI companies and the AI sector.
+    keywords:
+      - artificial intelligence
+      - AI
+      - llm
+      - openai
+      - anthropic
+      - nvidia
+      - chatgpt
+      - gemini
+      - claude
+      - machine learning
+      - model
+      - agent
+
+  - name: AI타임스
+    source_type: rss
+    url: https://www.aitimes.com/rss/allArticle.xml
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    content_category: industry
+    priority: 72
+    max_items: 10
+    required: false
+    purpose: Track Korean AI industry, policy, product, and research news from an AI-focused publication.
+    keywords:
+      - 인공지능
+      - 생성형 AI
+      - AI 반도체
+      - 로봇
+      - 정책
+
+  - name: Hacker News AI
+    source_type: website
+    collector_type: hackernews
+    url: https://news.ycombinator.com/
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: developer_signal
+    priority: 45
+    max_items: 15
+    max_candidates: 80
+    concurrency: 10
+    min_score: 80
+    required: false
+    purpose: Surface high-signal developer discussions and launches from Hacker News.
+    keywords:
+      - ai
+      - llm
+      - agent
+      - openai
+      - anthropic
+      - gemini
+
+  - name: Reddit MachineLearning
+    source_type: rss
+    url: https://www.reddit.com/r/MachineLearning/.rss
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: research
+    priority: 35
+    max_items: 10
+    required: false
+    purpose: Track community discussion around machine learning research and papers.
+    keywords:
+      - machine learning
+      - research
+      - paper
+      - model
+
+  - name: Reddit LocalLLaMA
+    source_type: rss
+    url: https://www.reddit.com/r/LocalLLaMA/.rss
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: developer_signal
+    priority: 35
+    max_items: 10
+    required: false
+    purpose: Track open model, local inference, and developer adoption signals.
+    keywords:
+      - LLaMA
+      - open weights
+      - local inference
+      - quantization
+
+  - name: YouTube Two Minute Papers
+    source_type: rss
+    url: https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    content_category: research
+    priority: 68
+    max_items: 5
+    required: false
+    purpose: Short AI/ML research paper reviews with high production quality.
+
+  - name: YouTube Lex Fridman
+    source_type: rss
+    url: https://www.youtube.com/feeds/videos.xml?channel_id=UCSHZKyawb77ixDdsGog4iWA
+    trust_level: trusted_media
+    source_tier: mainstream
+    category: mainstream_media
+    content_category: research
+    priority: 65
+    max_items: 3
+    required: false
+    purpose: Long-form AI/tech interviews with researchers and founders.
+
+  - name: YouTube Google DeepMind
+    source_type: rss
+    url: https://www.youtube.com/feeds/videos.xml?channel_id=UCP7jMXSY2xbc3KCAE0MHQ-A
+    trust_level: official
+    source_tier: official
+    category: official
+    content_category: research
+    priority: 72
+    max_items: 5
+    required: false
+    purpose: Official Google DeepMind research and product videos.

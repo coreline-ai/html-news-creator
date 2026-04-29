@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="{{ report.summary_ko | default('오늘의 AI 트렌드 리포트') }}">
+<title>🔥 AI 트렌드 리포트 ({{ report.report_date | default('') }})</title>
+<link rel="stylesheet" as="style"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root {
+  --bg: #fafaf7;
+  --fg: #1a1a1a;
+  --muted: #555;
+  --accent: #c65545;
+  --accent-soft: #f0e6e2;
+  --border: #e8e6df;
+  --code-bg: #f4f3ec;
+  --quote-bg: #f6f3ec;
+}
+
+[data-theme="dark"] {
+  --bg: #16140f;
+  --fg: #f0ece3;
+  --muted: #928d81;
+  --border: #2e2a22;
+  --accent: #e07663;
+  --accent-soft: #3a2620;
+  --quote-bg: #26231d;
+  --code-bg: #26231d;
+  color-scheme: dark;
+}
+[data-theme="dark"] blockquote { color: #c8c3b6; }
+[data-theme="dark"] blockquote code { background: rgba(224,118,99,0.15); color: var(--accent); }
+[data-theme="dark"] code { color: #e8c4a8; }
+[data-theme="dark"] strong { color: #ffffff; }
+[data-theme="dark"] img { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
+  padding: 48px 24px 96px;
+  line-height: 1.75;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+main { max-width: 820px; margin: 0 auto; }
+
+h1 {
+  font-size: 2.2em;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0 0 0.6em;
+  letter-spacing: -0.025em;
+}
+h2 {
+  font-size: 1.55em;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 1.5em 0 0.8em;
+  letter-spacing: -0.02em;
+}
+h3 {
+  font-size: 1.2em;
+  font-weight: 700;
+  margin: 1.8em 0 0.5em;
+  color: var(--accent);
+}
+
+p { margin: 0.8em 0; }
+strong { font-weight: 700; color: var(--fg); }
+em { font-style: italic; color: var(--muted); }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent);
+  transition: all 0.15s;
+}
+a:hover {
+  background: var(--accent-soft);
+  border-bottom-style: solid;
+}
+
+ul, ol { padding-left: 1.4em; margin: 1em 0; }
+li { margin: 0.5em 0; line-height: 1.7; }
+li::marker { color: var(--accent); }
+ol li { padding-left: 0.3em; }
+
+blockquote {
+  background: var(--quote-bg);
+  border-left: 4px solid var(--accent);
+  margin: 1.5em 0;
+  padding: 1em 1.4em;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.97em;
+}
+blockquote p { margin: 0.4em 0; }
+blockquote p:first-child { margin-top: 0; }
+blockquote p:last-child { margin-bottom: 0; }
+blockquote code {
+  background: rgba(198, 85, 69, 0.1);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 3em 0;
+}
+
+code {
+  background: var(--code-bg);
+  padding: 0.15em 0.45em;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--accent);
+}
+
+figure {
+  margin: 1.8em 0;
+  text-align: center;
+}
+figure img {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+figcaption {
+  margin-top: 0.6em;
+  font-size: 0.88em;
+  color: var(--muted);
+  font-style: italic;
+}
+.fig-wrap { position: relative; display: inline-block; }
+.yt-play {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(0,0,0,0.65);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.yt-play::after {
+  content: '';
+  display: block; width: 0; height: 0;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-left: 20px solid white;
+  margin-left: 4px;
+}
+
+.tier-badge {
+  display: inline-block;
+  font-size: 0.72em;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 6px;
+  letter-spacing: 0.03em;
+}
+.tier-official { background: rgba(198,85,69,0.12); color: var(--accent); }
+.tier-mainstream { background: rgba(100,116,139,0.12); color: #475569; }
+.tier-research { background: rgba(100,100,210,0.1); color: #4c4cba; }
+[data-theme="dark"] .tier-mainstream { color: #94a3b8; background: rgba(148,163,184,0.1); }
+[data-theme="dark"] .tier-research { color: #818cf8; background: rgba(129,140,248,0.1); }
+
+.footer-box {
+  margin-top: 3em;
+  padding: 1.3em 1.5em;
+  background: var(--code-bg);
+  border-radius: 8px;
+}
+.footer-box p {
+  font-size: 0.88em;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0.6em 0;
+}
+.footer-box strong { color: var(--fg); }
+
+.back-home-bar {
+  max-width: 820px;
+  margin: 0 auto 1.5em;
+  padding: 0 0;
+}
+
+.theme-toggle {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--muted);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transition: color .2s, background .2s, border-color .2s, transform .2s;
+  z-index: 100;
+}
+[data-theme="dark"] .theme-toggle { box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+.theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-toggle svg { width: 20px; height: 20px; display: block; }
+.theme-toggle .ico-sun { display: none; }
+[data-theme="dark"] .theme-toggle .ico-sun { display: block; }
+[data-theme="dark"] .theme-toggle .ico-moon { display: none; }
+
+@media (max-width: 640px) {
+  body { padding: 24px 16px 64px; font-size: 16px; }
+  h1 { font-size: 1.7em; }
+  h2 { font-size: 1.3em; }
+  h3 { font-size: 1.1em; }
+  .theme-toggle { right: 16px; bottom: 16px; width: 40px; height: 40px; }
+}
+
+@media print {
+  body { background: white; padding: 0; }
+  a { color: var(--fg); border: 0; }
+  blockquote { background: white; border-left-color: #999; }
+  .theme-toggle { display: none !important; }
+}
+</style>
+<script>
+(function(){
+  try {
+    var p = JSON.parse(localStorage.getItem('ai_news_prefs') || '{}');
+    var t = p.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = t;
+  } catch(e){}
+})();
+</script>
+</head>
+<body>
+
+<div class="back-home-bar">
+  <a href="/" style="display:inline-flex;align-items:center;gap:0.4em;text-decoration:none;
+     color:var(--accent);font-size:0.92em;font-weight:600;
+     border-bottom:1px dashed var(--accent);padding-bottom:2px;">← AI 트렌드 리포트</a>
+</div>
+
+<main>
+
+<h1>🔥 AI 트렌드 핵심 요약 ({{ report.report_date | default('') }})</h1>
+
+{% if report.summary_ko %}
+<blockquote>
+  <p>{{ report.summary_ko }}</p>
+</blockquote>
+{% endif %}
+
+{% if report.stats is defined %}
+<blockquote>
+  <p>
+    <strong>수집:</strong> {{ report.stats.total_sources | default(0) }}건
+    | <strong>AI 관련:</strong> {{ report.stats.ai_relevant | default(0) }}건
+    | <strong>주제 클러스터:</strong> {{ report.stats.clusters | default(0) }}개
+  </p>
+</blockquote>
+{% endif %}
+
+{% if sections %}
+
+{% for section in sections %}
+<hr/>
+
+{% set ns = namespace(image_url='', image_caption='', video_id='') %}
+{% if section.og_image_url %}
+  {% set ns.image_url = section.og_image_url %}
+  {% set ns.image_caption = section.title | default('') %}
+{% elif section.content_image_urls %}
+  {% set ns.image_url = section.content_image_urls[0] %}
+  {% set ns.image_caption = section.title | default('') %}
+{% endif %}
+{# Detect YouTube: find video_id from any source #}
+{% for src in section.sources_json | default([]) %}
+  {% if src.video_id | default('') and not ns.video_id %}
+    {% set ns.video_id = src.video_id %}
+  {% endif %}
+{% endfor %}
+
+<h2>{{ loop.index }}. {{ section.title | default('(제목 없음)') }}</h2>
+
+{% if section.fact_summary %}
+<p>{{ section.fact_summary }}</p>
+{% endif %}
+
+{% if ns.image_url %}
+{% set img_link = ('https://www.youtube.com/watch?v=' ~ ns.video_id) if ns.video_id else (section.sources_json[0].url if section.sources_json else '#') %}
+<figure>
+  <a href="{{ img_link }}" target="_blank" rel="noopener" class="fig-wrap">
+    <img src="{{ ns.image_url }}" alt="{{ ns.image_caption }}"
+         onerror="this.closest('figure').style.display='none'"/>
+    {% if ns.video_id %}<span class="yt-play" aria-hidden="true"></span>{% endif %}
+  </a>
+  <figcaption>{{ ns.image_caption }}{% if ns.video_id %} ▶{% endif %}</figcaption>
+</figure>
+{% endif %}
+
+{% if section.social_signal_summary %}
+<blockquote>
+  <p>{{ section.social_signal_summary }}</p>
+</blockquote>
+{% endif %}
+
+{% if section.sources_json %}
+<p>주요 출처:</p>
+<ul>
+{% for src in section.sources_json %}
+  {% set tier = src.tier | default(src.trust_level | default('')) %}
+  {% set display_name = src.source_name | default(src.name | default('')) %}
+  {% set article_title = src.name | default('') %}
+  {% if display_name and article_title.startswith(display_name ~ ':') %}
+    {% set article_title = article_title[display_name|length + 1:] | trim %}
+  {% elif display_name and article_title.startswith(display_name ~ ' :') %}
+    {% set article_title = article_title[display_name|length + 2:] | trim %}
+  {% endif %}
+  <li>
+    <strong>{{ display_name }}</strong>
+    {% if tier in ('official', 'official_site', 'official_docs', 'official_github') %}
+    <span class="tier-badge tier-official">공식</span>
+    {% elif tier in ('mainstream', 'trusted_media', 'media') %}
+    <span class="tier-badge tier-mainstream">미디어</span>
+    {% elif tier in ('research', 'arxiv', 'paper_arxiv') %}
+    <span class="tier-badge tier-research">연구</span>
+    {% endif %}
+    {% if article_title %}
+     — {{ article_title }}
+    {% endif %}
+    {% if src.url %}
+    <a href="{{ src.url }}" target="_blank" rel="noopener">🔗</a>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if section.inference_summary %}
+<blockquote>
+  <p><strong>시사점:</strong> {{ section.inference_summary }}</p>
+</blockquote>
+{% endif %}
+
+{% endfor %}
+
+{% else %}
+
+<hr/>
+<p>오늘 수집된 AI 트렌드 뉴스가 없습니다.</p>
+
+{% endif %}
+
+<hr/>
+
+<div class="footer-box">
+  <p>📦 <strong>데이터 개요</strong> — {{ report.report_date | default('') }}
+  수집 {{ report.stats.total_sources | default(0) }}건,
+  AI 관련 {{ report.stats.ai_relevant | default(0) }}건,
+  <strong>{{ report.stats.clusters | default(0) }}개 주제 클러스터</strong>.
+  생성 시각: {{ report.created_at | default('') }} KST.</p>
+  <p>🏷 <strong>소스 등급</strong> —
+  <strong>공식</strong>(벤더/공식 블로그) · <strong>미디어</strong>(편집 미디어) · <strong>연구</strong>(arXiv 등)</p>
+</div>
+
+</main>
+
+<button class="theme-toggle" id="theme-toggle" type="button"
+        aria-label="다크 모드로 전환" title="테마 전환">
+  <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+  <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+  </svg>
+</button>
+
+<script>
+(function(){
+  var btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  function apply(t){
+    document.documentElement.dataset.theme = t;
+    btn.setAttribute('aria-label', t==='dark'?'라이트 모드로 전환':'다크 모드로 전환');
+    try{ localStorage.setItem('ai_news_prefs', JSON.stringify({theme:t})); }catch(e){}
+  }
+  btn.addEventListener('click', function(){
+    apply(document.documentElement.dataset.theme==='dark'?'light':'dark');
+  });
+})();
+</script>
+
+</body>
+</html>

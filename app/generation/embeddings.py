@@ -5,21 +5,36 @@ from app.config import settings
 from app.utils.logger import get_logger
 
 
+def _local_embed_batch(texts: list[str]) -> list[list[float]]:
+    """Fallback: local sentence-transformers embeddings."""
+    from sentence_transformers import SentenceTransformer
+    model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+    vecs = model.encode(texts, normalize_embeddings=True)
+    # Pad/trim to 1536 dims to keep interface consistent
+    result = []
+    for v in vecs:
+        v_list = v.tolist()
+        if len(v_list) < 1536:
+            v_list = v_list + [0.0] * (1536 - len(v_list))
+        else:
+            v_list = v_list[:1536]
+        result.append(v_list)
+    return result
+
+
 class EmbeddingClient:
-    BATCH_SIZE = 100  # OpenAI allows up to 2048, keep conservative
+    BATCH_SIZE = 100
 
     def __init__(self):
         self.client = AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-        self.model = settings.openai_embedding_model  # text-embedding-3-small
+        self.model = settings.openai_embedding_model
         self.logger = get_logger(step="cluster")
 
     async def embed(self, text: str) -> list[float]:
-        """Embed a single text string. Returns 1536-dim vector."""
         result = await self.embed_batch([text])
         return result[0]
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Embed a batch of texts. Splits into batches of BATCH_SIZE."""
         if not texts:
             return []
 
@@ -35,8 +50,17 @@ class EmbeddingClient:
                 all_embeddings.extend(batch_embeddings)
                 self.logger.info("embeddings_batch_done", batch_size=len(batch), offset=i)
             except Exception as e:
-                self.logger.error("embeddings_failed", batch_offset=i, error=str(e))
-                # Return zero vectors for failed batch
-                all_embeddings.extend([[0.0] * 1536] * len(batch))
+                self.logger.warning(
+                    "embeddings_api_failed_using_local",
+                    batch_offset=i,
+                    error=str(e),
+                )
+                try:
+                    local_embeddings = await asyncio.to_thread(_local_embed_batch, batch)
+                    all_embeddings.extend(local_embeddings)
+                    self.logger.info("embeddings_local_done", batch_size=len(batch), offset=i)
+                except Exception as e2:
+                    self.logger.error("embeddings_local_failed", error=str(e2))
+                    all_embeddings.extend([[0.0] * 1536] * len(batch))
 
         return all_embeddings

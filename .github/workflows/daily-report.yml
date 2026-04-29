@@ -41,7 +41,13 @@ jobs:
       - name: Run daily pipeline
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # GPT-5.5 OpenAI-compatible proxy defaults.
+          # On GitHub-hosted runners, override OPENAI_BASE_URL to a reachable endpoint
+          # or run the proxy on a self-hosted runner at 127.0.0.1:4317.
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'local-proxy' }}
+          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL || 'http://127.0.0.1:4317/openai/v1' }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-5.5' }}
+          OPENAI_EMBEDDING_MODEL: ${{ vars.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small' }}
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_PAT }}
           S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
