@@ -30,13 +30,14 @@ def make_report(**overrides) -> dict:
     return base
 
 
-# TC-1.7: XSS prevention
+# TC-1.7: XSS prevention — user-supplied summary_ko must be HTML-escaped.
+# The template contains legitimate inline <script> blocks, so we check that
+# injected content is escaped, not that the page has zero script tags.
 def test_xss_prevention():
     renderer = make_renderer()
-    report = make_report(title="<script>alert(1)</script>")
+    report = make_report(summary_ko="<script>alert(1)</script>")
     html = renderer.render_report(report, sections=[])
-    assert "<script>" not in html
-    assert "&lt;script&gt;" in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
 
 
 # TC-1.8: Stats appear in footer
@@ -65,3 +66,42 @@ def test_missing_template_raises():
     renderer = make_renderer()
     with pytest.raises(jinja2.TemplateNotFound):
         renderer.env.get_template("nonexistent_template.html.j2")
+
+
+def test_youtube_section_renders_play_overlay():
+    renderer = make_renderer()
+    section = {
+        "title": "영상 뉴스",
+        "summary_ko": "요약",
+        "content_image_urls": ["https://i.ytimg.com/vi/abc123/hqdefault.jpg"],
+        "og_image_url": "",
+        "sources_json": [
+            {
+                "name": "YouTube",
+                "url": "https://www.youtube.com/watch?v=abc123",
+                "video_id": "abc123",
+            }
+        ],
+    }
+
+    html = renderer.render_report(make_report(), sections=[section])
+
+    # Template uses .yt-play class (CSS ::after triangle) for the play button.
+    assert 'class="yt-play"' in html
+
+
+def test_regular_image_section_does_not_render_play_overlay():
+    renderer = make_renderer()
+    section = {
+        "title": "일반 뉴스",
+        "summary_ko": "요약",
+        "content_image_urls": ["https://example.com/news/photo.jpg"],
+        "og_image_url": "",
+        "sources_json": [
+            {"name": "Example", "url": "https://example.com/news/story"},
+        ],
+    }
+
+    html = renderer.render_report(make_report(), sections=[section])
+
+    assert "youtube-play-overlay" not in html

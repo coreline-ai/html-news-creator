@@ -20,12 +20,14 @@ class ArxivCollector(BaseCollector):
         self.source = source
         self.category: str = source["category"]
         self.source_id: str = source.get("name", self.category)
+        self.max_items: int = int(source.get("max_items", _MAX_RESULTS))
+        self.max_candidates: int = int(source.get("max_candidates", _MAX_RESULTS))
 
     async def collect(self, date_from: datetime, date_to: datetime) -> list[CollectedItem]:
         try:
             search = arxiv.Search(
                 query=f"cat:{self.category}",
-                max_results=_MAX_RESULTS,
+                max_results=self.max_candidates,
                 sort_by=arxiv.SortCriterion.SubmittedDate,
             )
 
@@ -75,6 +77,8 @@ class ArxivCollector(BaseCollector):
                     },
                 )
                 items.append(item)
+                if len(items) >= self.max_items:
+                    break
 
             logger.info("arxiv_collected", source=self.source_id, count=len(items))
             return items

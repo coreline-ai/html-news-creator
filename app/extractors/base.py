@@ -25,7 +25,13 @@ class ExtractResult:
     content_markdown: str = ""
     content_text: str = ""
     quality_score: float = 0.0  # 0~1, based on content length/structure/noise
+    og_image_url: str = ""           # og:image 또는 twitter:image
+    content_image_urls: list = None  # 본문 내 실제 콘텐츠 이미지 목록
     error: str | None = None
+
+    def __post_init__(self):
+        if self.content_image_urls is None:
+            self.content_image_urls = []
 
 
 class BaseExtractor(ABC):

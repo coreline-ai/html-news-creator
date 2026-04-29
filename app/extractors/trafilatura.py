@@ -10,6 +10,10 @@ from app.extractors.base import (
     ExtractorUnavailableError,
 )
 from app.utils.logger import get_logger
+from app.utils.source_images import (
+    extract_representative_image_from_html,
+    extract_content_images_from_html,
+)
 
 
 def _calc_quality(content: str) -> float:
@@ -39,6 +43,10 @@ class TrafilaturaExtractor(BaseExtractor):
             html, include_comments=False, output_format="markdown"
         ) or ""
 
+        base_url = str(response.url)
+        og_image_url = extract_representative_image_from_html(html, base_url)
+        content_image_urls = extract_content_images_from_html(html, base_url, max_images=5)
+
         quality = _calc_quality(content_text or content_markdown)
         status = "success" if quality > 0.0 else "low_quality"
 
@@ -49,6 +57,8 @@ class TrafilaturaExtractor(BaseExtractor):
             content_text=content_text,
             content_markdown=content_markdown,
             quality_score=quality,
+            og_image_url=og_image_url,
+            content_image_urls=content_image_urls,
         )
 
     async def extract(self, url: str, raw_item_id: str = "") -> ExtractResult:

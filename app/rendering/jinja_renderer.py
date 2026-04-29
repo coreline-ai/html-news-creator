@@ -16,7 +16,7 @@ class JinjaRenderer:
 
     def render_report(self, report: object, sections: list) -> str:
         """Render daily report HTML. report and sections can be dicts or ORM objects."""
-        tmpl = self.env.get_template("daily_report.html.j2")
+        tmpl = self.env.get_template("report_newsstream.html.j2")
         html = tmpl.render(report=report, sections=sections)
         self.logger.info("render_complete", sections=len(sections))
         return html
