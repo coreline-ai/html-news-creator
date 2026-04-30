@@ -4,8 +4,8 @@
 
 - `dev-plan/implement_20260427_221152.md` — AI Trend Report Engine 구현 계획
 - `dev-plan/implement_20260427_215727.md` — multi-model-tui / Codex CLI / gpt-image-2 연동 계획
-- `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md` — 통합 개발 참고 문서
-- `docs/deep-research-report.md` — PRD/TRD 생성 보고서 스텁
+- `docs/additional-dev-docs.md` — 통합 개발 참고 문서
+- `docs/prd-trd-research-notes.md` — PRD/TRD 생성 보고서 스텁
 
 검토 기준: 아키텍처 일관성, 구현 가능성, 범위 관리, 테스트 충분성, 보안/운영 리스크, 문서 참조 무결성.
 
@@ -13,11 +13,11 @@
 
 현재 문서들은 방향성은 좋지만, 바로 구현에 들어가기 전 반드시 정리해야 할 **차단급 문서 결함 5개**가 있다.
 
-1. `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md`는 여러 파일을 한 문서에 붙인 상태인데, 구현 계획은 이를 실제 `.env.example`, `schema.sql`, `docker-compose.yml`, workflow 파일이 이미 존재하는 것처럼 가정한다.
+1. `docs/additional-dev-docs.md`는 여러 파일을 한 문서에 붙인 상태인데, 구현 계획은 이를 실제 `.env.example`, `schema.sql`, `docker-compose.yml`, workflow 파일이 이미 존재하는 것처럼 가정한다.
 2. `dev-plan/implement_20260427_221152.md`의 Phase 의존성이 논리적으로 충돌한다. Phase 2는 `verify_cluster(cluster)`를 요구하지만 cluster는 Phase 4에서 생성된다.
 3. `dev-plan/implement_20260427_221152.md`의 dry-run 정책이 서로 모순된다. 어떤 곳은 DB write 없음, 어떤 곳은 `job_runs` 행 생성을 요구한다.
 4. `dev-plan/implement_20260427_215727.md`는 현재 프로젝트 구조와 맞지 않는 `backend/src/ai/*` 경로를 사용한다. 기존 계획은 Python `app/` 패키지를 기준으로 한다.
-5. `docs/deep-research-report.md`는 sandbox 다운로드 링크와 깨진 citation markup만 남아 있어 개발 참조 문서로 신뢰하기 어렵다.
+5. `docs/prd-trd-research-notes.md`는 sandbox 다운로드 링크와 깨진 citation markup만 남아 있어 개발 참조 문서로 신뢰하기 어렵다.
 
 권장 방향은 **문서 정규화 Phase를 먼저 추가**한 뒤, MVP를 `RSS-only → extract → classify → Jinja2 render`로 축소하여 한 번에 동작하는 vertical slice를 만드는 것이다.
 
@@ -27,7 +27,7 @@
 
 | 하위 문제 | 이미 있는 문서/흐름 | 재사용 판단 |
 |---|---|---|
-| DB 스키마 | `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md` 내 `schema.sql` 블록 | 실제 `schema.sql`로 추출 필요 |
+| DB 스키마 | `docs/additional-dev-docs.md` 내 `schema.sql` 블록 | 실제 `schema.sql`로 추출 필요 |
 | 로컬 인프라 | 통합 문서 내 `docker-compose.yml` 블록 | 실제 파일로 추출 필요 |
 | 일일 실행 workflow | 통합 문서 내 `github-actions-daily-report.yml` 블록 | `.github/workflows/daily-report.yml`로 추출 필요 |
 | AI 파이프라인 | `dev-plan/implement_20260427_221152.md` | 의존성 순서 수정 필요 |
@@ -60,7 +60,7 @@
 
 ### A2. 통합 문서가 실제 파일처럼 취급됨
 
-- 위치: `dev-plan/implement_20260427_221152.md:14-20`, `352`, `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md:7`, `2346`, `2388`, `2467`
+- 위치: `dev-plan/implement_20260427_221152.md:14-20`, `352`, `docs/additional-dev-docs.md:7`, `2346`, `2388`, `2467`
 - 문제: `.env.example`, `docker-compose.yml`, `schema.sql`, GitHub Actions가 실제 파일로 존재하는 것처럼 표현되어 있지만 실제 repo에는 통합 MD 안의 코드 블록만 있다.
 - 영향: `make dev`, `psql -f schema.sql`, `npm ci`, Actions 실행이 바로 실패한다.
 - 권장 수정: Phase 0 앞에 `Phase 0A: 문서 패키지 실제 파일 추출`을 추가한다.
@@ -87,7 +87,7 @@
 
 ### A5. 배포 대상이 문서마다 다름
 
-- 위치: `dev-plan/implement_20260427_221152.md:45`, `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md:107`, `132`, `1083`, `1452-1453`
+- 위치: `dev-plan/implement_20260427_221152.md:45`, `docs/additional-dev-docs.md:107`, `132`, `1083`, `1452-1453`
 - 문제: 주 계획은 Vercel을 out of scope로 두지만 통합 문서는 Netlify/Vercel/GitHub Pages를 반복 언급한다.
 - 권장 수정: MVP는 Netlify만, Vercel/GitHub Pages는 Appendix 또는 Phase 8 후보로 분리한다.
 
@@ -99,16 +99,16 @@
 - 문제: `../docs/impl-plan-ai-trend-report-engine.md`는 존재하지 않는다. 현재 대응 문서는 `dev-plan/implement_20260427_221152.md`다.
 - 권장 수정: 링크를 `./implement_20260427_221152.md`로 변경한다.
 
-### Q2. `docs/deep-research-report.md`는 개발 참조로 부적합
+### Q2. `docs/prd-trd-research-notes.md`는 개발 참조로 부적합
 
-- 위치: `docs/deep-research-report.md:7-17`
+- 위치: `docs/prd-trd-research-notes.md:7-17`
 - 문제: `sandbox:/mnt/data/...` 다운로드 링크와 `cite...` citation 토큰이 남아 있다.
 - 영향: repo 외부 임시 파일을 참조하므로 재현성과 신뢰성이 없다.
 - 권장 수정: 삭제하거나 실제 `PRD.md`, `TRD.md`를 repo에 추가하고 이 문서는 색인으로만 유지한다.
 
 ### Q3. DB 테이블명이 문서 내에서 불일치
 
-- 위치: `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md:192-193`, `210`, `520`
+- 위치: `docs/additional-dev-docs.md:192-193`, `210`, `520`
 - 문제: 다이어그램/백로그는 `raw_sources`, `source_media`, `source_verifications`를 쓰지만 실제 schema는 `raw_items`, `media_assets`, `verifications`다.
 - 권장 수정: 모든 명칭을 schema 기준으로 통일한다.
 
@@ -134,7 +134,7 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 
 ### Q6. Node/npm 전략이 없음
 
-- 위치: `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md:2094`, `2427`, `dev-plan/implement_20260427_221152.md:1083-1088`
+- 위치: `docs/additional-dev-docs.md:2094`, `2427`, `dev-plan/implement_20260427_221152.md:1083-1088`
 - 문제: repo에는 `package.json`이 없는데 문서는 `npm install`, `npm ci`, `npx netlify`를 요구한다.
 - 권장 수정: 둘 중 하나를 선택한다.
   - Python Playwright만 사용할 경우 `npm ci` 제거, Netlify는 `npx --yes netlify-cli`로 실행.
@@ -210,7 +210,7 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 
 ### S2. 관리자 API 인증 스펙이 미정
 
-- 위치: `docs/AI_Trend_Report_Engine_Additional_Dev_Docs_COMBINED.md:809`, `dev-plan/implement_20260427_221152.md:1190`
+- 위치: `docs/additional-dev-docs.md:809`, `dev-plan/implement_20260427_221152.md:1190`
 - 문제: admin token/Supabase Auth를 언급하지만 실제 auth scheme, header, env var가 없다.
 - 권장 수정: MVP는 `ADMIN_API_TOKEN` + `Authorization: Bearer`로 단순화하고, Supabase Auth는 후순위로 둔다.
 
@@ -264,7 +264,7 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 1. `dev-plan/implement_20260427_221152.md`에 `Phase 0A: 문서 파일 추출` 추가.
 2. Phase 2를 `source trust registry`로 축소하고, cluster verification을 Phase 4 이후로 이동.
 3. `dev-plan/implement_20260427_215727.md`의 참조 링크와 `backend/src/ai/*` 경로 수정.
-4. `docs/deep-research-report.md`를 삭제 또는 실제 PRD/TRD 색인으로 교체.
+4. `docs/prd-trd-research-notes.md`를 삭제 또는 실제 PRD/TRD 색인으로 교체.
 5. dry-run/report status 정책을 표로 고정.
 
 ## 검증 메모
