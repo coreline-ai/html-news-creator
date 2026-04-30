@@ -1,6 +1,6 @@
 # 05. Layout Patterns
 
-> 두 표면(일일 리포트 / 운영 웹앱)의 레이아웃 표준. paperclip의 Workspace 레이아웃을 운영 화면에 차용하고, 리포트는 에디토리얼 단일 컬럼.
+> 두 표면(일일 리포트 / 운영 웹앱)의 레이아웃 표준. 운영 화면은 워크스페이스 SaaS 표준 셸(사이드바 + 메인 + 컨텍스트 패널)을 따르고, 리포트는 에디토리얼 단일 컬럼.
 
 ---
 
@@ -95,7 +95,7 @@ document.documentElement.classList.toggle('dark', dark);
 
 ## 3. 운영 웹앱 레이아웃 (향후)
 
-### 3.1 Workspace Shell (paperclip 패턴)
+### 3.1 Workspace Shell (워크스페이스 SaaS 표준)
 
 ```
 ┌──────┬─────────────────────────┬──────────┐
@@ -224,7 +224,7 @@ DESIGN.md 4.3.1의 "반응형은 밀도 변화로" 원칙 적용.
 
 ### 5.3 모바일 전용 컴포넌트
 
-- `MobileBottomNav` — 하단 고정 5개 이내 메인 네비게이션 (paperclip 패턴)
+- `MobileBottomNav` — 하단 고정 5개 이내 메인 네비게이션 (모바일 SaaS 표준)
 - `SwipeToArchive` — 스와이프 액션
 - `BottomSheet` — 모바일 시트
 
@@ -234,7 +234,7 @@ DESIGN.md 4.3.1의 "반응형은 밀도 변화로" 원칙 적용.
 
 ### 6.1 페이지 스크롤
 
-- 운영 화면은 `body { overflow: hidden }` + 메인 영역만 스크롤 (paperclip 패턴)
+- 운영 화면은 `body { overflow: hidden }` + 메인 영역만 스크롤 (워크스페이스 셸 표준)
 - 리포트는 정상적인 `body` 스크롤
 
 ### 6.2 스크롤바
