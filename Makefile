@@ -1,4 +1,4 @@
-.PHONY: dev migrate run run-dry test test-all lint lint-design ui-dev ui-build ui-test serve e2e
+.PHONY: dev migrate run run-dry test test-all lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
 
 dev:
 	docker compose up -d
@@ -25,6 +25,14 @@ lint:
 # shadows that bypass docs/design/tokens.css. Spec: docs/design/06-automation-spec.md §4.
 lint-design:
 	python3 scripts/lint_design_tokens.py
+
+# Regenerate docs/design/tokens.css from docs/design/tokens.json.
+build-tokens:
+	python3 scripts/build_tokens.py
+
+# CI gate: fail if tokens.css would change after rebuild from tokens.json.
+check-tokens:
+	python3 scripts/build_tokens.py --check
 
 ui-dev:
 	cd ui && npm run dev
