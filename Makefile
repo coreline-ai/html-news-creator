@@ -1,4 +1,4 @@
-.PHONY: dev migrate run run-dry test test-all lint
+.PHONY: dev migrate run run-dry test test-all lint ui-dev ui-build ui-test
 
 dev:
 	docker compose up -d
@@ -20,3 +20,12 @@ test-all:
 
 lint:
 	ruff check app/ scripts/ tests/
+
+ui-dev:
+	cd ui && npm run dev
+
+ui-build:
+	cd ui && npm run build
+
+ui-test:
+	cd ui && npm run test

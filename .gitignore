@@ -50,3 +50,8 @@ public/news/*.json
 public/news/*.pdf
 public/news/*.png
 public/assets/generated/
+
+# UI build artifacts
+ui/node_modules/
+ui/dist/
+ui/.vite/
