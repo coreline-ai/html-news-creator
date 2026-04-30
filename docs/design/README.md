@@ -1,13 +1,19 @@
 # Design System — html-news-creator
 
 이 폴더는 `html-news-creator`의 디자인 가이드, 스타일, 테마 표준을 정의합니다.
-출력 HTML 리포트와 향후 웹앱(대시보드/관리자/구독자 페이지) 양쪽에 동일하게 적용할 수 있는 단일 디자인 시스템입니다.
+
+> **적용 범위 주의**
+> 이 디자인 시스템의 1차 대상은 **추가 개발될 웹앱**입니다.
+> 운영자 대시보드, 관리자 화면, 소스 관리, 클러스터 검토, 구독자/리포트 관리 UI에 적용합니다.
+> 현재 생성되는 정적 HTML 리포트(`templates/report_newsstream.html.j2`, `public/news/*.html`)의 스타일을 대체하거나 자동 적용하기 위한 문서가 아닙니다.
+
+현재 HTML 리포트는 별도의 산출물이며, 이 폴더의 토큰·컴포넌트·레이아웃 규칙은 **사용자가 명시적으로 HTML 리포트 마이그레이션을 요청한 경우에만** 적용합니다.
 
 ## 출처와 근거
 
 - **시각 베이스**: [shadcn/ui](https://ui.shadcn.com) **new-york** 스타일을 **OKLCH 모노크롬 뉴트럴**로 운영하는 컨벤션. 에디토리얼 미학, 정보 밀도, 정직한 토큰 계층이 우리 프로젝트와 결이 맞아 출발점으로 채택.
 - **상위 표준**: 프로젝트 루트의 [`DESIGN.md`](../../DESIGN.md) — 디자인 에이전트 운영 표준. 이 폴더는 그 4개 층위(Brand → Foundation → Semantic → Component)를 실제 토큰과 코드로 채운 결과물.
-- **기존 출력물**: [`templates/report_newsstream.html.j2`](../../templates/report_newsstream.html.j2) — 현재 일일 리포트 템플릿. 폰트(Pretendard), 다크모드, max-width 820, 카드 패턴 일부는 여기서 그대로 계승.
+- **기존 출력물**: [`templates/report_newsstream.html.j2`](../../templates/report_newsstream.html.j2) — 현재 일일 리포트 템플릿. 웹앱 디자인의 참고 맥락일 뿐이며, 이 디자인 시스템의 기본 적용 대상은 아닙니다.
 
 ## 파일 구성
 
@@ -25,20 +31,20 @@
 
 ## 자동화 개발에서 사용하는 방법
 
-### 1. 신규 화면을 만들 때
+### 1. 웹앱 신규 화면을 만들 때
 1. `06-automation-spec.md`를 LLM 프롬프트 컨텍스트로 주입
 2. `tokens.css`를 빌드 산출물에 인라인 또는 임포트
 3. `04-components.md`의 variant 표를 따라 마크업 생성
 4. `05-layout-patterns.md`의 패턴 카탈로그에서 가장 가까운 것 채택
 
-### 2. 일일 리포트(HTML)에 적용할 때
-- `templates/report_newsstream.html.j2`의 `<style>` 블록을 점진적으로 `tokens.css` 변수로 치환
-- Pretendard는 그대로, 색상·radius·shadow만 토큰화
-- 다크모드는 `.dark` 셀렉터 토글로 단일 소스 유지
+### 2. 현재 HTML 리포트와의 관계
+- 기본적으로 `templates/report_newsstream.html.j2`에는 이 디자인 시스템을 적용하지 않습니다.
+- 리포트 HTML은 현재 템플릿의 `light → dark → newsroom-white` 테마와 기존 스타일 정책을 따릅니다.
+- HTML 리포트에 토큰화를 적용하려면 “HTML 리포트 디자인 마이그레이션”으로 별도 개발 계획을 세운 뒤 진행합니다.
 
 ### 3. 토큰을 바꾸고 싶을 때
 1. `tokens.json` 한 곳만 수정
-2. 빌드 스크립트로 `tokens.css` 재생성 (TODO: `scripts/build_tokens.py`)
+2. `make build-tokens` 으로 `tokens.css` 재생성 (`python3 scripts/build_tokens.py`)
 3. 02·03·04 문서의 표는 자동 생성 안 함 — 수치 변경 시 함께 갱신
 
 ## 변경 정책

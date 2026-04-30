@@ -316,10 +316,10 @@ row:
 ### 10.1 토큰 빌드
 
 ```bash
-# tokens.json → tokens.css 생성 (TODO: scripts/build_tokens.py)
-python scripts/build_tokens.py \
-  --input docs/design/tokens.json \
-  --output docs/design/tokens.css
+# tokens.json → tokens.css 생성 (구현됨)
+python3 scripts/build_tokens.py
+# CI 드리프트 검사:
+python3 scripts/build_tokens.py --check
 ```
 
 ### 10.2 린트
