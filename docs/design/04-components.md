@@ -1,6 +1,6 @@
 # 04. Components
 
-> 핵심 컴포넌트의 variant·size·상태를 한곳에 정의. paperclip의 shadcn/ui 패턴을 그대로 채택해 향후 React 도입 시 무축약 호환.
+> 핵심 컴포넌트의 variant·size·상태를 한곳에 정의. shadcn/ui 표준 컴포넌트 패턴을 그대로 채택해 향후 React 도입 시 무축약 호환.
 
 각 컴포넌트는 **HTML/CSS 명세** + **React/shadcn 매핑**을 함께 제공합니다. 자동화 코드젠은 이 표를 기준으로 마크업을 생성합니다.
 
@@ -182,7 +182,7 @@ textarea {
 
 ## 5. Status Badge (도메인 특화)
 
-뉴스레터 도메인에서 자주 쓰는 상태 변형. paperclip의 `StatusBadge` 패턴 차용.
+뉴스레터 도메인에서 자주 쓰는 상태 변형. 운영 워크스페이스의 status pill 패턴을 차용.
 
 | 상태 | 색 | 비고 |
 |---|---|---|
@@ -367,7 +367,7 @@ textarea {
 
 ## 10. Dialog / Modal
 
-paperclip의 `Sheet`/`Dialog` 패턴.
+shadcn 표준 `Sheet`/`Dialog` 패턴.
 
 ```css
 .dialog-overlay {
@@ -449,7 +449,7 @@ paperclip의 `Sheet`/`Dialog` 패턴.
 }
 ```
 
-행 높이: 36~44px (paperclip 패턴).
+행 높이: 36~44px (워크스페이스 표준 밀도).
 
 ---
 
