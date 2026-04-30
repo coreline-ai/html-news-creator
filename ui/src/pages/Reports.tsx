@@ -4,22 +4,12 @@ import { useReports } from "@/hooks/useReports";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatKstDateTime } from "@/lib/kst";
 
 const PAGE_LIMIT = 50;
 
-const DATE_FMT = new Intl.DateTimeFormat("ko-KR", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 function formatPublished(iso?: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return DATE_FMT.format(d);
+  return formatKstDateTime(iso);
 }
 
 function StatusPill({ status }: { status: string | null | undefined }) {

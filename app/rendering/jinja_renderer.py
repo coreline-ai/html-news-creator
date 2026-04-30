@@ -13,16 +13,39 @@ class JinjaRenderer:
         )
         self.logger = get_logger(step="render")
 
-    def render_report(self, report: object, sections: list) -> str:
-        """Render daily report HTML. report and sections can be dicts or ORM objects."""
+    def render_report(
+        self,
+        report: object,
+        sections: list,
+        output_theme: str = "dark",
+    ) -> str:
+        """Render daily report HTML. report and sections can be dicts or ORM objects.
+
+        `output_theme` is forwarded to the Jinja context so the template can
+        flip the initial `data-theme` / class on `<html>`. Defaults to "dark"
+        to match the operator-facing News Studio default; callers (admin
+        publish path, run script) pass through whatever the run options say.
+        """
         tmpl = self.env.get_template("report_newsstream.html.j2")
-        html = tmpl.render(report=report, sections=sections)
-        self.logger.info("render_complete", sections=len(sections))
+        html = tmpl.render(
+            report=report,
+            sections=sections,
+            output_theme=output_theme,
+        )
+        self.logger.info(
+            "render_complete", sections=len(sections), output_theme=output_theme
+        )
         return html
 
-    def render_to_file(self, report: object, sections: list, output_path: str) -> Path:
+    def render_to_file(
+        self,
+        report: object,
+        sections: list,
+        output_path: str,
+        output_theme: str = "dark",
+    ) -> Path:
         """Render and write to file. Creates parent dirs if needed."""
-        html = self.render_report(report, sections)
+        html = self.render_report(report, sections, output_theme=output_theme)
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(html, encoding="utf-8")

@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Path as PathParam, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from app.admin.preview import render_preview
 from app.admin.run_runner import get_run, start_run
 from app.admin.sources_admin import (
     ALLOWED_UPDATE_FIELDS,
+    add_source as registry_add_source,
     list_sources as registry_list_sources,
     update_source as registry_update_source,
 )
@@ -224,6 +226,40 @@ class SourcePatchRequest(BaseModel):
         }
 
 
+class AddSourceRequest(BaseModel):
+    """Body for ``POST /api/sources`` — append a new yaml registry entry.
+
+    ``name`` and ``source_type`` are required; everything else is optional and
+    validated/whitelisted by :func:`app.admin.sources_admin.add_source`. The
+    pydantic layer is intentionally permissive (no ``Literal`` enums) so
+    domain-level errors come through as HTTP 400 with a readable message.
+    """
+
+    name: str
+    source_type: str
+    url: Optional[str] = None
+    homepage_url: Optional[str] = None
+    trust_level: Optional[str] = None
+    source_tier: Optional[str] = None
+    category: Optional[str] = None
+    priority: Optional[int] = None
+    max_items: Optional[int] = None
+    enabled: Optional[bool] = None
+    org: Optional[str] = None
+    query: Optional[str] = None
+    listing_url: Optional[str] = None
+    sitemap_url: Optional[str] = None
+    include_url_patterns: Optional[list[str]] = None
+    max_candidates: Optional[int] = None
+    collector_type: Optional[str] = None
+    content_category: Optional[str] = None
+
+    model_config = {"extra": "ignore"}
+
+    def to_fields(self) -> dict[str, Any]:
+        return {k: v for k, v in self.model_dump().items() if v is not None}
+
+
 # ---------------------------------------------------------------------------
 # Phase 4 — Section editing / reorder / publish
 # ---------------------------------------------------------------------------
@@ -259,6 +295,17 @@ class ReorderRequest(BaseModel):
 class PublishRequest(BaseModel):
     publish_dir: Optional[str] = None
     dry_run: bool = False
+    # Section UUIDs the operator toggled OFF in Review. The DB row has no
+    # `enabled` column — re-render time is the only place we apply this.
+    disabled_section_ids: Optional[list[str]] = None
+
+    model_config = {"extra": "allow"}
+
+
+class RenderRequest(BaseModel):
+    """Body for ``POST /api/reports/{date}/render`` — render-only debug hook."""
+
+    disabled_section_ids: Optional[list[str]] = None
 
     model_config = {"extra": "allow"}
 
@@ -435,7 +482,36 @@ async def api_list_sources():
     return {"sources": registry_list_sources()}
 
 
-# 8b) PUT /api/sources/{name} — patch enabled/priority/etc.
+# 8b) POST /api/sources — append a new entry to the registry yaml.
+# Errors:
+#   400 — missing/invalid required field, duplicate name, unknown key,
+#         malformed url (when supplied).
+@app.post("/api/sources", status_code=201)
+async def api_add_source(
+    payload: AddSourceRequest = Body(...),
+):
+    fields = payload.to_fields()
+
+    # Validate URL eagerly when supplied — the registry layer accepts
+    # arbitrary strings, but the FE always sends a value so we want a clear
+    # error here rather than at collect-time.
+    url = fields.get("url")
+    if url is not None:
+        parsed = urlparse(str(url))
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise HTTPException(
+                status_code=400,
+                detail="'url' must be an http(s) URL with a host",
+            )
+
+    try:
+        created = registry_add_source(fields)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"source": created}
+
+
+# 8c) PUT /api/sources/{name} — patch enabled/priority/etc.
 @app.put("/api/sources/{name}")
 async def api_update_source(
     name: str,
@@ -485,6 +561,20 @@ async def api_patch_section(
 ):
     if not payload.has_any():
         raise HTTPException(status_code=400, detail="no updatable fields supplied")
+
+    # Validate image_url up-front (P1-1): only http(s) URLs with a non-empty
+    # netloc are accepted. Empty strings are treated as "skip" so the FE can
+    # send `image_url: ""` to clear an editing buffer without forcing a value.
+    if payload.image_url is not None and payload.image_url != "":
+        parsed = urlparse(payload.image_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "invalid image_url: must be an absolute http(s) URL with a host "
+                    f"(got {payload.image_url!r})"
+                ),
+            )
 
     result = await db.execute(
         select(ReportSection).where(ReportSection.id == section_id)
@@ -625,6 +715,7 @@ async def api_publish_report(
             date_kst,
             dry_run=payload.dry_run,
             publish_dir=payload.publish_dir,
+            disabled_section_ids=payload.disabled_section_ids or [],
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -636,6 +727,72 @@ async def api_publish_report(
     except Exception as exc:  # pragma: no cover — defensive
         logger.error("publish_failed", date_kst=date_kst, error=str(exc))
         raise HTTPException(status_code=500, detail=f"publish failed: {exc}")
+
+
+# 13) POST /api/reports/{date}/render — re-render HTML from DB (no deploy)
+@app.post("/api/reports/{date_kst}/render")
+async def api_render_report(
+    date_kst: str,
+    payload: RenderRequest = Body(default_factory=RenderRequest),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-render the published HTML from current DB state.
+
+    Useful as a debug hook (no Netlify call) and as the first step the
+    publish route performs internally. Returns the rendered file path,
+    the number of sections actually rendered, and how many were dropped
+    by the disabled-toggle list.
+    """
+    from app.admin.render import render_published
+
+    try:
+        rendered_path = await render_published(
+            date_kst,
+            db,
+            disabled_section_ids=payload.disabled_section_ids or [],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.error("render_failed", date_kst=date_kst, error=str(exc))
+        raise HTTPException(status_code=500, detail=f"render failed: {exc}")
+
+    # Re-query for the section count after the render commit so callers can
+    # see exactly how many sections survived the disabled filter.
+    try:
+        run_date = date.fromisoformat(date_kst)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    report_row = (
+        await db.execute(select(Report).where(Report.report_date == run_date))
+    ).scalars().first()
+    section_count = 0
+    if report_row is not None:
+        all_sections = (
+            await db.execute(
+                select(ReportSection).where(
+                    ReportSection.report_id == report_row.id
+                )
+            )
+        ).scalars().all()
+        disabled_set = {sid for sid in (payload.disabled_section_ids or [])}
+        section_count = sum(
+            1 for s in all_sections if str(s.id) not in disabled_set
+        )
+
+    project_root = Path(__file__).resolve().parents[2]
+    try:
+        rel_path = str(rendered_path.resolve().relative_to(project_root))
+    except ValueError:
+        rel_path = str(rendered_path)
+
+    return {
+        "rendered_path": rel_path,
+        "sections": section_count,
+        "disabled_count": len(payload.disabled_section_ids or []),
+    }
 
 
 # ---------------------------------------------------------------------------

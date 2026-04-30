@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { todayKstISO } from "@/lib/kst";
 
 export type Theme = "dark" | "light";
 export type PreviewMode = "live" | "section";
@@ -50,17 +51,8 @@ export interface RunOptions {
   publish_at: string | null; // ISO; null = on completion
 }
 
-function todayKstString(): string {
-  // KST = UTC+9 — keep simple/local; user will adjust per-run.
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 export const DEFAULT_RUN_OPTIONS: RunOptions = {
-  date: todayKstString(),
+  date: todayKstISO(),
   mode: "full",
   range_from: null,
   range_to: null,

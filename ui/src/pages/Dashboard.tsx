@@ -11,28 +11,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useReports } from "@/hooks/useReports";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
+import { todayKstISO, formatKstDateTime } from "@/lib/kst";
 import type { ReportSummary } from "@/lib/api";
 import { FileText, Plus, RefreshCw, AlertCircle } from "lucide-react";
 
-const DATE_FMT = new Intl.DateTimeFormat("en-CA", {
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function todayKst(): string {
-  return DATE_FMT.format(new Date());
-}
-
 function formatTime(iso?: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString();
+  return formatKstDateTime(iso);
 }
 
 export function Dashboard() {
-  const today = todayKst();
+  const today = todayKstISO();
   const { data: reports, isLoading, isError, error, refetch } = useReports({
     limit: 10,
   });
