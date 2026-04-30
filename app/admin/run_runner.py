@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import tempfile
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
@@ -17,8 +18,32 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.admin import policy_admin
+from app.editorial.policy import POLICY_PATH_ENV
+from app.utils.logger import get_logger
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RUN_DAILY_PATH = PROJECT_ROOT / "scripts" / "run_daily.py"
+
+logger = get_logger(step="admin.run_runner")
+
+# Run-option keys ``_build_argv`` knows how to forward to the CLI. Anything
+# outside this set is currently a UI-only knob; we still accept it (so the FE
+# can store it for previews / future phases) but log a warning so the gap is
+# visible in operator logs instead of silently dropped.
+_SUPPORTED_OPTION_KEYS: frozenset[str] = frozenset(
+    {
+        "date",
+        "run_date",  # FE legacy alias for date
+        "mode",
+        "from_step",
+        "to_step",
+        "dry_run",
+        # Runtime knobs consumed by ``_supervise`` (not forwarded as CLI flags
+        # but explicitly handled — kept here so they don't trigger warnings).
+        "max_runtime_sec",
+    }
+)
 
 # Per-line history retained per run (so a late SSE subscriber can replay)
 _MAX_LINES_PER_RUN = 2000
@@ -63,10 +88,17 @@ _RUNS_LOCK = asyncio.Lock()
 
 
 def _build_argv(options: dict[str, Any]) -> list[str]:
-    """Translate UI options dict into ``run_daily.py`` CLI flags."""
+    """Translate UI options dict into ``run_daily.py`` CLI flags.
+
+    Only the options ``scripts/run_daily.py`` actually accepts are forwarded.
+    Any other keys (UI-only previews like ``output_theme``, ``slack_notify``,
+    ``deploy_target``, …) are logged via ``logger.warning("ignored_run_option")``
+    so the operator can see what isn't wired through yet.
+    """
     argv: list[str] = [sys.executable, str(RUN_DAILY_PATH)]
-    if options.get("date") or options.get("run_date"):
-        argv += ["--date", str(options.get("date") or options.get("run_date"))]
+    date_value = options.get("date") or options.get("run_date")
+    if date_value:
+        argv += ["--date", str(date_value)]
     mode = options.get("mode")
     if mode:
         argv += ["--mode", str(mode)]
@@ -78,6 +110,10 @@ def _build_argv(options: dict[str, Any]) -> list[str]:
         argv += ["--to-step", str(to_step)]
     if options.get("dry_run"):
         argv += ["--dry-run"]
+
+    for key in options:
+        if key not in _SUPPORTED_OPTION_KEYS:
+            logger.warning("ignored_run_option", key=key)
     return argv
 
 
@@ -120,12 +156,53 @@ async def _terminate(proc: asyncio.subprocess.Process) -> None:
         pass
 
 
+def _materialize_policy_override() -> Path | None:
+    """If a runtime policy override exists, dump it to a tempfile and return path.
+
+    Returns ``None`` when no override is active so callers can skip the env-var
+    plumbing entirely. The caller is responsible for unlinking the file once
+    the subprocess has exited.
+    """
+    override = policy_admin.get_runtime_override()
+    if not override:
+        return None
+    fd, tmp_name = tempfile.mkstemp(suffix=".yaml", prefix="news-studio-policy-")
+    os.close(fd)
+    try:
+        policy_admin.materialize_to(tmp_name)
+    except Exception:
+        # Failed to dump — clean up the empty placeholder before re-raising.
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
+        raise
+    return Path(tmp_name)
+
+
 async def _supervise(state: RunState) -> None:
     state.status = "running"
     state.started_at = datetime.now(timezone.utc).isoformat()
     argv = _build_argv(state.options)
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(PROJECT_ROOT))
+
+    # If the operator tweaked the policy via the UI (PUT /api/policy), the
+    # override lives only in this process's memory — the subprocess wouldn't
+    # see it. Materialize it to a tempfile and pass the path through env so
+    # ``app.editorial.policy.load_policy`` picks it up inside the child.
+    policy_tmp_path: Path | None = None
+    try:
+        policy_tmp_path = _materialize_policy_override()
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.warning("policy_override_materialize_failed", error=str(exc))
+    if policy_tmp_path is not None:
+        env[POLICY_PATH_ENV] = str(policy_tmp_path)
+        logger.info(
+            "policy_override_passed_to_subprocess",
+            path=str(policy_tmp_path),
+        )
+
     max_runtime = float(state.options.get("max_runtime_sec") or _DEFAULT_MAX_RUNTIME_SEC)
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -158,6 +235,19 @@ async def _supervise(state: RunState) -> None:
         state.error = repr(exc)
         state.status = "failed"
     finally:
+        # Best-effort cleanup of the temp policy file. We only emit a debug
+        # log on failure — losing a tempfile in /tmp is harmless.
+        if policy_tmp_path is not None:
+            try:
+                policy_tmp_path.unlink()
+            except FileNotFoundError:
+                pass
+            except Exception as exc:  # pragma: no cover
+                logger.warning(
+                    "policy_override_tmp_cleanup_failed",
+                    path=str(policy_tmp_path),
+                    error=str(exc),
+                )
         state.completed_at = datetime.now(timezone.utc).isoformat()
         await state.queue.put(
             {

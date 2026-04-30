@@ -4,6 +4,18 @@ export interface RunProgressEvent {
   step: string;
   progress: number; // 0..1
   message?: string;
+  raw_line?: string;
+}
+
+/**
+ * Shape of the `done` SSE event emitted by `app/admin/sse.py`. The runner puts
+ * this on the queue from `_supervise` once the subprocess exits.
+ */
+interface RunDoneEvent {
+  event?: "done";
+  status?: "completed" | "failed" | string;
+  return_code?: number | null;
+  error?: string | null;
 }
 
 export type RunStreamStatus = "idle" | "running" | "done" | "error" | "stalled";
@@ -94,6 +106,8 @@ export function useRunStream(
               typeof data.progress === "number" ? data.progress : 0,
             message:
               typeof data.message === "string" ? data.message : undefined,
+            raw_line:
+              typeof data.raw_line === "string" ? data.raw_line : undefined,
           };
         }
       } catch {
@@ -118,8 +132,31 @@ export function useRunStream(
       );
     };
 
-    const handleDone = () => {
-      setState((s) => ({ ...s, status: "done" }));
+    const handleDone = (e: MessageEvent) => {
+      let payload: RunDoneEvent = {};
+      try {
+        const obj = JSON.parse(e.data) as RunDoneEvent;
+        if (obj && typeof obj === "object") {
+          payload = obj;
+        }
+      } catch {
+        // Body wasn't JSON — treat as success because the server emits done
+        // only after the process exits; older deployments may have empty body.
+        payload = {};
+      }
+      if (payload.status === "failed") {
+        setState((s) => ({
+          ...s,
+          status: "error",
+          error:
+            (typeof payload.error === "string" && payload.error) ||
+            (typeof payload.return_code === "number"
+              ? `Run failed (exit ${payload.return_code})`
+              : "Run failed."),
+        }));
+      } else {
+        setState((s) => ({ ...s, status: "done" }));
+      }
       es.close();
     };
 

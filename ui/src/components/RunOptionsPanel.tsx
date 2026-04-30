@@ -438,7 +438,11 @@ function OutputGroup({
   const themes: OutputTheme[] = ["dark", "light", "newsroom-white"];
   return (
     <>
-      <Field id="opt-output-theme" label="Output theme">
+      <Field
+        id="opt-output-theme"
+        label="Output theme"
+        previewOnly
+      >
         <div className="flex gap-2">
           {themes.map((t) => {
             const active = runOptions.output_theme === t;
@@ -471,7 +475,7 @@ function OutputGroup({
           <option value="en">English (en)</option>
         </select>
       </Field>
-      <Field id="opt-format" label="Format">
+      <Field id="opt-format" label="Format" previewOnly>
         <select
           id="opt-format"
           className="bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
@@ -502,7 +506,7 @@ function PublishingGroup({
   const targets: DeployTarget[] = ["netlify", "local-only"];
   return (
     <>
-      <Field id="opt-deploy-target" label="Deploy target">
+      <Field id="opt-deploy-target" label="Deploy target" previewOnly>
         <div className="flex gap-2">
           {targets.map((t) => {
             const active = runOptions.deploy_target === t;
@@ -529,11 +533,13 @@ function PublishingGroup({
         label="Slack notify"
         checked={runOptions.slack_notify}
         onChange={(v) => setOption("slack_notify", v)}
+        previewOnly
       />
       <Field
         id="opt-publish-at"
         label="Publish at"
         hint="Leave blank to publish on completion."
+        previewOnly
       >
         <Input
           id="opt-publish-at"
@@ -561,23 +567,40 @@ function Field({
   id,
   label,
   hint,
+  previewOnly,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
+  previewOnly?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-foreground text-xs font-medium">
-        {label}
-      </Label>
+      <div className="flex items-center gap-2">
+        <Label htmlFor={id} className="text-foreground text-xs font-medium">
+          {label}
+        </Label>
+        {previewOnly ? <PreviewOnlyBadge /> : null}
+      </div>
       {children}
       {hint ? (
         <span className="text-muted-foreground text-[11px]">{hint}</span>
       ) : null}
     </div>
+  );
+}
+
+function PreviewOnlyBadge() {
+  return (
+    <span
+      className="text-muted-foreground text-[10px] tracking-wide uppercase"
+      title="UI-only — not yet forwarded to the actual run"
+      data-testid="preview-only-badge"
+    >
+      Preview only
+    </span>
   );
 }
 
@@ -634,19 +657,24 @@ function Toggle({
   hint,
   checked,
   onChange,
+  previewOnly,
 }: {
   id: string;
   label: string;
   hint?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  previewOnly?: boolean;
 }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex flex-col">
-        <Label htmlFor={id} className="text-foreground text-xs font-medium">
-          {label}
-        </Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor={id} className="text-foreground text-xs font-medium">
+            {label}
+          </Label>
+          {previewOnly ? <PreviewOnlyBadge /> : null}
+        </div>
         {hint ? (
           <span className="text-muted-foreground text-[11px]">{hint}</span>
         ) : null}
