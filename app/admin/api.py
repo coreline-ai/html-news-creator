@@ -1,9 +1,12 @@
 from __future__ import annotations
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Path as PathParam, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -610,3 +613,54 @@ async def api_publish_report(
         "report_date": date_kst,
         "details": deploy_result,
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 6 — Static SPA mount (MUST be last so it does not shadow /api routes)
+# ---------------------------------------------------------------------------
+
+_ui_dist = Path(settings.ui_dist_path)
+if _ui_dist.is_dir():
+    # Serve hashed assets out of /assets/* with proper caching headers via
+    # StaticFiles. The SPA fallback below handles every other path so that
+    # client-side routes (e.g. /sources, /reports/2026-04-30) survive a hard
+    # refresh by rendering index.html.
+    _assets_dir = _ui_dist / "assets"
+    if _assets_dir.is_dir():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(_assets_dir)),
+            name="ui-assets",
+        )
+
+    _index_html = _ui_dist / "index.html"
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str) -> Any:
+        # Never shadow API routes — they are registered above and FastAPI's
+        # router resolution would already have matched them. Defensive guard
+        # in case of unknown /api/* requests so the user gets JSON 404 rather
+        # than HTML.
+        if full_path.startswith("api/") or full_path == "api":
+            raise HTTPException(status_code=404, detail="Not Found")
+
+        # Top-level static files (favicon.ico, robots.txt, etc.) ship straight
+        # from disk when they exist.
+        candidate = (_ui_dist / full_path).resolve()
+        try:
+            candidate.relative_to(_ui_dist.resolve())
+        except ValueError:
+            # Path traversal — fall through to index.html.
+            candidate = None  # type: ignore[assignment]
+        if candidate and candidate.is_file():
+            return FileResponse(str(candidate))
+
+        # All other paths render the SPA shell.
+        return FileResponse(str(_index_html))
+
+else:
+    logger.info(
+        "ui_dist_not_found",
+        path=str(_ui_dist),
+        note="run `make ui-build` to populate ui/dist before serving the SPA",
+    )

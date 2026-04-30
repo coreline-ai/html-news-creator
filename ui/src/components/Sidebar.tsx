@@ -2,6 +2,13 @@ import { NavLink } from "react-router-dom";
 import { Settings } from "lucide-react";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 interface NavEntry {
   to: string;
@@ -18,14 +25,15 @@ const NAV: NavEntry[] = [
   { to: "/settings", label: "Policy", iconKey: "policy" },
 ];
 
-export function Sidebar() {
+interface SidebarBodyProps {
+  /** Optional callback fired when a nav entry is clicked — used to close
+   * the mobile sheet automatically. */
+  onNavigate?: () => void;
+}
+
+function SidebarBody({ onNavigate }: SidebarBodyProps) {
   return (
-    <aside
-      data-testid="sidebar"
-      className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-screen flex-col border-r"
-      style={{ width: 240 }}
-      aria-label="Primary"
-    >
+    <div className="flex h-full flex-col">
       <div className="px-4 pt-4 pb-3">
         <div className="text-sidebar-foreground text-sm font-semibold tracking-tight">
           News Studio
@@ -40,7 +48,7 @@ export function Sidebar() {
         <ul className="flex flex-col gap-0.5">
           {NAV.map((item) => (
             <li key={item.to}>
-              <SidebarNavItem entry={item} />
+              <SidebarNavItem entry={item} onNavigate={onNavigate} />
             </li>
           ))}
         </ul>
@@ -49,6 +57,7 @@ export function Sidebar() {
       <div className="border-sidebar-border border-t p-2">
         <NavLink
           to="/settings"
+          onClick={onNavigate}
           className={({ isActive }) =>
             cn(
               "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
@@ -63,7 +72,51 @@ export function Sidebar() {
           <span>Settings</span>
         </NavLink>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Desktop sidebar — hidden on viewports under 768px (mobile uses
+ * `MobileSidebar`).
+ */
+export function Sidebar() {
+  return (
+    <aside
+      data-testid="sidebar"
+      className="bg-sidebar text-sidebar-foreground border-sidebar-border hidden h-screen flex-col border-r md:flex"
+      style={{ width: 240 }}
+      aria-label="Primary"
+    >
+      <SidebarBody />
     </aside>
+  );
+}
+
+interface MobileSidebarProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+/**
+ * Mobile sidebar shown via a `Sheet` drawer. Activated by the hamburger
+ * button in `HeaderBar` on viewports < 768px.
+ */
+export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="left"
+        className="bg-sidebar text-sidebar-foreground w-64 p-0"
+        data-testid="mobile-sidebar"
+      >
+        <SheetHeader className="sr-only">
+          <SheetTitle>Navigation</SheetTitle>
+          <SheetDescription>Primary navigation links</SheetDescription>
+        </SheetHeader>
+        <SidebarBody onNavigate={() => onOpenChange(false)} />
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -75,12 +128,19 @@ function SidebarSectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SidebarNavItem({ entry }: { entry: NavEntry }) {
+function SidebarNavItem({
+  entry,
+  onNavigate,
+}: {
+  entry: NavEntry;
+  onNavigate?: () => void;
+}) {
   const Icon = SIDEBAR_NAV_ICONS[entry.iconKey];
   return (
     <NavLink
       to={entry.to}
       end={entry.end}
+      onClick={onNavigate}
       className={({ isActive }) =>
         cn(
           "flex h-8 items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
