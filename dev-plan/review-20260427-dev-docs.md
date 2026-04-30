@@ -2,8 +2,8 @@
 
 대상 문서:
 
-- `dev-plan/implement_20260427_221152.md` — AI Trend Report Engine 구현 계획
-- `dev-plan/implement_20260427_215727.md` — multi-model-tui / Codex CLI / gpt-image-2 연동 계획
+- `dev-plan/implement-20260427-221152.md` — AI Trend Report Engine 구현 계획
+- `dev-plan/implement-20260427-215727.md` — multi-model-tui / Codex CLI / gpt-image-2 연동 계획
 - `docs/additional-dev-docs.md` — 통합 개발 참고 문서
 - `docs/prd-trd-research-notes.md` — PRD/TRD 생성 보고서 스텁
 
@@ -14,9 +14,9 @@
 현재 문서들은 방향성은 좋지만, 바로 구현에 들어가기 전 반드시 정리해야 할 **차단급 문서 결함 5개**가 있다.
 
 1. `docs/additional-dev-docs.md`는 여러 파일을 한 문서에 붙인 상태인데, 구현 계획은 이를 실제 `.env.example`, `schema.sql`, `docker-compose.yml`, workflow 파일이 이미 존재하는 것처럼 가정한다.
-2. `dev-plan/implement_20260427_221152.md`의 Phase 의존성이 논리적으로 충돌한다. Phase 2는 `verify_cluster(cluster)`를 요구하지만 cluster는 Phase 4에서 생성된다.
-3. `dev-plan/implement_20260427_221152.md`의 dry-run 정책이 서로 모순된다. 어떤 곳은 DB write 없음, 어떤 곳은 `job_runs` 행 생성을 요구한다.
-4. `dev-plan/implement_20260427_215727.md`는 현재 프로젝트 구조와 맞지 않는 `backend/src/ai/*` 경로를 사용한다. 기존 계획은 Python `app/` 패키지를 기준으로 한다.
+2. `dev-plan/implement-20260427-221152.md`의 Phase 의존성이 논리적으로 충돌한다. Phase 2는 `verify_cluster(cluster)`를 요구하지만 cluster는 Phase 4에서 생성된다.
+3. `dev-plan/implement-20260427-221152.md`의 dry-run 정책이 서로 모순된다. 어떤 곳은 DB write 없음, 어떤 곳은 `job_runs` 행 생성을 요구한다.
+4. `dev-plan/implement-20260427-215727.md`는 현재 프로젝트 구조와 맞지 않는 `backend/src/ai/*` 경로를 사용한다. 기존 계획은 Python `app/` 패키지를 기준으로 한다.
 5. `docs/prd-trd-research-notes.md`는 sandbox 다운로드 링크와 깨진 citation markup만 남아 있어 개발 참조 문서로 신뢰하기 어렵다.
 
 권장 방향은 **문서 정규화 Phase를 먼저 추가**한 뒤, MVP를 `RSS-only → extract → classify → Jinja2 render`로 축소하여 한 번에 동작하는 vertical slice를 만드는 것이다.
@@ -30,9 +30,9 @@
 | DB 스키마 | `docs/additional-dev-docs.md` 내 `schema.sql` 블록 | 실제 `schema.sql`로 추출 필요 |
 | 로컬 인프라 | 통합 문서 내 `docker-compose.yml` 블록 | 실제 파일로 추출 필요 |
 | 일일 실행 workflow | 통합 문서 내 `github-actions-daily-report.yml` 블록 | `.github/workflows/daily-report.yml`로 추출 필요 |
-| AI 파이프라인 | `dev-plan/implement_20260427_221152.md` | 의존성 순서 수정 필요 |
-| OpenAI-compatible proxy | `dev-plan/implement_20260427_215727.md` | `app/` 구조에 맞춰 경로 수정 필요 |
-| Codex 이미지 생성 | `dev-plan/implement_20260427_215727.md` Phase 6 | `gpt-image-2` 표준 결정은 적절 |
+| AI 파이프라인 | `dev-plan/implement-20260427-221152.md` | 의존성 순서 수정 필요 |
+| OpenAI-compatible proxy | `dev-plan/implement-20260427-215727.md` | `app/` 구조에 맞춰 경로 수정 필요 |
+| Codex 이미지 생성 | `dev-plan/implement-20260427-215727.md` Phase 6 | `gpt-image-2` 표준 결정은 적절 |
 
 ### 최소 변경으로 목표 달성하는 방법
 
@@ -50,7 +50,7 @@
 
 ### A1. Phase 의존성 충돌: Verification이 Cluster보다 먼저 정의됨
 
-- 위치: `dev-plan/implement_20260427_221152.md:190-214`, `738-750`, `860-862`
+- 위치: `dev-plan/implement-20260427-221152.md:190-214`, `738-750`, `860-862`
 - 문제: Phase 2는 `SourceVerifier.verify_cluster(cluster)`를 구현하라고 하지만, cluster 생성은 Phase 4다. 반면 파이프라인 순서는 `cluster → verify`로 되어 있어 문서 내부가 충돌한다.
 - 영향: 구현자가 Phase 2에서 아직 존재하지 않는 `Cluster` 모델/데이터를 필요로 하게 된다.
 - 권장 수정:
@@ -60,21 +60,21 @@
 
 ### A2. 통합 문서가 실제 파일처럼 취급됨
 
-- 위치: `dev-plan/implement_20260427_221152.md:14-20`, `352`, `docs/additional-dev-docs.md:7`, `2346`, `2388`, `2467`
+- 위치: `dev-plan/implement-20260427-221152.md:14-20`, `352`, `docs/additional-dev-docs.md:7`, `2346`, `2388`, `2467`
 - 문제: `.env.example`, `docker-compose.yml`, `schema.sql`, GitHub Actions가 실제 파일로 존재하는 것처럼 표현되어 있지만 실제 repo에는 통합 MD 안의 코드 블록만 있다.
 - 영향: `make dev`, `psql -f schema.sql`, `npm ci`, Actions 실행이 바로 실패한다.
 - 권장 수정: Phase 0 앞에 `Phase 0A: 문서 패키지 실제 파일 추출`을 추가한다.
 
 ### A3. multi-model-tui 연동 계획의 경로가 프로젝트 구조와 다름
 
-- 위치: `dev-plan/implement_20260427_215727.md:199`, `428`
+- 위치: `dev-plan/implement-20260427-215727.md:199`, `428`
 - 문제: 기존 엔진 계획은 Python `app/` 구조인데, 새 연동 계획은 `backend/src/ai/*`를 전제로 한다.
 - 영향: 구현 시 AI Gateway 위치가 갈라지고 중복 abstraction이 생긴다.
 - 권장 수정: `backend/src/ai/*`를 `app/ai/*` 또는 `app/clients/*`로 변경한다.
 
 ### A4. OpenAI-compatible 범위가 충분히 계층화되지 않음
 
-- 위치: `dev-plan/implement_20260427_215727.md:53-60`, `285-314`, `435-440`
+- 위치: `dev-plan/implement-20260427-215727.md:53-60`, `285-314`, `435-440`
 - 확인: `/tmp/multi_model_tui` 기준 build/test는 통과했지만, capabilities 상 hosted tools/citations/caching은 미지원 또는 unverified이며 structured output/state도 부분 검증 상태다.
 - 영향: “OpenAI API 호환”을 너무 넓게 해석하면 SDK는 붙지만 고급 Responses 기능에서 실패할 수 있다.
 - 권장 수정: 호환성 등급을 명시한다.
@@ -87,7 +87,7 @@
 
 ### A5. 배포 대상이 문서마다 다름
 
-- 위치: `dev-plan/implement_20260427_221152.md:45`, `docs/additional-dev-docs.md:107`, `132`, `1083`, `1452-1453`
+- 위치: `dev-plan/implement-20260427-221152.md:45`, `docs/additional-dev-docs.md:107`, `132`, `1083`, `1452-1453`
 - 문제: 주 계획은 Vercel을 out of scope로 두지만 통합 문서는 Netlify/Vercel/GitHub Pages를 반복 언급한다.
 - 권장 수정: MVP는 Netlify만, Vercel/GitHub Pages는 Appendix 또는 Phase 8 후보로 분리한다.
 
@@ -95,9 +95,9 @@
 
 ### Q1. 참조 링크 깨짐
 
-- 위치: `dev-plan/implement_20260427_215727.md:42`
-- 문제: `../docs/impl-plan-ai-trend-report-engine.md`는 존재하지 않는다. 현재 대응 문서는 `dev-plan/implement_20260427_221152.md`다.
-- 권장 수정: 링크를 `./implement_20260427_221152.md`로 변경한다.
+- 위치: `dev-plan/implement-20260427-215727.md:42`
+- 문제: `../docs/impl-plan-ai-trend-report-engine.md`는 존재하지 않는다. 현재 대응 문서는 `dev-plan/implement-20260427-221152.md`다.
+- 권장 수정: 링크를 `./implement-20260427-221152.md`로 변경한다.
 
 ### Q2. `docs/prd-trd-research-notes.md`는 개발 참조로 부적합
 
@@ -114,13 +114,13 @@
 
 ### Q4. dry-run 의미가 충돌
 
-- 위치: `dev-plan/implement_20260427_221152.md:634`, `637`, `651`, `1210`
+- 위치: `dev-plan/implement-20260427-221152.md:634`, `637`, `651`, `1210`
 - 문제: `--dry-run`은 DB write 없음이라고 하면서, success criteria/test는 `job_runs.status="completed"` 생성을 요구한다.
 - 권장 수정: dry-run도 `job_runs`/`job_logs`만 기록하고 domain table write와 파일 생성은 하지 않는 정책으로 명시한다.
 
 ### Q5. report status 전이가 충돌
 
-- 위치: `dev-plan/implement_20260427_221152.md:907`, `919`, `927-928`, `1163`
+- 위치: `dev-plan/implement-20260427-221152.md:907`, `919`, `927-928`, `1163`
 - 문제: assemble은 `draft`, high severity는 `review`, high 없음은 `review→published`, publish API는 `draft→published`로 서로 다르다.
 - 권장 수정: 상태 전이를 다음처럼 고정한다.
 
@@ -134,7 +134,7 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 
 ### Q6. Node/npm 전략이 없음
 
-- 위치: `docs/additional-dev-docs.md:2094`, `2427`, `dev-plan/implement_20260427_221152.md:1083-1088`
+- 위치: `docs/additional-dev-docs.md:2094`, `2427`, `dev-plan/implement-20260427-221152.md:1083-1088`
 - 문제: repo에는 `package.json`이 없는데 문서는 `npm install`, `npm ci`, `npx netlify`를 요구한다.
 - 권장 수정: 둘 중 하나를 선택한다.
   - Python Playwright만 사용할 경우 `npm ci` 제거, Netlify는 `npx --yes netlify-cli`로 실행.
@@ -177,19 +177,19 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 
 ### P1. full pipeline 60분 목표와 GitHub Actions 90분 제한은 여유가 작음
 
-- 위치: `dev-plan/implement_20260427_221152.md:1205`, `1244`
+- 위치: `dev-plan/implement-20260427-221152.md:1205`, `1244`
 - 문제: OCR, Playwright, LLM 검증, embedding이 모두 들어오면 60분 목표가 흔들릴 수 있다.
 - 권장 수정: 일일 실행은 source count, image count, LLM call budget을 환경변수로 강제한다.
 
 ### P2. Redis queue 역할이 불명확
 
-- 위치: `dev-plan/implement_20260427_221152.md:109`, `522`, `647`
+- 위치: `dev-plan/implement-20260427-221152.md:109`, `522`, `647`
 - 문제: Redis가 cache/rate-limit/manual_queue/job 상태를 모두 담당하지만 TTL/키 구조/장애 시 동작이 없다.
 - 권장 수정: Redis key namespace와 TTL 정책을 문서화한다.
 
 ### P3. OpenAI 비용 통제가 부족함
 
-- 위치: `dev-plan/implement_20260427_221152.md:1237`, `1264`
+- 위치: `dev-plan/implement-20260427-221152.md:1237`, `1264`
 - 문제: mock 우선 원칙은 좋지만 실제 daily run의 max LLM calls, max tokens, retry budget이 없다.
 - 권장 수정: `MAX_LLM_CALLS_PER_RUN`, `MAX_LLM_COST_USD_PER_RUN`, `LLM_TIMEOUT_MS`를 추가한다.
 
@@ -210,13 +210,13 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 
 ### S2. 관리자 API 인증 스펙이 미정
 
-- 위치: `docs/additional-dev-docs.md:809`, `dev-plan/implement_20260427_221152.md:1190`
+- 위치: `docs/additional-dev-docs.md:809`, `dev-plan/implement-20260427-221152.md:1190`
 - 문제: admin token/Supabase Auth를 언급하지만 실제 auth scheme, header, env var가 없다.
 - 권장 수정: MVP는 `ADMIN_API_TOKEN` + `Authorization: Bearer`로 단순화하고, Supabase Auth는 후순위로 둔다.
 
 ### S3. HTML sanitizer class allowlist가 실제 코드 수준으로 명시되지 않음
 
-- 위치: `dev-plan/implement_20260427_221152.md:953-973`
+- 위치: `dev-plan/implement-20260427-221152.md:953-973`
 - 문제: `* : ["class"]`는 모든 class를 허용한다. 주석의 “allowlist class만 허용”과 구현 초안이 다르다.
 - 권장 수정: allowed class prefix 또는 exact allowlist를 별도 상수로 둔다.
 
@@ -261,9 +261,9 @@ MVP에서는 `publish=true`일 때만 `published`로 전환한다.
 
 권장 수정 순서:
 
-1. `dev-plan/implement_20260427_221152.md`에 `Phase 0A: 문서 파일 추출` 추가.
+1. `dev-plan/implement-20260427-221152.md`에 `Phase 0A: 문서 파일 추출` 추가.
 2. Phase 2를 `source trust registry`로 축소하고, cluster verification을 Phase 4 이후로 이동.
-3. `dev-plan/implement_20260427_215727.md`의 참조 링크와 `backend/src/ai/*` 경로 수정.
+3. `dev-plan/implement-20260427-215727.md`의 참조 링크와 `backend/src/ai/*` 경로 수정.
 4. `docs/prd-trd-research-notes.md`를 삭제 또는 실제 PRD/TRD 색인으로 교체.
 5. dry-run/report status 정책을 표로 고정.
 

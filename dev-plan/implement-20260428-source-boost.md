@@ -1,4 +1,4 @@
-# implement_20260428_source_boost.md
+# implement-20260428-source-boost.md
 
 작성 일시: `2026-04-28 KST`  
 목적: 소스 다양성 보강, 소셜/포털/동영상 시그널 추가, 이미지 품질 개선
