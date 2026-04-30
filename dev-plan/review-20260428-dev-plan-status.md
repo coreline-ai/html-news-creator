@@ -8,30 +8,30 @@
 
 현재 기준의 주 실행 계획은 다음 2개다.
 
-1. `implement_20260428_221438.md` — 이미지/출처/website collector/fallback 이미지 보강 완료
-2. `implement_20260428_225829.md` — editorial policy/source tier/mainstream 중심 재실행 품질 개선 완료
+1. `implement-20260428-221438.md` — 이미지/출처/website collector/fallback 이미지 보강 완료
+2. `implement-20260428-225829.md` — editorial policy/source tier/mainstream 중심 재실행 품질 개선 완료
 
 새 기능 개발 기준 문서는 다음 1개다.
 
-1. `implement_20260428_source_boost.md` — 추가 소스 확장 후보 계획. 아직 미완료이며, 바로 실행하기 전 범위 축소가 필요하다.
+1. `implement-20260428-source-boost.md` — 추가 소스 확장 후보 계획. 아직 미완료이며, 바로 실행하기 전 범위 축소가 필요하다.
 
-기존 대형 계획 `implement_20260427_221152.md`는 초기 전체 로드맵으로 보관하되, 현재 코드 상태와 맞지 않는 전제가 많아 실행 기준으로 쓰지 않는다.
+기존 대형 계획 `implement-20260427-221152.md`는 초기 전체 로드맵으로 보관하되, 현재 코드 상태와 맞지 않는 전제가 많아 실행 기준으로 쓰지 않는다.
 
 ## 문서별 상태
 
 | 문서 | 상태 | 판단 |
 |---|---:|---|
-| `implement_20260428_221438.md` | 완료 | 현재 코드에 대부분 반영됨. 출처/이미지/website collector/fallback SVG 기준 문서로 유지 |
-| `implement_20260428_225829.md` | 완료 | 현재 주 파이프라인 품질 기준 문서. editorial policy와 mainstream 중심 선별 기준으로 유지 |
-| `implement_20260428_source_boost.md` | 신규/미완료 | 아이디어는 유효하지만 범위가 과대. Phase 0~1만 후속 계획으로 잘라야 함 |
-| `implement_20260427_215727.md` | 문서 계획 완료/체크박스 미정리 | GPT-5.5 proxy/gpt-image2 맥락 문서. 실제 일부 구현 완료됐으나 문서 체크박스는 미반영 |
-| `implement_20260427_221152.md` | 구형 전체 로드맵 | 현재 repo와 맞지 않는 초기 전제 포함. 참조용 archive 성격 |
-| `review_20260427_coreline_agent_oauth_proxy.md` | 검토 완료 | proxy 후보/주의사항 문서로 유효 |
-| `review_20260427_dev_docs.md` | 검토 완료 | 구형 문서 결함과 P0/P1 권고를 정리한 기준 문서로 유효 |
+| `implement-20260428-221438.md` | 완료 | 현재 코드에 대부분 반영됨. 출처/이미지/website collector/fallback SVG 기준 문서로 유지 |
+| `implement-20260428-225829.md` | 완료 | 현재 주 파이프라인 품질 기준 문서. editorial policy와 mainstream 중심 선별 기준으로 유지 |
+| `implement-20260428-source-boost.md` | 신규/미완료 | 아이디어는 유효하지만 범위가 과대. Phase 0~1만 후속 계획으로 잘라야 함 |
+| `implement-20260427-215727.md` | 문서 계획 완료/체크박스 미정리 | GPT-5.5 proxy/gpt-image2 맥락 문서. 실제 일부 구현 완료됐으나 문서 체크박스는 미반영 |
+| `implement-20260427-221152.md` | 구형 전체 로드맵 | 현재 repo와 맞지 않는 초기 전제 포함. 참조용 archive 성격 |
+| `review-20260427-coreline-agent-oauth-proxy.md` | 검토 완료 | proxy 후보/주의사항 문서로 유효 |
+| `review-20260427-dev-docs.md` | 검토 완료 | 구형 문서 결함과 P0/P1 권고를 정리한 기준 문서로 유효 |
 
 ## 완료 계획 리뷰
 
-### `implement_20260428_221438.md`
+### `implement-20260428-221438.md`
 
 완료 내용:
 
@@ -48,7 +48,7 @@
 - 다만 SVG fallback은 임시 시각 보강이며, 실제 뉴스 이미지가 가능한 경우 원본 이미지를 우선해야 한다.
 - source image quality filter는 계속 확장 필요하다. 예: Reddit UI, 광고, tracking pixel 차단.
 
-### `implement_20260428_225829.md`
+### `implement-20260428-225829.md`
 
 완료 내용:
 
@@ -68,7 +68,7 @@
 
 ## 신규/미완료 계획 리뷰
 
-### `implement_20260428_source_boost.md`
+### `implement-20260428-source-boost.md`
 
 좋은 점:
 
@@ -81,7 +81,7 @@
 - 한 계획 안에 RSS, Reddit, HN, NAVER, Yahoo, YouTube, Nitter, 이미지 로직까지 들어 있어 너무 크다.
 - API Key가 필요한 Phase가 섞여 있어 즉시 자동 파이프라인에 반영하기 어렵다.
 - Reddit/Nitter/YouTube는 신뢰도와 약관/운영 안정성 리스크가 있어 메인 뉴스 출처가 아니라 보조 신호로만 둬야 한다.
-- 현재 이미 `implement_20260428_225829.md`에서 mainstream 소스 수집과 arXiv 제한은 상당 부분 해결됐다.
+- 현재 이미 `implement-20260428-225829.md`에서 mainstream 소스 수집과 arXiv 제한은 상당 부분 해결됐다.
 
 권장 처리:
 
@@ -92,7 +92,7 @@
 
 ## 구형 계획 리뷰
 
-### `implement_20260427_215727.md`
+### `implement-20260427-215727.md`
 
 상태:
 
@@ -105,7 +105,7 @@
 - 실제 완료 내역은 별도 현황 문서 또는 체크박스 업데이트가 필요하다.
 - `backend/src/ai/*` 같은 구형 경로 전제는 현재 `app/` 구조와 맞지 않으므로 신규 구현 기준으로 쓰지 않는다.
 
-### `implement_20260427_221152.md`
+### `implement-20260427-221152.md`
 
 상태:
 
@@ -116,12 +116,12 @@
 정리 필요:
 
 - archive/roadmap 용도로만 유지한다.
-- 현재 작업 기준은 `implement_20260428_225829.md`와 후속 계획으로 이동한다.
+- 현재 작업 기준은 `implement-20260428-225829.md`와 후속 계획으로 이동한다.
 - 장기적으로는 `archive/` 또는 `dev-plan/legacy/` 이동을 검토한다.
 
 ## 검토 문서 리뷰
 
-### `review_20260427_dev_docs.md`
+### `review-20260427-dev-docs.md`
 
 유효한 지적:
 
@@ -142,7 +142,7 @@
 - admin auth scheme 확정
 - SSRF를 DNS resolve/redirect 재검증 수준으로 강화
 
-### `review_20260427_coreline_agent_oauth_proxy.md`
+### `review-20260427-coreline-agent-oauth-proxy.md`
 
 유효한 지적:
 
@@ -159,9 +159,9 @@
 
 ### P0 — 바로 해야 할 정리
 
-1. `implement_20260428_source_boost.md`를 바로 구현하지 말고 범위를 Phase 0~1로 축소한 새 계획을 만든다.
-2. `implement_20260427_221152.md`는 legacy roadmap으로 표시한다.
-3. `implement_20260427_215727.md`는 실제 완료된 proxy 작업과 문서 체크박스 상태를 맞춘다.
+1. `implement-20260428-source-boost.md`를 바로 구현하지 말고 범위를 Phase 0~1로 축소한 새 계획을 만든다.
+2. `implement-20260427-221152.md`는 legacy roadmap으로 표시한다.
+3. `implement-20260427-215727.md`는 실제 완료된 proxy 작업과 문서 체크박스 상태를 맞춘다.
 
 ### P1 — 다음 개발 후보
 
@@ -182,9 +182,9 @@
 
 ## 최종 권고
 
-현재 기준으로 신규 개발은 `implement_20260428_225829.md`를 기준으로 이어가야 한다.
+현재 기준으로 신규 개발은 `implement-20260428-225829.md`를 기준으로 이어가야 한다.
 
-`implement_20260428_source_boost.md`는 “바로 구현할 계획”이 아니라 “확장 후보 백로그”로 취급하는 것이 안전하다. 다음 실행 단위는 다음처럼 작게 잘라야 한다.
+`implement-20260428-source-boost.md`는 “바로 구현할 계획”이 아니라 “확장 후보 백로그”로 취급하는 것이 안전하다. 다음 실행 단위는 다음처럼 작게 잘라야 한다.
 
 ```text
 Phase A: 공식/대중 RSS 3~5개 추가 + 검증
