@@ -32,6 +32,12 @@ export interface ReorderVariables {
 export interface PublishVariables {
   date: string;
   dryRun?: boolean;
+  /**
+   * Section UUIDs the operator toggled off in Review. They are dropped from
+   * the re-render that happens just before the Netlify deploy. The DB row
+   * itself has no `enabled` column, so this list is the only signal.
+   */
+  disabledSectionIds?: string[];
 }
 
 export interface PublishResponse {
@@ -134,12 +140,15 @@ export function usePublishReport(): UseMutationResult<
 > {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ date, dryRun = false }) => {
+    mutationFn: async ({ date, dryRun = false, disabledSectionIds }) => {
       return apiFetch<PublishResponse>(
         `/api/reports/${encodeURIComponent(date)}/publish`,
         {
           method: "POST",
-          body: JSON.stringify({ dry_run: dryRun }),
+          body: JSON.stringify({
+            dry_run: dryRun,
+            disabled_section_ids: disabledSectionIds ?? [],
+          }),
         },
       );
     },

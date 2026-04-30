@@ -212,8 +212,17 @@ export function ReviewReport() {
 
   const handlePublishConfirm = async () => {
     setConfirmPublish(false);
+    // Send the operator's "off" toggles so the BE re-render skips them
+    // before deploying. The store keeps `disabledSectionIds` as a record
+    // (`{[id]: true}`); only ids whose value is truthy count as disabled.
+    const disabledIds = Object.entries(disabledSectionIds)
+      .filter(([, off]) => off)
+      .map(([id]) => id);
     try {
-      const res = await publish.mutateAsync({ date });
+      const res = await publish.mutateAsync({
+        date,
+        disabledSectionIds: disabledIds,
+      });
       const url = res.deployed_url;
       pushToast({
         message: `Published — ${res.status}`,

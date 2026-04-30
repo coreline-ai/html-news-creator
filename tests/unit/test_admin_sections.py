@@ -413,11 +413,30 @@ def test_publish_invokes_netlify_publisher():
 
 
 def test_publish_missing_netlify_config_returns_400():
-    """Without auth token / site id we must not fall back to a synthetic URL."""
+    """Without auth token / site id we must not fall back to a synthetic URL.
+
+    Phase B introduced an unconditional render step before the deploy. The
+    helper opens its own ``AsyncSessionLocal`` for that render, so we patch
+    it here too — otherwise the test would attempt a real DB connection
+    before the Netlify check ever runs.
+    """
     report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
     _override_db(_make_db(report=report))
 
-    with patch("app.admin.publish.settings") as mock_settings:
+    fake_render = AsyncMock(
+        return_value=__import__("pathlib").Path(
+            "public/news/2026-04-30-trend.html"
+        )
+    )
+    with patch("app.admin.publish.render_published", fake_render), \
+         patch("app.admin.publish.AsyncSessionLocal") as mock_session_factory, \
+         patch("app.admin.publish.settings") as mock_settings:
+        # The render path also opens a session via the factory, but since
+        # render_published is now a pure mock it never touches it.
+        mock_session_factory.return_value.__aenter__ = AsyncMock(
+            return_value=AsyncMock()
+        )
+        mock_session_factory.return_value.__aexit__ = AsyncMock(return_value=None)
         mock_settings.netlify_auth_token = ""
         mock_settings.netlify_site_id = ""
         try:
