@@ -1,6 +1,6 @@
 # 03. Typography
 
-> 한국어 본문 가독성을 최우선. paperclip의 system-stack을 거부하고 **Pretendard**를 시스템 표준 폰트로 채택.
+> 한국어 본문 가독성을 최우선. 일반 system-stack 대신 **Pretendard**를 시스템 표준 폰트로 채택.
 
 ## 1. 폰트 스택
 
@@ -18,7 +18,7 @@
 
 ## 2. Type Scale
 
-8단계 타입 램프. paperclip은 14·16·18·24가 주력이지만 우리는 한국어 본문 + 에디토리얼 포맷이라 한 단계씩 보정.
+8단계 타입 램프. 일반 워크스페이스 SaaS는 14·16·18·24가 주력이지만 우리는 한국어 본문 + 에디토리얼 포맷이라 한 단계씩 보정.
 
 | 토큰 | px | rem | line-height | weight | 사용처 |
 |---|---|---|---|---|---|
@@ -72,7 +72,7 @@ p {
 }
 ```
 
-paperclip의 `text-wrap: balance` 패턴을 그대로 채택. 제목은 줄 길이가 균형있게, 본문은 끊김이 자연스럽게.
+CSS의 `text-wrap: balance` / `pretty` 패턴을 채택. 제목은 줄 길이가 균형있게, 본문은 끊김이 자연스럽게.
 
 ## 6. 인쇄·임베드 시 안전 폰트
 
@@ -102,7 +102,7 @@ Pretendard → Apple SD Gothic Neo → Malgun Gothic → Noto Sans KR → sans-s
 
 ### B. 운영 웹앱 (향후)
 
-paperclip 패턴 — 더 작고 조밀하게.
+워크스페이스 SaaS 패턴 — 더 작고 조밀하게.
 
 | 요소 | 클래스 |
 |---|---|
