@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Any, Optional
 
@@ -480,26 +480,32 @@ async def api_patch_section(
     return {"section": _serialize_section(section)}
 
 
-# 10) POST /api/sections/{id}/regenerate — single-section regen (stub-friendly)
+# 10) POST /api/sections/{id}/regenerate — single-section regen via LLM
 @app.post("/api/sections/{section_id}/regenerate")
-async def api_regenerate_section(
-    section_id: str,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(ReportSection).where(ReportSection.id == section_id)
-    )
-    section = result.scalars().first()
-    if section is None:
-        raise HTTPException(status_code=404, detail=f"section not found: {section_id}")
+async def api_regenerate_section(section_id: str):
+    """Regenerate a single section via SectionGenerator.
 
-    # Stubbed regen — real LLM hook lives in app/generation. We acknowledge the
-    # request and let the UI poll/refresh. Other sections are NOT touched.
-    logger.info("regenerate_section_queued", section_id=section_id)
+    The helper opens its own session so we can update only the target row
+    without dragging the request-scoped session into LLM I/O.
+    """
+    from app.admin.section_regen import regenerate_section
+
+    try:
+        updated = await regenerate_section(section_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.error("regenerate_section_failed", section_id=section_id, error=str(exc))
+        raise HTTPException(
+            status_code=500, detail=f"regenerate failed: {exc}"
+        )
+
     return {
-        "status": "queued",
+        "status": "ok",
         "section_id": section_id,
-        "note": "single-section regenerate stub — does not touch other sections",
+        "section": updated,
     }
 
 
@@ -563,6 +569,11 @@ async def api_publish_report(
     payload: PublishRequest = Body(default_factory=PublishRequest),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.admin.publish import publish_report
+
+    # Validate date + report existence up-front using the request-scoped DB.
+    # The helper opens its own session for the actual mutation so a long
+    # Netlify deploy can't pin our HTTP connection.
     try:
         run_date = date.fromisoformat(date_kst)
     except ValueError as exc:
@@ -575,44 +586,22 @@ async def api_publish_report(
     if db_report is None:
         raise HTTPException(status_code=404, detail=f"report not found: {date_kst}")
 
-    if payload.dry_run:
-        deploy_url = f"https://ai-news-5min-kr.netlify.app/{date_kst}-trend.html"
-        return {
-            "status": "dry_run",
-            "deployed_url": deploy_url,
-            "report_date": date_kst,
-        }
-
-    # Try real Netlify deploy; degrade gracefully when CLI is unavailable.
     try:
-        from app.deployment.netlify import NetlifyPublisher
-
-        publisher = NetlifyPublisher(
-            site_id=getattr(settings, "netlify_site_id", "") or "",
-            auth_token=getattr(settings, "netlify_auth_token", "") or "",
+        return await publish_report(
+            date_kst,
+            dry_run=payload.dry_run,
+            publish_dir=payload.publish_dir,
         )
-        publish_dir = payload.publish_dir or "public"
-        deploy_result = await publisher.deploy(publish_dir=publish_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except RuntimeError as exc:
+        # Netlify config missing → 400 (operator action required).
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:  # pragma: no cover — defensive
-        logger.error("publish_unexpected", error=str(exc))
-        deploy_result = {"status": "failed", "error": str(exc)}
-
-    deploy_url = (
-        deploy_result.get("deploy_url")
-        or f"https://ai-news-5min-kr.netlify.app/{date_kst}-trend.html"
-    )
-
-    if deploy_result.get("status") == "success":
-        db_report.status = "published"
-        db_report.published_at = datetime.utcnow()
-        await db.commit()
-
-    return {
-        "status": deploy_result.get("status", "unknown"),
-        "deployed_url": deploy_url,
-        "report_date": date_kst,
-        "details": deploy_result,
-    }
+        logger.error("publish_failed", date_kst=date_kst, error=str(exc))
+        raise HTTPException(status_code=500, detail=f"publish failed: {exc}")
 
 
 # ---------------------------------------------------------------------------

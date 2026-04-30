@@ -5,11 +5,13 @@ TC-4 coverage:
 - PATCH /api/sections/{id}                  → 200 + updated section
 - PATCH /api/sections/{id} (no fields)      → 400
 - PATCH /api/sections/{id} (missing)        → 404
-- POST /api/sections/{id}/regenerate        → 200 + queued (stub, no other-section side effects)
+- POST /api/sections/{id}/regenerate        → 200 + ok, calls regenerate_section helper
+- POST /api/sections/{id}/regenerate (404)  → propagates LookupError
 - POST /api/reports/{date}/reorder          → 200 + ordered list
 - POST /api/reports/{date}/reorder (bad)    → 400 (empty/foreign ids)
-- POST /api/reports/{date}/publish (dry_run)→ 200 + deployed_url
+- POST /api/reports/{date}/publish (dry_run)→ 200 + deployed_url (no Netlify call)
 - POST /api/reports/{date}/publish (real)   → uses NetlifyPublisher mock
+- POST /api/reports/{date}/publish (no cfg) → 400 when Netlify config missing
 """
 from __future__ import annotations
 
@@ -215,27 +217,51 @@ def test_patch_section_missing_returns_404():
 # POST /api/sections/{id}/regenerate
 # ---------------------------------------------------------------------------
 
-def test_regenerate_section_returns_queued_without_touching_others():
+def test_regenerate_section_invokes_helper_and_returns_updated_section():
+    """The route delegates to regenerate_section helper and returns its dict."""
     sec_id = str(uuid.uuid4())
-    section = _SectionRow(sec_id, str(uuid.uuid4()), 2, title="Target")
-    _override_db(_make_db(sections=[section]))
-    try:
+    cluster_id = str(uuid.uuid4())
+    fake_helper = AsyncMock(
+        return_value={
+            "id": sec_id,
+            "title": "Regenerated Title",
+            "fact_summary": "사실 요약",
+            "inference_summary": "시사점 요약",
+            "cluster_id": cluster_id,
+        }
+    )
+    with patch("app.admin.section_regen.regenerate_section", fake_helper):
         resp = client.post(f"/api/sections/{sec_id}/regenerate")
         assert resp.status_code == 200
         body = resp.json()
-        assert body["status"] == "queued"
+        assert body["status"] == "ok"
         assert body["section_id"] == sec_id
-    finally:
-        _clear_override()
+        assert body["section"]["title"] == "Regenerated Title"
+        assert body["section"]["fact_summary"] == "사실 요약"
+        assert body["section"]["inference_summary"] == "시사점 요약"
+        # Helper called exactly once with the section id positionally.
+        fake_helper.assert_awaited_once_with(sec_id)
 
 
 def test_regenerate_section_unknown_id_returns_404():
-    _override_db(_make_db(sections=[]))
-    try:
-        resp = client.post(f"/api/sections/{uuid.uuid4()}/regenerate")
+    sec_id = str(uuid.uuid4())
+    fake_helper = AsyncMock(side_effect=LookupError(f"section not found: {sec_id}"))
+    with patch("app.admin.section_regen.regenerate_section", fake_helper):
+        resp = client.post(f"/api/sections/{sec_id}/regenerate")
         assert resp.status_code == 404
-    finally:
-        _clear_override()
+        assert "section not found" in resp.json()["detail"]
+        fake_helper.assert_awaited_once()
+
+
+def test_regenerate_section_no_cluster_returns_400():
+    sec_id = str(uuid.uuid4())
+    fake_helper = AsyncMock(
+        side_effect=ValueError(f"section {sec_id} has no cluster_id; cannot regenerate")
+    )
+    with patch("app.admin.section_regen.regenerate_section", fake_helper):
+        resp = client.post(f"/api/sections/{sec_id}/regenerate")
+        assert resp.status_code == 400
+        assert "cluster_id" in resp.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -327,19 +353,25 @@ def test_reorder_sections_missing_report_returns_404():
 def test_publish_dry_run_returns_deploy_url_without_calling_netlify():
     report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
     _override_db(_make_db(report=report))
-    try:
-        resp = client.post(
-            "/api/reports/2026-04-30/publish", json={"dry_run": True}
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["status"] == "dry_run"
-        assert "2026-04-30-trend.html" in body["deployed_url"]
-    finally:
-        _clear_override()
+
+    fake_deploy = AsyncMock()
+    with patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy):
+        try:
+            resp = client.post(
+                "/api/reports/2026-04-30/publish", json={"dry_run": True}
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["status"] == "dry_run"
+            assert body["dry_run"] is True
+            assert "2026-04-30-trend.html" in body["deployed_url"]
+            fake_deploy.assert_not_awaited()
+        finally:
+            _clear_override()
 
 
 def test_publish_invokes_netlify_publisher():
+    """A real (non-dry-run) publish must call NetlifyPublisher.deploy()."""
     report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
     _override_db(_make_db(report=report))
 
@@ -351,14 +383,47 @@ def test_publish_invokes_netlify_publisher():
         }
     )
 
-    with patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy):
+    # Patch settings so the helper believes Netlify config is wired up, and
+    # patch the helper's session factory so it doesn't open a real DB.
+    fake_session = AsyncMock()
+    fake_session.__aenter__ = AsyncMock(return_value=fake_session)
+    fake_session.__aexit__ = AsyncMock(return_value=None)
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = report
+    exec_result = MagicMock()
+    exec_result.scalars.return_value = scalars_mock
+    fake_session.execute = AsyncMock(return_value=exec_result)
+    fake_session.commit = AsyncMock(return_value=None)
+
+    with patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy), \
+         patch("app.admin.publish.AsyncSessionLocal", return_value=fake_session), \
+         patch("app.admin.publish.settings") as mock_settings:
+        mock_settings.netlify_auth_token = "tok-abc"
+        mock_settings.netlify_site_id = "site-xyz"
         try:
             resp = client.post("/api/reports/2026-04-30/publish", json={})
             assert resp.status_code == 200
             body = resp.json()
             assert body["status"] == "success"
             assert body["deployed_url"].endswith("2026-04-30-trend.html")
+            assert body["dry_run"] is False
             fake_deploy.assert_awaited_once()
+        finally:
+            _clear_override()
+
+
+def test_publish_missing_netlify_config_returns_400():
+    """Without auth token / site id we must not fall back to a synthetic URL."""
+    report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
+    _override_db(_make_db(report=report))
+
+    with patch("app.admin.publish.settings") as mock_settings:
+        mock_settings.netlify_auth_token = ""
+        mock_settings.netlify_site_id = ""
+        try:
+            resp = client.post("/api/reports/2026-04-30/publish", json={})
+            assert resp.status_code == 400
+            assert "netlify" in resp.json()["detail"].lower()
         finally:
             _clear_override()
 
