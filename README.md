@@ -83,43 +83,57 @@ notify    │ Slack Webhook 발송
 ```
 html-news-creator/
 ├── app/
+│   ├── admin/               # 관리자/운영 API (FastAPI)
 │   ├── collectors/          # 소스별 수집기
 │   │   ├── orchestrator.py  # 컬렉터 통합 실행
 │   │   ├── rss_collector.py # RSS / YouTube
 │   │   ├── github_collector.py
 │   │   ├── arxiv_collector.py
 │   │   ├── hackernews_collector.py
-│   │   └── website_collector.py
+│   │   ├── website_collector.py
+│   │   └── naver_news_collector.py
+│   ├── deployment/          # Netlify 배포 / 정적 publisher
 │   ├── editorial/           # 편집 정책 엔진
 │   │   ├── policy.py        # YAML 정책 로더
 │   │   ├── ranker.py        # 아이템 점수 산출 (순수 함수)
-│   │   └── selection.py     # 클러스터 선정·요약
-│   ├── extractors/          # 본문 추출기 (Trafilatura 우선)
-│   ├── generation/          # LLM 섹션·제목·임베딩 생성
-│   ├── models/              # SQLAlchemy ORM (13개 테이블)
+│   │   └── selection.py     # 클러스터 선정·요약 (image-aware backfill 포함)
+│   ├── extractors/          # 본문 추출기 (Firecrawl → Crawl4AI → Trafilatura fallback)
+│   ├── generation/          # LLM 섹션·제목·임베딩·클러스터링
+│   ├── models/              # SQLAlchemy ORM (14개 테이블)
 │   ├── pipeline/            # 날짜 윈도우 (KST + US 시간대 슬랙)
-│   ├── rendering/           # Jinja2 렌더러
+│   ├── processors/          # 분류·정규화 처리기
+│   ├── rendering/           # Jinja2 렌더러 + Playwright 스크린샷
+│   ├── research/            # 리서치/실험 모듈
 │   ├── utils/
 │   │   ├── source_images.py # 이미지 URL 검증·필터
 │   │   └── generated_images.py # SVG 폴백 생성
-│   └── verification/        # 소스 교차 검증
+│   ├── verification/        # 소스 교차 검증
+│   └── vision/              # OCR (Surya) / 미디어 다운로더
 │
 ├── data/
 │   ├── sources_registry.yaml   # 37개 활성 소스 설정
-│   ├── editorial_policy.yaml   # 점수 공식·할당량·티어
+│   ├── editorial_policy.yaml   # 점수 공식·할당량·티어·backfill
 │   └── official_domains.yaml   # 공식 도메인 화이트리스트
 │
 ├── templates/
-│   ├── report_newsstream.html.j2  # 메인 리포트 템플릿
-│   └── section_card.html.j2
+│   ├── base.html.j2               # 베이스 레이아웃
+│   ├── report_newsstream.html.j2  # 메인 리포트 템플릿 (현재 사용)
+│   ├── section_card.html.j2       # 섹션 카드 부분 템플릿
+│   └── daily_report.html.j2       # 레거시 (현재 미사용)
 │
-├── tests/unit/              # 140+ 단위 테스트
+├── docs/
+│   ├── design/                    # 🎨 디자인 시스템 (토큰·컴포넌트·자동화 명세)
+│   ├── additional-dev-docs.md     # 통합 개발 참고 문서
+│   └── prd-trd-research-notes.md  # PRD/TRD 기반 리서치 노트
+│
+├── tests/unit/              # 147개 단위 테스트
 ├── scripts/
 │   └── run_daily.py         # 파이프라인 진입점 (CLI)
 ├── .github/workflows/
 │   ├── daily-report.yml     # 매일 22:00 UTC 자동 실행
 │   └── ci.yml               # 푸시/PR 단위 테스트
-├── migrations/              # Alembic DB 마이그레이션
+├── migrations/              # SQL 마이그레이션 (001_initial.sql)
+├── dev-plan/                # 작업 계획서·리뷰 노트
 ├── docker-compose.yml       # PostgreSQL + Redis + MinIO
 └── Makefile
 ```
@@ -305,7 +319,7 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
     └─▶ Verification └─▶ ImageAnalysis
 ```
 
-**핵심 테이블 13개:** `Source` · `RawItem` · `ExtractedContent` · `MediaAsset` · `AnalysisResult` · `Cluster` · `ClusterItem` · `Verification` · `ImageAnalysis` · `Report` · `ReportSection` · `ReportArtifact` · `JobRun`
+**핵심 테이블 14개:** `Source` · `RawItem` · `ExtractedContent` · `MediaAsset` · `AnalysisResult` · `Cluster` · `ClusterItem` · `Verification` · `ImageAnalysis` · `Report` · `ReportSection` · `ReportArtifact` · `JobRun` · `JobLog`
 
 ---
 
@@ -337,6 +351,29 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
 ### 📸 실제 출력 예시 (2026-04-30)
 
 ![AI 트렌드 리포트 2026-04-30](docs/screenshot-2026-04-30.png)
+
+---
+
+## 🎨 디자인 시스템
+
+리포트 HTML과 향후 운영 웹앱이 공유할 단일 디자인 시스템을 [`docs/design/`](docs/design/)에 정의했습니다. shadcn/ui new-york 스타일을 OKLCH 모노크롬으로 운영하는 컨벤션을 베이스로, 에디토리얼 톤 + 워크스페이스 밀도를 동시에 지원합니다.
+
+| 파일 | 다루는 것 |
+|------|----------|
+| [`README.md`](docs/design/README.md) | 인덱스 + 자동화 개발 사용법 |
+| [`01-philosophy.md`](docs/design/01-philosophy.md) | 디자인 DNA, 5원칙, 거부 패턴 |
+| [`02-tokens.md`](docs/design/02-tokens.md) | 컬러·radius·shadow·spacing 토큰 명세 |
+| [`03-typography.md`](docs/design/03-typography.md) | Pretendard 8단계 type scale |
+| [`04-components.md`](docs/design/04-components.md) | Button/Card/Input/Badge 등 12개 컴포넌트 |
+| [`05-layout-patterns.md`](docs/design/05-layout-patterns.md) | 리포트 셸 + 워크스페이스 셸 + 반응형 |
+| [`06-automation-spec.md`](docs/design/06-automation-spec.md) | LLM 코드젠용 기계 가독 명세 |
+| [`tokens.css`](docs/design/tokens.css) | 즉시 import 가능한 CSS 변수 |
+| [`tokens.json`](docs/design/tokens.json) | W3C design-tokens 포맷 |
+
+**적용 표면**
+
+- **일일 리포트 HTML**: max-width 820, 단일 컬럼, 여유 spacing, Pretendard
+- **운영 웹앱(향후)**: 사이드바 240 + 메인 + 컨텍스트 패널, 36~44px 행 밀도
 
 ---
 
