@@ -356,7 +356,9 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
 
 ## 🎨 디자인 시스템
 
-리포트 HTML과 향후 운영 웹앱이 공유할 단일 디자인 시스템을 [`docs/design/`](docs/design/)에 정의했습니다. shadcn/ui new-york 스타일을 OKLCH 모노크롬으로 운영하는 컨벤션을 베이스로, 에디토리얼 톤 + 워크스페이스 밀도를 동시에 지원합니다.
+추가 개발될 운영/관리자/대시보드 웹앱용 디자인 시스템을 [`docs/design/`](docs/design/)에 정의했습니다. shadcn/ui new-york 스타일을 OKLCH 모노크롬으로 운영하는 컨벤션을 베이스로, 고밀도 워크스페이스 UI를 만드는 기준입니다.
+
+> 현재 생성되는 정적 HTML 리포트(`templates/report_newsstream.html.j2`, `public/news/*.html`)의 스타일 가이드는 아닙니다. HTML 리포트는 기존 `light → dark → newsroom-white` 템플릿 스타일을 유지하며, 별도 요청이 있을 때만 디자인 시스템 마이그레이션을 진행합니다.
 
 | 파일 | 다루는 것 |
 |------|----------|
@@ -365,15 +367,46 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
 | [`02-tokens.md`](docs/design/02-tokens.md) | 컬러·radius·shadow·spacing 토큰 명세 |
 | [`03-typography.md`](docs/design/03-typography.md) | Pretendard 8단계 type scale |
 | [`04-components.md`](docs/design/04-components.md) | Button/Card/Input/Badge 등 12개 컴포넌트 |
-| [`05-layout-patterns.md`](docs/design/05-layout-patterns.md) | 리포트 셸 + 워크스페이스 셸 + 반응형 |
+| [`05-layout-patterns.md`](docs/design/05-layout-patterns.md) | 워크스페이스 셸 + 반응형, 리포트 구조 참고 |
 | [`06-automation-spec.md`](docs/design/06-automation-spec.md) | LLM 코드젠용 기계 가독 명세 |
 | [`tokens.css`](docs/design/tokens.css) | 즉시 import 가능한 CSS 변수 |
 | [`tokens.json`](docs/design/tokens.json) | W3C design-tokens 포맷 |
 
 **적용 표면**
 
-- **일일 리포트 HTML**: max-width 820, 단일 컬럼, 여유 spacing, Pretendard
-- **운영 웹앱(향후)**: 사이드바 240 + 메인 + 컨텍스트 패널, 36~44px 행 밀도
+- **적용 대상**: 운영/관리자/대시보드 웹앱 — 사이드바 240 + 메인 + 컨텍스트 패널, 36~44px 행 밀도
+- **비적용 대상**: 현재 정적 HTML 리포트 — 기존 템플릿 스타일 유지
+
+---
+
+## 🖥️ News Studio 웹앱
+
+CLI(`scripts/run_daily.py`)와 yaml 편집을 반복하는 운영 흐름을 대체하기 위한 단일 사용자 GUI입니다. React 19 + Vite SPA(`ui/`)와 FastAPI(`app/admin/api.py`)로 구성되며, 옵션 변경 → 라이브 미리보기 → Run → 섹션 검토 → Netlify 발행을 한 화면에서 처리합니다.
+
+### 시작
+
+```bash
+make ui-build && make serve     # http://localhost:8000 (운영)
+cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvicorn 8000 필요)
+```
+
+### 4 화면
+
+| 이름 | URL | 역할 |
+|------|-----|------|
+| 대시보드 | `/` | 오늘 카드 · Quick actions · 최근 실행 테이블 |
+| 신규 리포트 | `/reports/new` | 5그룹 옵션 + 라이브 미리보기 + Run |
+| 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · Publish |
+| 소스 / 설정 | `/sources`, `/settings` | 37개 소스 토글 · `editorial_policy.yaml` 런타임 오버라이드 |
+
+### 단축키
+
+- `⌘K` / `Ctrl+K` — 명령 팔레트
+- `R` — 마지막 옵션으로 재실행
+- `P` — 현재 리포트 발행 (검토 화면 한정)
+- HeaderBar 토글 — 다크 ↔ 라이트 (`localStorage` 영속)
+
+상세 가이드: [`docs/news-studio-usage.md`](docs/news-studio-usage.md) · 디자인 토큰/컴포넌트: [`docs/design/`](docs/design/)
 
 ---
 
