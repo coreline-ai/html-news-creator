@@ -23,6 +23,14 @@ RUN_DAILY_PATH = PROJECT_ROOT / "scripts" / "run_daily.py"
 # Per-line history retained per run (so a late SSE subscriber can replay)
 _MAX_LINES_PER_RUN = 2000
 
+# Hard wall-clock cap for a single run. A normal full run finishes in 1–3 min;
+# anything over 5 min is almost always a hung external call (LLM proxy in
+# CLOSE_WAIT, slow upstream RSS, etc.). Operator can override via the run
+# options (`max_runtime_sec`) when intentionally launching a long backfill.
+_DEFAULT_MAX_RUNTIME_SEC = 300
+# How long to wait between SIGTERM and the escalation to SIGKILL.
+_GRACE_PERIOD_SEC = 5
+
 
 @dataclass
 class RunState:
@@ -89,12 +97,36 @@ async def _drain_stream(state: RunState, stream: asyncio.StreamReader, label: st
         await state.queue.put(event)
 
 
+async def _terminate(proc: asyncio.subprocess.Process) -> None:
+    """Send SIGTERM, give the child a grace period, then SIGKILL if needed."""
+    if proc.returncode is not None:
+        return
+    try:
+        proc.terminate()
+    except ProcessLookupError:
+        return
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=_GRACE_PERIOD_SEC)
+        return
+    except asyncio.TimeoutError:
+        pass
+    try:
+        proc.kill()
+    except ProcessLookupError:
+        return
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=_GRACE_PERIOD_SEC)
+    except asyncio.TimeoutError:
+        pass
+
+
 async def _supervise(state: RunState) -> None:
     state.status = "running"
     state.started_at = datetime.now(timezone.utc).isoformat()
     argv = _build_argv(state.options)
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(PROJECT_ROOT))
+    max_runtime = float(state.options.get("max_runtime_sec") or _DEFAULT_MAX_RUNTIME_SEC)
     try:
         proc = await asyncio.create_subprocess_exec(
             *argv,
@@ -104,12 +136,21 @@ async def _supervise(state: RunState) -> None:
             env=env,
         )
         state.process = proc
-        await asyncio.gather(
-            _drain_stream(state, proc.stdout, "stdout"),
-            _drain_stream(state, proc.stderr, "stderr"),
-        )
-        state.return_code = await proc.wait()
-        state.status = "completed" if state.return_code == 0 else "failed"
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(
+                    _drain_stream(state, proc.stdout, "stdout"),
+                    _drain_stream(state, proc.stderr, "stderr"),
+                ),
+                timeout=max_runtime,
+            )
+            state.return_code = await proc.wait()
+            state.status = "completed" if state.return_code == 0 else "failed"
+        except asyncio.TimeoutError:
+            await _terminate(proc)
+            state.return_code = proc.returncode
+            state.status = "failed"
+            state.error = f"max_runtime_exceeded: {max_runtime}s"
     except FileNotFoundError as exc:
         state.error = f"runner_not_found: {exc}"
         state.status = "failed"

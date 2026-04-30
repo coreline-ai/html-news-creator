@@ -6,13 +6,15 @@ export interface RunProgressEvent {
   message?: string;
 }
 
-export type RunStreamStatus = "idle" | "running" | "done" | "error";
+export type RunStreamStatus = "idle" | "running" | "done" | "error" | "stalled";
 
 export interface UseRunStreamState {
   status: RunStreamStatus;
   events: RunProgressEvent[];
   lastEvent: RunProgressEvent | null;
   error: string | null;
+  /** Milliseconds since the last activity (event or heartbeat). null when idle. */
+  msSinceLastActivity: number | null;
 }
 
 const INITIAL: UseRunStreamState = {
@@ -20,7 +22,17 @@ const INITIAL: UseRunStreamState = {
   events: [],
   lastEvent: null,
   error: null,
+  msSinceLastActivity: null,
 };
+
+/**
+ * If the server doesn't emit any event (progress, heartbeat, or done) for
+ * this long, the hook flips to status="stalled" so the UI can warn the user.
+ * The backend SSE emits heartbeats at a much shorter interval, so this is
+ * a generous safety net.
+ */
+const STALL_THRESHOLD_MS = 30_000;
+const TICK_MS = 2_000;
 
 /**
  * Subscribe to `/api/runs/{id}/stream` via EventSource. Listens for `progress`
@@ -50,15 +62,28 @@ export function useRunStream(
         events: [],
         lastEvent: null,
         error: "EventSource is not available in this environment.",
+        msSinceLastActivity: null,
       });
       return;
     }
 
     const es = new EventSource(url);
     sourceRef.current = es;
-    setState({ status: "running", events: [], lastEvent: null, error: null });
+    setState({
+      status: "running",
+      events: [],
+      lastEvent: null,
+      error: null,
+      msSinceLastActivity: 0,
+    });
+
+    let lastActivity = Date.now();
+    const markActivity = () => {
+      lastActivity = Date.now();
+    };
 
     const handleProgress = (e: MessageEvent) => {
+      markActivity();
       let parsed: RunProgressEvent | null = null;
       try {
         const data = JSON.parse(e.data) as Partial<RunProgressEvent>;
@@ -76,11 +101,21 @@ export function useRunStream(
       }
       if (!parsed) return;
       setState((s) => ({
-        status: s.status === "running" ? "running" : s.status,
+        status: s.status === "stalled" ? "running" : s.status,
         events: [...s.events, parsed!],
         lastEvent: parsed,
         error: s.error,
+        msSinceLastActivity: 0,
       }));
+    };
+
+    const handleHeartbeat = () => {
+      markActivity();
+      setState((s) =>
+        s.status === "stalled"
+          ? { ...s, status: "running", msSinceLastActivity: 0 }
+          : { ...s, msSinceLastActivity: 0 },
+      );
     };
 
     const handleDone = () => {
@@ -98,13 +133,29 @@ export function useRunStream(
     };
 
     es.addEventListener("progress", handleProgress as EventListener);
+    es.addEventListener("heartbeat", handleHeartbeat as EventListener);
     es.addEventListener("done", handleDone as EventListener);
     es.addEventListener("error", handleError as EventListener);
     // Default unnamed message (some servers don't set event name).
     es.onmessage = handleProgress;
 
+    // Stall watchdog: tick every TICK_MS, flip to "stalled" if no activity
+    // arrived for STALL_THRESHOLD_MS. Reset back to "running" on next event.
+    const tick = window.setInterval(() => {
+      const elapsed = Date.now() - lastActivity;
+      setState((s) => {
+        if (s.status !== "running" && s.status !== "stalled") return s;
+        if (elapsed >= STALL_THRESHOLD_MS && s.status !== "stalled") {
+          return { ...s, status: "stalled", msSinceLastActivity: elapsed };
+        }
+        return { ...s, msSinceLastActivity: elapsed };
+      });
+    }, TICK_MS);
+
     return () => {
+      window.clearInterval(tick);
       es.removeEventListener("progress", handleProgress as EventListener);
+      es.removeEventListener("heartbeat", handleHeartbeat as EventListener);
       es.removeEventListener("done", handleDone as EventListener);
       es.removeEventListener("error", handleError as EventListener);
       es.close();
