@@ -1,4 +1,4 @@
-.PHONY: dev migrate run run-dry test test-all lint ui-dev ui-build ui-test serve e2e
+.PHONY: dev migrate run run-dry test test-all lint lint-design ui-dev ui-build ui-test serve e2e
 
 dev:
 	docker compose up -d
@@ -20,6 +20,11 @@ test-all:
 
 lint:
 	ruff check app/ scripts/ tests/
+
+# Scan ui/src/ (excluding shadcn primitives) for raw colors, radius, and
+# shadows that bypass docs/design/tokens.css. Spec: docs/design/06-automation-spec.md §4.
+lint-design:
+	python3 scripts/lint_design_tokens.py
 
 ui-dev:
 	cd ui && npm run dev
