@@ -56,3 +56,8 @@ ui/node_modules/
 ui/dist/
 ui/.vite/
 ui/*.tsbuildinfo
+
+# Playwright artifacts
+ui/playwright-report/
+ui/test-results/
+ui/playwright/.cache/
