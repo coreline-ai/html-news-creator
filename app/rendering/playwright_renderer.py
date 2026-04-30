@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 from pathlib import Path
 from app.utils.logger import get_logger
 

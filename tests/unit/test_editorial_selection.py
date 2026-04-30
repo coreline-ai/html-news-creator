@@ -33,6 +33,7 @@ def _candidate(
     eligible=True,
     tiers=None,
     rejected=False,
+    image=False,
 ):
     return {
         "id": id_,
@@ -43,6 +44,7 @@ def _candidate(
             "source_tiers": tiers or ["mainstream"],
             "arxiv_only": set(tiers or ["mainstream"]) <= {"research"},
             "rejected": rejected,
+            "has_complete_main_image": image,
         },
     }
 
@@ -241,3 +243,68 @@ def test_select_editorial_clusters_limits_same_source_id_from_cluster_items():
         "cluster-a",
         "cluster-c",
     ]
+
+
+def test_select_editorial_clusters_backfills_image_candidates_after_topic_quota():
+    policy = _policy(
+        max_sections=5,
+        target_sections=4,
+        backfill_relax_topic_quotas=True,
+        backfill_require_image=True,
+        backfill_max_same_source_name=5,
+    )
+    policy["section_quotas"]["industry"] = 1
+    candidates = [
+        _candidate("industry_top", 90, "industry", image=True),
+        _candidate("product", 88, "product", image=True),
+        _candidate("industry_image_backfill", 80, "industry", image=True),
+        _candidate("industry_no_image", 79, "industry", image=False),
+        _candidate("tooling", 70, "tooling", image=True),
+    ]
+
+    selected = select_editorial_clusters(candidates, policy)
+
+    assert [candidate["id"] for candidate in selected] == [
+        "industry_top",
+        "product",
+        "tooling",
+        "industry_image_backfill",
+    ]
+
+
+def test_select_editorial_clusters_backfill_skips_no_image_candidates_by_default():
+    policy = _policy(
+        max_sections=4,
+        target_sections=3,
+        backfill_relax_topic_quotas=True,
+    )
+    policy["section_quotas"]["industry"] = 1
+    candidates = [
+        _candidate("industry_top", 90, "industry", image=True),
+        _candidate("product", 80, "product", image=True),
+        _candidate("industry_no_image", 79, "industry", image=False),
+    ]
+
+    selected = select_editorial_clusters(candidates, policy)
+
+    assert [candidate["id"] for candidate in selected] == ["industry_top", "product"]
+
+
+def test_select_editorial_clusters_backfill_keeps_arxiv_only_hard_cap():
+    policy = _policy(
+        max_sections=4,
+        target_sections=3,
+        max_arxiv_only_sections=1,
+        backfill_relax_topic_quotas=True,
+        backfill_require_image=True,
+    )
+    policy["section_quotas"]["research"] = 1
+    candidates = [
+        _candidate("research_a", 90, "research", tiers=["research"], image=True),
+        _candidate("product", 80, "product", tiers=["official"], image=True),
+        _candidate("research_b", 79, "research", tiers=["research"], image=True),
+    ]
+
+    selected = select_editorial_clusters(candidates, policy)
+
+    assert [candidate["id"] for candidate in selected] == ["research_a", "product"]

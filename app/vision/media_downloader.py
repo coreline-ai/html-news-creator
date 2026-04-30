@@ -1,8 +1,5 @@
 from __future__ import annotations
 import hashlib
-import io
-from pathlib import Path
-from urllib.parse import urlparse
 import httpx
 from app.config import settings
 from app.utils.url_utils import is_ssrf_blocked

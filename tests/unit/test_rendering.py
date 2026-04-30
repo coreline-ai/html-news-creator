@@ -1,10 +1,9 @@
 """Unit tests for Phase 5 rendering components."""
 from __future__ import annotations
 import pytest
-import unittest.mock as mock
 from unittest.mock import AsyncMock, patch
 
-from app.rendering.html_sanitizer import HTMLSanitizer, _BLEACH_AVAILABLE
+from app.rendering.html_sanitizer import HTMLSanitizer
 from app.rendering.playwright_renderer import PlaywrightRenderer, PlaywrightUnavailableError
 
 

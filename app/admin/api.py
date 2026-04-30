@@ -1,11 +1,10 @@
 from __future__ import annotations
 from datetime import date
-from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from app.db import get_db
-from app.models.db_models import JobRun, JobLog, Report, ReportSection, Source, RawItem, Cluster
+from app.models.db_models import JobRun, JobLog, Report, Source, RawItem, Cluster
 from app.utils.logger import get_logger
 
 app = FastAPI(
@@ -65,13 +64,13 @@ async def get_run_logs(
         "run_id": run_id,
         "logs": [
             {
-                "level": l.level,
+                "level": log.level,
                 # JobLog uses step_name (not step)
-                "step": l.step_name,
-                "message": l.message,
-                "created_at": str(l.created_at) if l.created_at else None,
+                "step": log.step_name,
+                "message": log.message,
+                "created_at": str(log.created_at) if log.created_at else None,
             }
-            for l in logs
+            for log in logs
         ],
     }
 
@@ -138,7 +137,7 @@ async def list_sources(
     query = select(Source)
     if active_only:
         # Source uses `enabled` column (not `is_active`)
-        query = query.where(Source.enabled == True)
+        query = query.where(Source.enabled.is_(True))
     result = await db.execute(query.order_by(Source.name))
     sources = result.scalars().all()
     return {

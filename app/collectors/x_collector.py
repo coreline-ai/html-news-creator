@@ -1,7 +1,6 @@
 from __future__ import annotations
 from datetime import datetime
 from app.collectors.base import BaseCollector, CollectedItem
-from app.utils.url_utils import canonicalize_url, url_hash
 from app.utils.logger import get_logger
 
 

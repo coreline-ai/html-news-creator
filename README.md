@@ -15,8 +15,8 @@
 [![CI](https://github.com/coreline-ai/html-news-creator/actions/workflows/ci.yml/badge.svg)](https://github.com/coreline-ai/html-news-creator/actions)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-매일 새벽 **50여 개 소스**에서 AI 트렌드를 수집·분류·클러스터링하고,  
-편집 정책 기반으로 **개발자 중심 뉴스레터 HTML**을 자동 생성하는 파이프라인입니다.
+매일 새벽 **37개 활성 소스**에서 AI 트렌드를 수집·분류·클러스터링하고,
+편집 정책과 image-aware backfill 기반으로 **최대 10개 주제의 개발자 중심 뉴스레터 HTML**을 자동 생성하는 파이프라인입니다.
 
 [데모 →](https://ai-news-5min-kr.netlify.app) · [구조 보기](#-아키텍처) · [빠른 시작](#-빠른-시작)
 
@@ -28,12 +28,12 @@
 
 | 기능 | 설명 |
 |------|------|
-| 🌐 **멀티 소스 수집** | RSS, GitHub Release, arXiv, Hacker News, Reddit, YouTube 등 50+ 소스 |
+| 🌐 **멀티 소스 수집** | RSS, GitHub Release, arXiv, Hacker News, Reddit, YouTube 등 37개 활성 소스 |
 | 🤖 **LLM 분류·요약** | AI 관련성 판별, 한국어 팩트 요약, 시사점 생성 |
 | 📐 **임베딩 클러스터링** | HDBSCAN으로 동일 주제 기사를 자동 그룹화 |
-| 📰 **편집 정책 기반 선정** | 소스 등급·클러스터 크기·토픽 할당량으로 투명한 섹션 선정 |
+| 📰 **편집 정책 기반 선정** | 소스 등급·클러스터 크기·토픽 할당량·이미지 우선 backfill로 최대 10개 섹션 선정 |
 | 🖼️ **스마트 이미지 선택** | 기자 초상·로고·UI 요소 자동 제외, 기사 대표 이미지 추출 |
-| 🌙 **다크/라이트 테마** | Pretendard 폰트, CSS 변수 기반 반응형 HTML |
+| 🎨 **3가지 리포트 테마** | 기본 라이트, 다크, `newsroom-white` 공개용 테마 |
 | 🚀 **Netlify 자동 배포** | GitHub Actions → Netlify 원클릭 배포 |
 | 📢 **Slack 알림** | 생성 완료 후 Webhook 통보 |
 
@@ -47,14 +47,14 @@
 │                                                                     │
 │  ① collect  →  ② extract  →  ③ classify  →  ④ cluster            │
 │     │               │              │               │               │
-│  50+ 소스        Trafilatura    LLM 판별         HDBSCAN           │
+│  37개 활성 소스   Trafilatura    LLM 판별         HDBSCAN           │
 │  RSS/GitHub     본문 추출      AI 관련성         임베딩 클러스터   │
 │  arXiv/HN                      점수화                              │
 │                                                                     │
 │  ⑤ verify   →  ⑥ generate  →  ⑦ render   →  ⑧ publish          │
 │     │               │              │               │               │
 │  교차 검증       LLM 섹션      Jinja2 HTML     Netlify/S3          │
-│  신뢰 점수       생성·요약     다크모드 지원    + Slack 알림       │
+│  신뢰 점수       생성·요약     3테마 지원       + Slack 알림       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -62,7 +62,7 @@
 
 ```
 collect   │ 소스별 컬렉터(RSS/GitHub/arXiv/HN) → DB 저장 (중복 스킵)
-extract   │ Trafilatura·Crawl4AI로 본문·OG 이미지·메타데이터 추출
+extract   │ Firecrawl·Crawl4AI·Trafilatura fallback으로 본문·OG 이미지 추출
 classify  │ LLM으로 AI 관련성 점수(0–1) 산출, 비관련 기사 필터
 cluster   │ text-embedding-3-small → HDBSCAN → 주제 클러스터 형성
 verify    │ 공식 도메인·GitHub·arXiv와 교차 검증, trust_score 산출
@@ -71,6 +71,10 @@ render    │ Jinja2 템플릿 → 반응형 HTML 리포트
 publish   │ public/news/ 저장 + Netlify 배포
 notify    │ Slack Webhook 발송
 ```
+
+> OpenAI처럼 Cloudflare challenge로 본문 접근이 차단되는 공식 사이트는
+> 무리하게 우회하지 않고, 공식 RSS summary/raw text를
+> `rss_summary_fallback` 추출 결과로 저장해 반복 실패와 데이터 누락을 줄입니다.
 
 ---
 
@@ -101,7 +105,7 @@ html-news-creator/
 │   └── verification/        # 소스 교차 검증
 │
 ├── data/
-│   ├── sources_registry.yaml   # 50+ 소스 설정
+│   ├── sources_registry.yaml   # 37개 활성 소스 설정
 │   ├── editorial_policy.yaml   # 점수 공식·할당량·티어
 │   └── official_domains.yaml   # 공식 도메인 화이트리스트
 │
@@ -109,7 +113,7 @@ html-news-creator/
 │   ├── report_newsstream.html.j2  # 메인 리포트 템플릿
 │   └── section_card.html.j2
 │
-├── tests/unit/              # 130+ 단위 테스트
+├── tests/unit/              # 140+ 단위 테스트
 ├── scripts/
 │   └── run_daily.py         # 파이프라인 진입점 (CLI)
 ├── .github/workflows/
@@ -132,7 +136,7 @@ html-news-creator/
 | 🟠 **mainstream** | TechCrunch, The Verge, The Decoder, MIT Tech Review, VentureBeat, AI타임스 | +12 |
 | 🟡 **developer_signal** | GitHub (openai / anthropics / google-deepmind / microsoft / meta-llama / huggingface) | +14 |
 | 🔵 **research** | arXiv cs.AI / cs.LG / cs.CL / cs.CV | +4 |
-| ⚪ **community** | Reddit r/MachineLearning, r/LocalLLaMA, Hacker News AI | −4 |
+| ⚪ **community** | Hacker News AI, Reddit r/MachineLearning, r/artificial, r/OpenAI, r/LocalLLaMA | −4 |
 
 ### 소스 유형별 분류
 
@@ -183,7 +187,10 @@ final_score = min(100, editorial_score + cluster_size_bonus)
 6. industry  ← 기본값
 ```
 
-### 섹션 할당량 (`max_sections: 10`)
+### 섹션 선정 정책 (`max_sections: 10`, `target_sections: 10`)
+
+1차 선정은 아래 토픽 할당량과 소스 캡을 엄격하게 적용합니다.
+선택 섹션이 `target_sections`보다 적으면 2차 **image-aware backfill**을 실행해 원본 대표 이미지가 있는 고품질 후보를 우선 보강합니다.
 
 | 토픽 | 최대 섹션 수 |
 |------|------------|
@@ -192,6 +199,17 @@ final_score = min(100, editorial_score + cluster_size_bonus)
 | research | 1 |
 | industry | 1 |
 | policy | 1 |
+
+Backfill 단계에서 유지/완화되는 기준:
+
+| 기준 | 동작 |
+|------|------|
+| 최소 점수 | `backfill_min_section_score: 35` 유지 |
+| 이미지 | `backfill_require_image: true`로 대표 이미지 후보 우선 |
+| 토픽 할당량 | 부족분 보강 시 완화 |
+| 커뮤니티 섹션 | 최대 2개까지 완화 |
+| 동일 소스 반복 | 최대 5개까지 완화 |
+| arXiv-only | 최대 1개 hard cap 유지 |
 
 ---
 
@@ -222,8 +240,9 @@ cp .env.example .env
 
 ```env
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/ai_trend
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o
+OPENAI_API_KEY=local-proxy
+OPENAI_BASE_URL=http://127.0.0.1:4317/openai/v1
+OPENAI_MODEL=gpt-5.5
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 TIMEZONE=Asia/Seoul
 ```
@@ -297,14 +316,14 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
 - **파일명**: `public/news/YYYY-MM-DD-trend.html`
 - **의존성**: 외부 JS 없음 (테마 토글만 인라인)
 - **반응형**: 모바일 최적화, max-width 820px
-- **다크모드**: CSS 변수 + `localStorage` 테마 저장
+- **테마**: `light → dark → newsroom-white` 3단계 순환, `localStorage` 저장
 - **폰트**: [Pretendard](https://github.com/orioncactus/pretendard) (한국어 최적화)
 - **섹션 구조**: 제목 → 팩트 요약 → 이미지 → 소셜 시그널 → 출처 목록 → 시사점
 
 ```
 ┌──────────────────────────────────────────┐
 │  🔥 AI 트렌드 핵심 요약 (2026-04-30)     │
-│  [요약 블록]  [통계: 수집 92건 / 18클러스터] │
+│  [요약 블록]  [통계: 수집 92건 / 10클러스터] │
 ├──────────────────────────────────────────┤
 │  1. Codex 알파 갱신                       │
 │  [팩트 요약] [GitHub OG 이미지]           │
@@ -357,7 +376,10 @@ ruff check app/ scripts/ tests/
 ```yaml
 report_selection:
   max_sections: 10          # 최대 섹션 수
+  target_sections: 10       # backfill 목표 섹션 수
   min_section_score: 35     # 최소 점수 커트라인
+  backfill_require_image: true
+  backfill_relax_topic_quotas: true
 
 section_quotas:
   tooling: 4                # 개발도구 섹션 최대 수
@@ -398,10 +420,10 @@ on:
 |------|-----------|
 | **웹 프레임워크** | FastAPI 0.115, SQLAlchemy 2.0 (async) |
 | **데이터베이스** | PostgreSQL 16, asyncpg, Alembic |
-| **LLM / 임베딩** | openai 1.37 (OpenAI-compatible), tiktoken |
+| **LLM / 임베딩** | openai 1.55 (OpenAI-compatible), tiktoken |
 | **클러스터링** | scikit-learn 1.5, numpy 1.26 (HDBSCAN) |
-| **수집** | feedparser, PyGithub, arxiv, httpx, aiohttp |
-| **본문 추출** | trafilatura 1.12, crawl4ai, playwright |
+| **수집** | feedparser, PyGithub, arxiv, httpx 0.27, aiohttp 3.10 |
+| **본문 추출** | trafilatura 1.12, crawl4ai 0.4, playwright 1.49 |
 | **렌더링** | Jinja2 3.1, bleach |
 | **스토리지** | boto3 (S3/MinIO), Pillow |
 | **모니터링** | structlog, rich |
