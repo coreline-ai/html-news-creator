@@ -1,19 +1,26 @@
 """Report publish helper — wires the admin route to NetlifyPublisher.
 
 Behaviour:
-- `dry_run=True`: returns a synthetic preview URL without invoking Netlify.
-- Otherwise requires `settings.netlify_auth_token` AND `settings.netlify_site_id`
-  to be present. Missing config raises `RuntimeError` (route → 400).
-- On a successful deploy, marks the Report as `published` and stamps
-  `published_at`.
+- Always re-renders the published HTML from the **current DB state** before
+  deploying so operator edits in Review (title/summary/image/disabled toggle)
+  are reflected in the deployed bundle. ``disabled_section_ids`` lets the
+  caller drop specific section UUIDs from the render.
+- ``dry_run=True``: re-renders but skips the Netlify deploy, returning a
+  synthetic preview URL.
+- Otherwise requires ``settings.netlify_auth_token`` AND
+  ``settings.netlify_site_id``. Missing config raises ``RuntimeError``
+  (route → 400).
+- On a successful deploy, marks the Report as ``published`` and stamps
+  ``published_at``.
 """
 from __future__ import annotations
 
 from datetime import date as date_cls, datetime
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from sqlalchemy import select
 
+from app.admin.render import render_published
 from app.config import settings
 from app.db import AsyncSessionLocal
 from app.deployment.netlify import NetlifyPublisher
@@ -32,6 +39,7 @@ async def publish_report(
     *,
     dry_run: bool = False,
     publish_dir: Optional[str] = None,
+    disabled_section_ids: Optional[Iterable[str]] = None,
 ) -> dict[str, Any]:
     """Publish a report's static bundle to Netlify.
 
@@ -45,12 +53,25 @@ async def publish_report(
     except ValueError as exc:
         raise ValueError(f"invalid date_kst (expected YYYY-MM-DD): {exc}")
 
+    disabled_list = list(disabled_section_ids or [])
+
+    # Step 1 — re-render from DB (always, including dry_run) so that the
+    # served HTML matches the current Review state.
+    async with AsyncSessionLocal() as render_session:
+        rendered_path = await render_published(
+            date_kst,
+            render_session,
+            disabled_section_ids=disabled_list,
+        )
+
     if dry_run:
         return {
             "status": "dry_run",
             "deployed_url": _synthetic_url(date_kst),
             "report_date": date_kst,
             "dry_run": True,
+            "rendered_path": str(rendered_path),
+            "disabled_count": len(disabled_list),
         }
 
     auth_token = getattr(settings, "netlify_auth_token", "") or ""
@@ -81,6 +102,7 @@ async def publish_report(
                 "publish_report_done",
                 date_kst=date_kst,
                 deploy_url=deploy_url,
+                disabled_count=len(disabled_list),
             )
 
         return {
@@ -88,5 +110,7 @@ async def publish_report(
             "deployed_url": deploy_url,
             "report_date": date_kst,
             "dry_run": False,
+            "rendered_path": str(rendered_path),
+            "disabled_count": len(disabled_list),
             "details": deploy_result,
         }
