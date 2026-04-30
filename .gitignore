@@ -1,17 +1,52 @@
+# Local secrets / environment
 .env
+.env.*
+!.env.example
+
+# OS / editor / local assistant state
+.DS_Store
+Thumbs.db
+.claude/
+.cursor/
+.idea/
+.vscode/
+
+# Python caches / virtual environments
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.tox/
+.nox/
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Test / coverage / build artifacts
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+dist/
+build/
+
+# Runtime logs / local databases
+*.log
+logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# Local pipeline data/output artifacts
 data/raw/
 data/processed/
+data/reports/
 public/news/*.html
 public/news/*.json
 public/news/*.pdf
 public/news/*.png
-*.egg-info/
-dist/
-build/
-.DS_Store
+public/assets/generated/

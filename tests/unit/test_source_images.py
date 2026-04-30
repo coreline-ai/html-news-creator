@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from app.utils.source_images import (
+    extract_content_images_from_html,
     extract_representative_image_from_feed_entry,
     extract_representative_image_from_html,
+    is_complete_main_image_url,
 )
 
 
@@ -58,3 +60,54 @@ def test_extract_representative_image_from_feed_entry_skips_reddit_static_images
     image_url = extract_representative_image_from_feed_entry(entry)
 
     assert image_url == "https://example.com/content/photo.webp"
+
+
+def test_extract_representative_image_from_html_skips_author_portrait_url():
+    html = """
+    <meta property="og:image" content="https://cdn.example.com/author_profile_images/reporter.jpg">
+    <meta property="og:image" content="https://cdn.example.com/news/main-hero.jpg">
+    """
+
+    image_url = extract_representative_image_from_html(html, "https://example.com/news")
+
+    assert image_url == "https://cdn.example.com/news/main-hero.jpg"
+
+
+def test_extract_content_images_skips_byline_and_tiny_images():
+    html = """
+    <article>
+      <img src="/authors/jane.jpg" class="byline author" width="120" height="120">
+      <img src="/pixel.jpg" width="1" height="1">
+      <img src="/images/main-ai-chip.jpg" class="article-image" width="1200" height="675">
+    </article>
+    """
+
+    images = extract_content_images_from_html(html, "https://example.com/story")
+
+    assert images == ["https://example.com/images/main-ai-chip.jpg"]
+
+
+def test_complete_main_image_rejects_reporter_headshot():
+    assert is_complete_main_image_url("https://example.com/news/hero.webp") is True
+    assert is_complete_main_image_url("https://example.com/headshot/reporter.jpg") is False
+
+
+def test_ai_chip_images_are_not_rejected_by_icon_substring():
+    html = """
+    <article>
+      <img src="/images/nvidia-silicon-chip-hero.jpg"
+           alt="NVIDIA silicon chip for AI inference"
+           width="1200"
+           height="675">
+    </article>
+    """
+
+    images = extract_content_images_from_html(html, "https://example.com/story")
+
+    assert images == ["https://example.com/images/nvidia-silicon-chip-hero.jpg"]
+    assert (
+        is_complete_main_image_url(
+            "https://cdn.example.com/images/nvidia-silicon-chip-hero.jpg"
+        )
+        is True
+    )

@@ -387,6 +387,42 @@ sources:
       - paper
       - model
 
+  - name: Reddit Artificial
+    source_type: rss
+    url: https://www.reddit.com/r/artificial/.rss
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: industry
+    priority: 38
+    max_items: 10
+    required: false
+    purpose: Track broad AI community discussion and popular AI news from r/artificial.
+    keywords:
+      - artificial intelligence
+      - AI
+      - generative AI
+      - LLM
+      - automation
+
+  - name: Reddit OpenAI
+    source_type: rss
+    url: https://www.reddit.com/r/OpenAI/.rss
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: product
+    priority: 37
+    max_items: 10
+    required: false
+    purpose: Track OpenAI and ChatGPT community reactions while keeping community content capped.
+    keywords:
+      - OpenAI
+      - ChatGPT
+      - GPT
+      - API
+      - Codex
+
   - name: Reddit LocalLLaMA
     source_type: rss
     url: https://www.reddit.com/r/LocalLLaMA/.rss

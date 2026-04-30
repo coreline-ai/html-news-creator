@@ -36,6 +36,71 @@
 [data-theme="dark"] strong { color: #ffffff; }
 [data-theme="dark"] img { box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
 
+[data-theme="newsroom-white"] {
+  --bg: #ffffff;
+  --fg: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff6ff;
+  --quote-bg: #f8fafc;
+  --code-bg: #f1f5f9;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 12px 32px rgba(15, 23, 42, 0.11);
+  color-scheme: light;
+}
+[data-theme="newsroom-white"] h1,
+[data-theme="newsroom-white"] h2 { color: #020617; }
+[data-theme="newsroom-white"] strong { color: #020617; }
+[data-theme="newsroom-white"] a:hover {
+  color: var(--accent-hover);
+  background: var(--accent-soft);
+}
+[data-theme="newsroom-white"] blockquote {
+  color: #334155;
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="newsroom-white"] blockquote code {
+  background: rgba(37,99,235,0.10);
+  color: var(--accent-hover);
+}
+[data-theme="newsroom-white"] code { color: var(--accent-hover); }
+[data-theme="newsroom-white"] figure img {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  background: var(--surface-soft);
+}
+[data-theme="newsroom-white"] figcaption { color: #475569; }
+[data-theme="newsroom-white"] .tier-official {
+  background: #ecfdf5;
+  color: #047857;
+}
+[data-theme="newsroom-white"] .tier-mainstream {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+[data-theme="newsroom-white"] .tier-research {
+  background: #eef2ff;
+  color: #4338ca;
+}
+[data-theme="newsroom-white"] .footer-box {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="newsroom-white"] .theme-toggle {
+  background: var(--surface);
+  color: #475569;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14);
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 
@@ -219,9 +284,13 @@ figcaption {
 .theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
 .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .theme-toggle svg { width: 20px; height: 20px; display: block; }
-.theme-toggle .ico-sun { display: none; }
+.theme-toggle .ico-sun,
+.theme-toggle .ico-newsroom { display: none; }
 [data-theme="dark"] .theme-toggle .ico-sun { display: block; }
 [data-theme="dark"] .theme-toggle .ico-moon { display: none; }
+[data-theme="newsroom-white"] .theme-toggle .ico-newsroom { display: block; }
+[data-theme="newsroom-white"] .theme-toggle .ico-moon,
+[data-theme="newsroom-white"] .theme-toggle .ico-sun { display: none; }
 
 @media (max-width: 640px) {
   body { padding: 24px 16px 64px; font-size: 16px; }
@@ -242,7 +311,9 @@ figcaption {
 (function(){
   try {
     var p = JSON.parse(localStorage.getItem('ai_news_prefs') || '{}');
-    var t = p.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var allowed = {'light': true, 'dark': true, 'newsroom-white': true};
+    var preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    var t = allowed[p.theme] ? p.theme : preferred;
     document.documentElement.dataset.theme = t;
   } catch(e){}
 })();
@@ -382,7 +453,7 @@ figcaption {
 </main>
 
 <button class="theme-toggle" id="theme-toggle" type="button"
-        aria-label="다크 모드로 전환" title="테마 전환">
+        aria-label="다크 모드로 전환" title="다크 모드로 전환">
   <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
@@ -392,19 +463,39 @@ figcaption {
     <circle cx="12" cy="12" r="4"/>
     <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
   </svg>
+  <svg class="ico-newsroom" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 21h14a2 2 0 0 0 2-2V8l-6-6H6a2 2 0 0 0-2 2v17z"/>
+    <path d="M14 2v6h6"/>
+    <path d="M8 12h8M8 16h8M8 8h2"/>
+  </svg>
 </button>
 
 <script>
 (function(){
   var btn = document.getElementById('theme-toggle');
   if(!btn) return;
+  var themes = ['light', 'dark', 'newsroom-white'];
+  var nextLabels = {
+    light: '다크 모드로 전환',
+    dark: '뉴스룸 화이트로 전환',
+    'newsroom-white': '기본 라이트 모드로 전환'
+  };
+  function normalize(t){
+    return themes.indexOf(t) >= 0 ? t : 'light';
+  }
   function apply(t){
+    t = normalize(t);
     document.documentElement.dataset.theme = t;
-    btn.setAttribute('aria-label', t==='dark'?'라이트 모드로 전환':'다크 모드로 전환');
+    btn.setAttribute('aria-label', nextLabels[t]);
+    btn.setAttribute('title', nextLabels[t]);
     try{ localStorage.setItem('ai_news_prefs', JSON.stringify({theme:t})); }catch(e){}
   }
+  apply(document.documentElement.dataset.theme || 'light');
   btn.addEventListener('click', function(){
-    apply(document.documentElement.dataset.theme==='dark'?'light':'dark');
+    var current = normalize(document.documentElement.dataset.theme);
+    var next = themes[(themes.indexOf(current) + 1) % themes.length];
+    apply(next);
   });
 })();
 </script>

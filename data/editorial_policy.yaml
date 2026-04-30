@@ -49,6 +49,7 @@ scoring_weights:
   mainstream_source_boost: 6
   product_signal: 8
   research_signal: 3
+  main_image_signal: 8
   metrics_signal: 0.25
   cluster_size_boost_per_item: 5
   cluster_size_boost_max: 20

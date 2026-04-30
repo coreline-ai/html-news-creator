@@ -35,6 +35,7 @@ DEFAULT_POLICY: dict[str, Any] = {
         "mainstream_source_boost": 6,
         "product_signal": 8,
         "research_signal": 3,
+        "main_image_signal": 8,
         "metrics_signal": 0.05,
     },
     "penalties": {

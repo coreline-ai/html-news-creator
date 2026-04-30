@@ -105,3 +105,15 @@ def test_regular_image_section_does_not_render_play_overlay():
     html = renderer.render_report(make_report(), sections=[section])
 
     assert "youtube-play-overlay" not in html
+
+
+def test_newsroom_white_theme_is_available_without_replacing_existing_themes():
+    renderer = make_renderer()
+    html = renderer.render_report(make_report(), sections=[])
+
+    assert '[data-theme="dark"]' in html
+    assert '[data-theme="newsroom-white"]' in html
+    assert "ico-newsroom" in html
+    assert "var themes = ['light', 'dark', 'newsroom-white'];" in html
+    assert "뉴스룸 화이트로 전환" in html
+    assert "기본 라이트 모드로 전환" in html
