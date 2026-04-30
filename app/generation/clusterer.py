@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from app.utils.logger import get_logger
 
 
@@ -52,12 +52,12 @@ class HDBSCANClusterer:
             labels = [0] * len(embeddings)
 
         label_array = labels
-        n_clusters = len(set(l for l in label_array if l >= 0))
-        noise_count = sum(1 for l in label_array if l == -1)
+        n_clusters = len(set(label for label in label_array if label >= 0))
+        noise_count = sum(1 for label in label_array if label == -1)
         cluster_sizes = {}
-        for l in label_array:
-            if l >= 0:
-                cluster_sizes[l] = cluster_sizes.get(l, 0) + 1
+        for label in label_array:
+            if label >= 0:
+                cluster_sizes[label] = cluster_sizes.get(label, 0) + 1
 
         self.logger.info("clustering_done", n_clusters=n_clusters, noise_count=noise_count, total=len(embeddings))
         return ClusterResult(

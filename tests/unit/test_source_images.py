@@ -90,6 +90,22 @@ def test_extract_content_images_skips_byline_and_tiny_images():
 def test_complete_main_image_rejects_reporter_headshot():
     assert is_complete_main_image_url("https://example.com/news/hero.webp") is True
     assert is_complete_main_image_url("https://example.com/headshot/reporter.jpg") is False
+    assert (
+        is_complete_main_image_url(
+            "https://cdn.aitimes.com/news/photo/member/cpark_20220210101322.png"
+        )
+        is False
+    )
+
+
+def test_complete_main_image_rejects_recurring_promo_asset():
+    assert (
+        is_complete_main_image_url(
+            "https://techcrunch.com/wp-content/uploads/2026/03/"
+            "StrictlyVC-San-Francisco-2026-no-date.png"
+        )
+        is False
+    )
 
 
 def test_ai_chip_images_are_not_rejected_by_icon_substring():

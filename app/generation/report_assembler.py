@@ -1,5 +1,4 @@
 from __future__ import annotations
-import json
 from datetime import date, datetime, timezone
 from dataclasses import dataclass, field
 from app.utils.logger import get_logger

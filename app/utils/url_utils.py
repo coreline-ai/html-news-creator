@@ -1,6 +1,5 @@
 import hashlib
 import ipaddress
-import re
 from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
 
 _SSRF_BLOCKED_NETWORKS = [

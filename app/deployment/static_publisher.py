@@ -1,6 +1,5 @@
 from __future__ import annotations
 import json
-import shutil
 from datetime import date
 from pathlib import Path
 from app.utils.logger import get_logger

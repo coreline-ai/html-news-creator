@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import importlib.util
 from app.utils.logger import get_logger
 
 
@@ -10,11 +11,7 @@ class SuryaOCRUnavailableError(Exception):
 class SuryaOCRClient:
     def __init__(self):
         self.logger = get_logger(step="image_analyze")
-        try:
-            import surya
-            self._available = True
-        except ImportError:
-            self._available = False
+        self._available = importlib.util.find_spec("surya") is not None
 
     async def extract_text(self, image_data: bytes) -> str:
         """Extract text from image bytes using Surya OCR."""

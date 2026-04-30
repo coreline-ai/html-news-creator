@@ -56,6 +56,9 @@ def _extract_attrs(tag: str) -> dict[str, str]:
 
 _SKIP_SUBSTRINGS = (
     "front/assets", "favicon", "tracking", "analytics", "placeholder",
+    # Recurring publisher promo/event assets that are commonly embedded in
+    # article bodies but are not evidence images for the article itself.
+    "strictlyvc",
 )
 _SKIP_TOKENS = (
     "avatar", "logo", "icon", "badge", "noborder", "button", "pixel",
@@ -70,6 +73,8 @@ _AUTHOR_PORTRAIT_PATTERNS = (
     "author_profile_images",   # Chorus CMS (The Verge, Polygon, etc.)
     "profile_images",
     "/chorus/author",          # Chorus CMS author asset path
+    "news/photo/member",       # AI타임스 reporter profile image path
+    "/photo/member/",
     "_blurple",                # The Verge's journalist portrait naming scheme
     "/author/",
     "/authors/",

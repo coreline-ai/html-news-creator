@@ -65,6 +65,9 @@ def summarize_cluster_editorial(
         "editorial_score": final_score,
         "topic_type": best.get("topic_type", "industry"),
         "eligible_for_main": any(bool(rank.get("eligible_for_main")) for rank in ranks),
+        "has_complete_main_image": any(
+            bool(rank.get("has_complete_main_image")) for rank in ranks
+        ),
         "rejected": not usable,
         "rejection_reason": "all_items_rejected" if not usable else None,
         "source_tiers": source_tiers,
@@ -96,6 +99,15 @@ def _float_cfg(mapping: dict[str, Any], key: str, default: float) -> float:
         return float(mapping.get(key, default))
     except (TypeError, ValueError):
         return default
+
+
+def _bool_cfg(mapping: dict[str, Any], key: str, default: bool) -> bool:
+    value = mapping.get(key, default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
 
 
 def _iter_values(value: Any) -> list[Any]:
@@ -155,6 +167,44 @@ def _ratio_cap(mapping: dict[str, Any], key: str, max_sections: int) -> int | No
     return max(1, ceil(max_sections * min(ratio, 1.0)))
 
 
+def _has_nonempty_image_value(value: Any) -> bool:
+    return any(str(item or "").strip() for item in _iter_values(value))
+
+
+def _mapping_has_complete_image(mapping: dict[str, Any]) -> bool:
+    if bool(mapping.get("has_complete_main_image")):
+        return True
+
+    editorial = mapping.get("editorial")
+    if isinstance(editorial, dict):
+        if bool(editorial.get("has_complete_main_image")):
+            return True
+        best_item = editorial.get("best_item")
+        if isinstance(best_item, dict) and _mapping_has_complete_image(best_item):
+            return True
+
+    image_keys = (
+        "image_url",
+        "og_image_url",
+        "representative_image_url",
+        "thumbnail_url",
+    )
+    if any(_has_nonempty_image_value(mapping.get(key)) for key in image_keys):
+        return True
+
+    image_list_keys = ("content_image_urls", "image_urls", "images")
+    return any(_has_nonempty_image_value(mapping.get(key)) for key in image_list_keys)
+
+
+def _candidate_has_complete_image(candidate: dict[str, Any]) -> bool:
+    if _mapping_has_complete_image(candidate):
+        return True
+    return any(
+        isinstance(item, dict) and _mapping_has_complete_image(item)
+        for item in candidate.get("items") or []
+    )
+
+
 def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict]:
     """Select report clusters according to editorial policy.
 
@@ -172,6 +222,30 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
     max_same_tier = _ratio_cap(
         selection_cfg, "max_same_source_tier_ratio", max_sections
     )
+    target_sections = min(
+        _int_cfg(selection_cfg, "target_sections", max_sections),
+        max_sections,
+    )
+    backfill_min_score = _float_cfg(
+        selection_cfg, "backfill_min_section_score", min_score
+    )
+    backfill_require_image = _bool_cfg(
+        selection_cfg, "backfill_require_image", True
+    )
+    backfill_relax_topic_quotas = _bool_cfg(
+        selection_cfg, "backfill_relax_topic_quotas", False
+    )
+    backfill_max_community = _int_cfg(
+        selection_cfg, "backfill_max_community_sections", max_community
+    )
+    backfill_max_same_source = _int_cfg(
+        selection_cfg, "backfill_max_same_source_name", max_same_source
+    )
+    backfill_max_same_tier = _ratio_cap(
+        selection_cfg, "backfill_max_same_source_tier_ratio", max_sections
+    )
+    if backfill_max_same_tier is None:
+        backfill_max_same_tier = max_same_tier
 
     normalized_candidates: list[dict[str, Any]] = []
     for candidate in candidates:
@@ -188,37 +262,63 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
         )
 
     selected: list[dict] = []
+    selected_ids: set[int] = set()
     topic_counts: dict[str, int] = {}
     arxiv_only_count = 0
     community_count = 0
     source_counts: dict[str, int] = {}
     tier_counts: dict[str, int] = {}
 
-    for candidate in sorted(normalized_candidates, key=sort_key, reverse=True):
+    def can_select(
+        candidate: dict[str, Any],
+        *,
+        min_allowed_score: float,
+        enforce_topic_quotas: bool,
+        community_limit: int,
+        same_source_limit: int,
+        same_tier_limit: int | None,
+        require_image: bool,
+    ) -> bool:
+        if id(candidate) in selected_ids:
+            return False
         editorial = candidate["editorial"]
         topic = str(editorial.get("topic_type", "industry") or "industry")
         score = _score(editorial)
 
-        if editorial.get("rejected") or score < min_score:
-            continue
-        if topic_counts.get(topic, 0) >= _int_cfg(quotas, topic, max_sections):
-            continue
+        if editorial.get("rejected"):
+            return False
+        if score < min_allowed_score:
+            return False
+        if require_image and not _candidate_has_complete_image(candidate):
+            return False
+        if enforce_topic_quotas and topic_counts.get(topic, 0) >= _int_cfg(
+            quotas, topic, max_sections
+        ):
+            return False
         source_tiers = _source_tiers(editorial)
         if editorial.get("arxiv_only") and arxiv_only_count >= max_arxiv_only:
-            continue
-        if "community" in source_tiers and community_count >= max_community:
-            continue
+            return False
+        if "community" in source_tiers and community_count >= community_limit:
+            return False
         source_keys = _candidate_source_keys(candidate)
         if source_keys and any(
-            source_counts.get(key, 0) >= max_same_source for key in source_keys
+            source_counts.get(key, 0) >= same_source_limit for key in source_keys
         ):
-            continue
-        if max_same_tier is not None and any(
-            tier_counts.get(tier, 0) >= max_same_tier for tier in set(source_tiers)
+            return False
+        if same_tier_limit is not None and any(
+            tier_counts.get(tier, 0) >= same_tier_limit for tier in set(source_tiers)
         ):
-            continue
+            return False
+        return True
 
+    def add_candidate(candidate: dict[str, Any]) -> None:
+        nonlocal arxiv_only_count, community_count
+        editorial = candidate["editorial"]
+        topic = str(editorial.get("topic_type", "industry") or "industry")
+        source_tiers = _source_tiers(editorial)
+        source_keys = _candidate_source_keys(candidate)
         selected.append(candidate)
+        selected_ids.add(id(candidate))
         topic_counts[topic] = topic_counts.get(topic, 0) + 1
         if editorial.get("arxiv_only"):
             arxiv_only_count += 1
@@ -228,7 +328,50 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
             source_counts[key] = source_counts.get(key, 0) + 1
         for tier in set(source_tiers):
             tier_counts[tier] = tier_counts.get(tier, 0) + 1
+
+    sorted_candidates = sorted(normalized_candidates, key=sort_key, reverse=True)
+
+    for candidate in sorted_candidates:
+        if not can_select(
+            candidate,
+            min_allowed_score=min_score,
+            enforce_topic_quotas=True,
+            community_limit=max_community,
+            same_source_limit=max_same_source,
+            same_tier_limit=max_same_tier,
+            require_image=False,
+        ):
+            continue
+
+        add_candidate(candidate)
         if len(selected) >= max_sections:
             break
+
+    if len(selected) < target_sections:
+        backfill_candidates = sorted(
+            normalized_candidates,
+            key=lambda candidate: (
+                1 if _candidate_has_complete_image(candidate) else 0,
+                1 if candidate["editorial"].get("eligible_for_main") else 0,
+                _score(candidate["editorial"]),
+            ),
+            reverse=True,
+        )
+
+        for candidate in backfill_candidates:
+            if not can_select(
+                candidate,
+                min_allowed_score=backfill_min_score,
+                enforce_topic_quotas=not backfill_relax_topic_quotas,
+                community_limit=backfill_max_community,
+                same_source_limit=backfill_max_same_source,
+                same_tier_limit=backfill_max_same_tier,
+                require_image=backfill_require_image,
+            ):
+                continue
+
+            add_candidate(candidate)
+            if len(selected) >= target_sections:
+                break
 
     return selected

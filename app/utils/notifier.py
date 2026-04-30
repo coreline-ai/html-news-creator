@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 import httpx
 from app.config import settings
 from app.utils.logger import get_logger

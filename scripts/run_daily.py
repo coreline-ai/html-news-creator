@@ -24,6 +24,65 @@ def _json_dict(value) -> dict:
     return value if isinstance(value, dict) else {}
 
 
+def _fallback_extract_result_from_raw_item(raw_item, error: str | None = None):
+    """Build a low-quality extraction result from already collected text.
+
+    Some official sites (notably OpenAI) can return Cloudflare challenge pages to
+    non-browser HTTP extractors. When the collector already captured an official
+    RSS summary/raw text, storing that text prevents repeated failed extraction
+    attempts and keeps downstream steps on the ExtractedContent path.
+    """
+    from app.extractors.base import ExtractResult
+
+    content = (getattr(raw_item, "raw_text", None) or "").strip()
+    if not content:
+        return None
+
+    source_type = str(getattr(raw_item, "source_type", "") or "")
+    extractor = "rss_summary_fallback" if source_type == "rss" else "raw_text_fallback"
+    quality = min(0.35, len(content) / 2000)
+
+    return ExtractResult(
+        raw_item_id=str(getattr(raw_item, "id", "") or ""),
+        extractor=extractor,
+        status="low_quality",
+        title=getattr(raw_item, "title", None),
+        description=content,
+        content_markdown=content,
+        content_text=content,
+        quality_score=quality,
+        error=error,
+    )
+
+
+def _extract_result_metadata(result) -> dict:
+    metadata = {}
+    if result.og_image_url:
+        metadata["og_image_url"] = result.og_image_url
+    if result.content_image_urls:
+        metadata["content_image_urls"] = result.content_image_urls
+    if result.error:
+        metadata["extract_error"] = result.error
+    if str(result.extractor).endswith("_fallback"):
+        metadata["fallback"] = True
+        metadata["fallback_source"] = "raw_item.raw_text"
+    return metadata
+
+
+def _is_access_blocked_error(error: str | None) -> bool:
+    lower = str(error or "").lower()
+    return any(
+        token in lower
+        for token in (
+            "403",
+            "forbidden",
+            "cloudflare",
+            "challenge",
+            "enable javascript and cookies",
+        )
+    )
+
+
 def _registry_source_url(source: dict) -> str:
     source_type = source.get("source_type", "")
     if source_type == "rss" and source.get("url"):
@@ -333,11 +392,15 @@ async def run_collect(run_date: date, dry_run: bool, logger, source_types=None) 
 async def run_extract(run_date: date, dry_run: bool, logger) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import RawItem, ExtractedContent
-    from app.extractors.trafilatura import TrafilaturaExtractor
-    from app.extractors.base import ExtractorUnavailableError, ExtractorError
+    from app.extractors.orchestrator import ExtractorOrchestrator
+    from app.extractors.base import (
+        ExtractorUnavailableError,
+        ExtractorError,
+        SSRFBlockedError,
+    )
     from sqlalchemy import select, not_, exists
 
-    extractor = TrafilaturaExtractor()
+    extractor = ExtractorOrchestrator()
 
     async with AsyncSessionLocal() as session:
         stmt = select(RawItem).where(
@@ -348,36 +411,86 @@ async def run_extract(run_date: date, dry_run: bool, logger) -> dict:
 
     extracted = 0
     failed = 0
+    fallback = 0
 
     for raw_item in raw_items:
+        result = None
         try:
             result = await extractor.extract(raw_item.url, str(raw_item.id))
-            if not dry_run:
-                async with AsyncSessionLocal() as session:
-                    ec = ExtractedContent(
-                        raw_item_id=raw_item.id,
+            if result.status == "failed":
+                result = _fallback_extract_result_from_raw_item(
+                    raw_item,
+                    error=result.error,
+                )
+                if result:
+                    fallback += 1
+                    logger.warning(
+                        "extract_fallback_used",
+                        url=raw_item.url,
                         extractor=result.extractor,
-                        extraction_status=result.status,
-                        content_text=result.content_text,
-                        content_markdown=result.content_markdown,
-                        quality_score=result.quality_score,
-                        metadata_json={
-                            **({"og_image_url": result.og_image_url} if result.og_image_url else {}),
-                            **({"content_image_urls": result.content_image_urls} if result.content_image_urls else {}),
-                        },
+                        reason=result.error,
                     )
-                    session.add(ec)
-                    await session.commit()
-            extracted += 1
-        except (ExtractorUnavailableError, ExtractorError) as e:
+        except SSRFBlockedError as e:
             logger.error("extract_failed", url=raw_item.url, error=str(e))
             failed += 1
+            continue
+        except (ExtractorUnavailableError, ExtractorError) as e:
+            result = _fallback_extract_result_from_raw_item(raw_item, error=str(e))
+            if result:
+                fallback += 1
+                logger.warning(
+                    "extract_fallback_used",
+                    url=raw_item.url,
+                    extractor=result.extractor,
+                    reason=str(e),
+                )
+            else:
+                logger.error("extract_failed", url=raw_item.url, error=str(e))
+                failed += 1
+                continue
         except Exception as e:
-            logger.error("extract_error", url=raw_item.url, error=str(e))
-            failed += 1
+            result = _fallback_extract_result_from_raw_item(raw_item, error=str(e))
+            if result:
+                fallback += 1
+                logger.warning(
+                    "extract_fallback_used",
+                    url=raw_item.url,
+                    extractor=result.extractor,
+                    reason=str(e),
+                )
+            else:
+                logger.error("extract_error", url=raw_item.url, error=str(e))
+                failed += 1
+                continue
 
-    logger.info("extract_done", extracted=extracted, failed=failed)
-    return {"extracted": extracted, "failed": failed}
+        if not result:
+            logger.error(
+                "extract_failed",
+                url=raw_item.url,
+                error="all extractors failed and no raw_text fallback is available",
+            )
+            failed += 1
+            continue
+
+        if not dry_run:
+            async with AsyncSessionLocal() as session:
+                ec = ExtractedContent(
+                    raw_item_id=raw_item.id,
+                    extractor=result.extractor,
+                    extraction_status=result.status,
+                    title=result.title,
+                    description=result.description,
+                    content_text=result.content_text,
+                    content_markdown=result.content_markdown,
+                    quality_score=result.quality_score,
+                    metadata_json=_extract_result_metadata(result),
+                )
+                session.add(ec)
+                await session.commit()
+        extracted += 1
+
+    logger.info("extract_done", extracted=extracted, failed=failed, fallback=fallback)
+    return {"extracted": extracted, "failed": failed, "fallback": fallback}
 
 
 async def run_classify(run_date: date, dry_run: bool, logger) -> dict:
@@ -643,7 +756,10 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
                 ),
                 "",
             )
-            if not image_url and ri.url:
+            image_fetch_blocked = _is_access_blocked_error(
+                ec_metadata.get("extract_error")
+            )
+            if not image_url and ri.url and not image_fetch_blocked:
                 try:
                     image_url = await asyncio.to_thread(
                         fetch_representative_image_url,

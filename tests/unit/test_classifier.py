@@ -35,7 +35,11 @@ async def test_tc1_e3_classify_openai_error():
 
 def _chunk(text: str):
     from unittest.mock import MagicMock
-    delta = MagicMock(); delta.content = text
-    choice = MagicMock(); choice.delta = delta
-    chunk = MagicMock(); chunk.choices = [choice]
+
+    delta = MagicMock()
+    delta.content = text
+    choice = MagicMock()
+    choice.delta = delta
+    chunk = MagicMock()
+    chunk.choices = [choice]
     return chunk

@@ -2,10 +2,9 @@ import uuid
 from datetime import datetime
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float, ForeignKey,
-    Integer, String, Text, UniqueConstraint, text,
+    Integer, Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID, ENUM
-from sqlalchemy.orm import relationship
 from app.db import Base
 
 # Enum columns use create_type=False — types are already created by migration SQL

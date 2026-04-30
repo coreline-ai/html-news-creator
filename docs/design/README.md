@@ -5,7 +5,7 @@
 
 ## 출처와 근거
 
-- **레퍼런스**: [paperclipai/paperclip](https://github.com/paperclipai/paperclip) — shadcn/ui new-york 스타일을 OKLCH 모노크롬으로 운영하는 오픈소스 SaaS. 에디토리얼 미학, 정보 밀도, 정직한 토큰 계층이 우리 프로젝트와 결이 맞아 출발점으로 채택.
+- **시각 베이스**: [shadcn/ui](https://ui.shadcn.com) **new-york** 스타일을 **OKLCH 모노크롬 뉴트럴**로 운영하는 컨벤션. 에디토리얼 미학, 정보 밀도, 정직한 토큰 계층이 우리 프로젝트와 결이 맞아 출발점으로 채택.
 - **상위 표준**: 프로젝트 루트의 [`DESIGN.md`](../../DESIGN.md) — 디자인 에이전트 운영 표준. 이 폴더는 그 4개 층위(Brand → Foundation → Semantic → Component)를 실제 토큰과 코드로 채운 결과물.
 - **기존 출력물**: [`templates/report_newsstream.html.j2`](../../templates/report_newsstream.html.j2) — 현재 일일 리포트 템플릿. 폰트(Pretendard), 다크모드, max-width 820, 카드 패턴 일부는 여기서 그대로 계승.
 
@@ -51,4 +51,4 @@
 
 ## 라이선스 주의
 
-paperclip의 토큰 수치는 shadcn/ui (MIT) 기반의 일반적 수치이며, paperclip 고유 자산(로고/이미지/카피)은 포함하지 않습니다. 우리 토큰은 이 시스템에서 **재해석한 결과**이며, 별도 자산을 추가할 때는 출처를 명시합니다.
+이 시스템의 OKLCH 토큰 수치는 [shadcn/ui](https://ui.shadcn.com)(MIT 라이선스)의 보편적 디폴트를 출발점으로 삼은 **재해석 결과**이며, 외부 프로젝트의 고유 자산(로고/이미지/카피)은 포함하지 않습니다. 별도 자산을 추가할 때는 출처를 명시합니다.
