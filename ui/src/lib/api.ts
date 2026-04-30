@@ -99,11 +99,11 @@ export interface ReportSection {
   social_signal_summary?: string | null;
   inference_summary?: string | null;
   caution?: string | null;
-  image_evidence_json?: Record<string, unknown> | null;
-  sources_json?: Record<string, unknown> | null;
-  confidence?: number | null;
+  image_evidence_json?: unknown[] | Record<string, unknown> | null;
+  sources_json?: unknown[] | Record<string, unknown> | null;
+  confidence?: number | string | null;
   importance_score?: number | null;
-  tags_json?: Record<string, unknown> | null;
+  tags_json?: unknown[] | Record<string, unknown> | null;
 }
 
 export interface ReportsListResponse {

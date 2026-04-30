@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Path as PathParam, Query
@@ -221,6 +221,45 @@ class SourcePatchRequest(BaseModel):
         }
 
 
+# ---------------------------------------------------------------------------
+# Phase 4 — Section editing / reorder / publish
+# ---------------------------------------------------------------------------
+
+class SectionPatchRequest(BaseModel):
+    """Allowed editable fields on a single ReportSection.
+
+    Maps to the existing DB columns:
+      - title          → ReportSection.title
+      - summary_ko     → ReportSection.fact_summary
+      - implication_ko → ReportSection.inference_summary
+      - image_url      → injected into image_evidence_json (first entry)
+    """
+
+    title: Optional[str] = None
+    summary_ko: Optional[str] = None
+    implication_ko: Optional[str] = None
+    image_url: Optional[str] = None
+
+    model_config = {"extra": "ignore"}
+
+    def has_any(self) -> bool:
+        return any(
+            getattr(self, k) is not None
+            for k in ("title", "summary_ko", "implication_ko", "image_url")
+        )
+
+
+class ReorderRequest(BaseModel):
+    section_ids: list[str] = Field(default_factory=list)
+
+
+class PublishRequest(BaseModel):
+    publish_dir: Optional[str] = None
+    dry_run: bool = False
+
+    model_config = {"extra": "allow"}
+
+
 # 1) GET /api/reports — recent reports (lightweight summary)
 @app.get("/api/reports")
 async def api_list_reports(
@@ -375,3 +414,199 @@ async def api_update_source(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"source": updated}
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Section editing / reorder / publish (4 new routes)
+# ---------------------------------------------------------------------------
+
+
+def _serialize_section(s: ReportSection) -> dict[str, Any]:
+    return {
+        "id": str(s.id),
+        "section_order": s.section_order,
+        "title": s.title,
+        "lead": s.lead,
+        "fact_summary": s.fact_summary,
+        "social_signal_summary": s.social_signal_summary,
+        "inference_summary": s.inference_summary,
+        "caution": s.caution,
+        "image_evidence_json": s.image_evidence_json,
+        "sources_json": s.sources_json,
+        "confidence": s.confidence,
+        "importance_score": s.importance_score,
+        "tags_json": s.tags_json,
+    }
+
+
+# 9) PATCH /api/sections/{id} — edit single section
+@app.patch("/api/sections/{section_id}")
+async def api_patch_section(
+    section_id: str,
+    payload: SectionPatchRequest = Body(default_factory=SectionPatchRequest),
+    db: AsyncSession = Depends(get_db),
+):
+    if not payload.has_any():
+        raise HTTPException(status_code=400, detail="no updatable fields supplied")
+
+    result = await db.execute(
+        select(ReportSection).where(ReportSection.id == section_id)
+    )
+    section = result.scalars().first()
+    if section is None:
+        raise HTTPException(status_code=404, detail=f"section not found: {section_id}")
+
+    if payload.title is not None:
+        section.title = payload.title
+    if payload.summary_ko is not None:
+        # `fact_summary` is the closest existing column for the editorial summary.
+        section.fact_summary = payload.summary_ko
+    if payload.implication_ko is not None:
+        section.inference_summary = payload.implication_ko
+    if payload.image_url is not None:
+        # Replace / inject the primary image evidence entry.
+        existing = section.image_evidence_json or []
+        if isinstance(existing, list) and existing and isinstance(existing[0], dict):
+            existing[0] = {**existing[0], "url": payload.image_url}
+        else:
+            existing = [{"url": payload.image_url}]
+        section.image_evidence_json = existing
+
+    await db.commit()
+    await db.refresh(section)
+    return {"section": _serialize_section(section)}
+
+
+# 10) POST /api/sections/{id}/regenerate — single-section regen (stub-friendly)
+@app.post("/api/sections/{section_id}/regenerate")
+async def api_regenerate_section(
+    section_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ReportSection).where(ReportSection.id == section_id)
+    )
+    section = result.scalars().first()
+    if section is None:
+        raise HTTPException(status_code=404, detail=f"section not found: {section_id}")
+
+    # Stubbed regen — real LLM hook lives in app/generation. We acknowledge the
+    # request and let the UI poll/refresh. Other sections are NOT touched.
+    logger.info("regenerate_section_queued", section_id=section_id)
+    return {
+        "status": "queued",
+        "section_id": section_id,
+        "note": "single-section regenerate stub — does not touch other sections",
+    }
+
+
+# 11) POST /api/reports/{date}/reorder — bulk reorder section_order
+@app.post("/api/reports/{date_kst}/reorder")
+async def api_reorder_sections(
+    date_kst: str,
+    payload: ReorderRequest = Body(default_factory=ReorderRequest),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        run_date = date.fromisoformat(date_kst)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
+        )
+
+    if not payload.section_ids:
+        raise HTTPException(status_code=400, detail="section_ids must not be empty")
+
+    result = await db.execute(select(Report).where(Report.report_date == run_date))
+    db_report = result.scalars().first()
+    if db_report is None:
+        raise HTTPException(status_code=404, detail=f"report not found: {date_kst}")
+
+    sections_result = await db.execute(
+        select(ReportSection).where(ReportSection.report_id == db_report.id)
+    )
+    sections = sections_result.scalars().all()
+    by_id = {str(s.id): s for s in sections}
+
+    # All ids in payload must belong to this report
+    unknown = [sid for sid in payload.section_ids if sid not in by_id]
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"section_ids not part of report {date_kst}: {unknown}",
+        )
+
+    for new_pos, sid in enumerate(payload.section_ids):
+        by_id[sid].section_order = new_pos
+
+    await db.commit()
+
+    refreshed = await db.execute(
+        select(ReportSection)
+        .where(ReportSection.report_id == db_report.id)
+        .order_by(ReportSection.section_order)
+    )
+    ordered = refreshed.scalars().all()
+    return {
+        "report_date": date_kst,
+        "sections": [_serialize_section(s) for s in ordered],
+    }
+
+
+# 12) POST /api/reports/{date}/publish — Netlify deploy trigger
+@app.post("/api/reports/{date_kst}/publish")
+async def api_publish_report(
+    date_kst: str,
+    payload: PublishRequest = Body(default_factory=PublishRequest),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        run_date = date.fromisoformat(date_kst)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
+        )
+
+    result = await db.execute(select(Report).where(Report.report_date == run_date))
+    db_report = result.scalars().first()
+    if db_report is None:
+        raise HTTPException(status_code=404, detail=f"report not found: {date_kst}")
+
+    if payload.dry_run:
+        deploy_url = f"https://ai-news-5min-kr.netlify.app/{date_kst}-trend.html"
+        return {
+            "status": "dry_run",
+            "deployed_url": deploy_url,
+            "report_date": date_kst,
+        }
+
+    # Try real Netlify deploy; degrade gracefully when CLI is unavailable.
+    try:
+        from app.deployment.netlify import NetlifyPublisher
+
+        publisher = NetlifyPublisher(
+            site_id=getattr(settings, "netlify_site_id", "") or "",
+            auth_token=getattr(settings, "netlify_auth_token", "") or "",
+        )
+        publish_dir = payload.publish_dir or "public"
+        deploy_result = await publisher.deploy(publish_dir=publish_dir)
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.error("publish_unexpected", error=str(exc))
+        deploy_result = {"status": "failed", "error": str(exc)}
+
+    deploy_url = (
+        deploy_result.get("deploy_url")
+        or f"https://ai-news-5min-kr.netlify.app/{date_kst}-trend.html"
+    )
+
+    if deploy_result.get("status") == "success":
+        db_report.status = "published"
+        db_report.published_at = datetime.utcnow()
+        await db.commit()
+
+    return {
+        "status": deploy_result.get("status", "unknown"),
+        "deployed_url": deploy_url,
+        "report_date": date_kst,
+        "details": deploy_result,
+    }
