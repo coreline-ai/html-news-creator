@@ -38,3 +38,6 @@ jobs:
           from app.rendering.jinja_renderer import JinjaRenderer
           print('All imports OK')
           "
+
+      - name: Design-token lint (operator webapp)
+        run: python3 scripts/lint_design_tokens.py

@@ -4,6 +4,9 @@
 
 이 문서는 **사람이 아닌 도구가 읽는 것**이 목적입니다. 표·룰·예시는 의도적으로 단정적이고 좁게 적습니다.
 
+> **범위 가드**
+> 이 명세의 기본 적용 대상은 추가 개발될 웹앱입니다. 현재 정적 HTML 리포트(`templates/report_newsstream.html.j2`, `public/news/*.html`)는 참고 표면이며, 명시적인 마이그레이션 요청 없이는 이 명세를 적용하지 않습니다.
+
 ---
 
 ## 1. 시스템 메타데이터
@@ -14,14 +17,15 @@ version: 1.0.0
 basis:
   - shadcn/ui new-york style (OKLCH monochrome convention)
   - DESIGN.md (project-internal standard)
-license: MIT (token values), proprietary (this guide content)
+license: MIT
 color_space: oklch
 font_primary: Pretendard
 language_priority: [ko, en]
 modes: [light, dark]
-target_surfaces:
-  - daily_report_html      # 일일 리포트 (현재)
-  - operator_webapp        # 운영 화면 (향후)
+primary_target_surfaces:
+  - operator_webapp        # 추가 개발될 운영/관리자/대시보드 웹앱
+reference_surfaces:
+  - daily_report_html      # 현재 정적 HTML 리포트. 기본 적용 대상 아님.
 ```
 
 ---
@@ -32,10 +36,11 @@ target_surfaces:
 
 ```typescript
 interface DesignRequest {
-  surface: 'daily_report_html' | 'operator_webapp';
+  surface: 'operator_webapp';
+  reference_surface?: 'daily_report_html'; // 참고용. 명시적 마이그레이션 작업이 아니면 생성 대상 아님.
   pattern:
     | 'list' | 'detail' | 'kanban' | 'table' | 'dashboard'
-    | 'report_section' | 'empty_state' | 'form' | 'modal';
+    | 'empty_state' | 'form' | 'modal';
   density: 'comfortable' | 'compact';
   intent: string;          // 자연어 한 줄 — 화면이 무엇을 위한 것인가
   data?: Record<string, unknown>;  // 실제 데이터 (있으면 사용, 없으면 placeholder)
@@ -47,7 +52,7 @@ interface DesignRequest {
 
 ```typescript
 interface DesignArtifact {
-  html: string;            // 마크업 (semantic, accessible)
+  html: string;            // 웹앱 화면 마크업 (semantic, accessible). 정적 리포트 HTML 템플릿 아님.
   css?: string;            // 페이지 한정 추가 CSS (필요할 때만)
   tokens_imported: string[];  // 사용한 토큰 키 목록
   components_used: string[];  // 사용한 컴포넌트 이름 목록
@@ -60,15 +65,14 @@ interface DesignArtifact {
 ## 3. 결정 트리 — 코드젠이 따르는 우선순위
 
 ```
-1. surface가 daily_report_html?
-   → max-width 820, 단일 컬럼, 여유 spacing, Pretendard
-   → 컬러는 monochrome + 강조 1색
-   → 카드 radius 0, border 1px
-
-2. surface가 operator_webapp?
+1. surface가 operator_webapp?
    → workspace shell (sidebar 240 + main + right 320)
    → density compact (행 36~44px)
    → table/list/kanban 패턴 우선
+
+2. surface가 daily_report_html로 요청되었나?
+   → 기본 거부/경고. 현재 HTML 리포트는 이 명세의 기본 적용 대상이 아님.
+   → 사용자가 "HTML 리포트 디자인 마이그레이션"을 명시한 경우에만 별도 계획 후 진행.
 
 3. data가 비어 있나?
    → empty_state 패턴 적용
@@ -102,7 +106,7 @@ interface DesignArtifact {
 - `border-radius: 12px` 같은 magic number
 - `box-shadow: 0 4px 20px rgba(...)` 같은 자유 그림자
 
-자동 검사 정규식 (`scripts/lint_design_tokens.py`로 구현 예정):
+자동 검사 정규식 (`scripts/lint_design_tokens.py`로 구현됨, `make lint-design`):
 
 ```python
 FORBIDDEN_PATTERNS = [
@@ -198,7 +202,9 @@ shadcn/ui 표준이므로 [tokens.css](tokens.css)의 `@theme inline` 블록만 
 
 도메인 데이터 → 화면 슬롯 매핑.
 
-### 일일 리포트 섹션
+### 일일 리포트 섹션 (참고 전용)
+
+현재 HTML 리포트 데이터 구조를 웹앱에서 미리보기/상세 화면으로 다룰 때 참고합니다. 이 매핑만으로 HTML 리포트 템플릿을 수정하지 않습니다.
 ```yaml
 section:
   category_label:    # 11px uppercase, --muted-foreground
@@ -247,7 +253,8 @@ row:
 ### 8.1 LLM 프롬프트 컨텍스트 (권장 형태)
 
 ```
-당신은 html-news-creator의 화면 코드를 생성합니다. 다음 디자인 시스템을 따릅니다:
+당신은 html-news-creator의 추가 웹앱 화면 코드를 생성합니다. 다음 디자인 시스템을 따릅니다.
+현재 정적 HTML 리포트 템플릿은 생성/수정 대상이 아닙니다:
 
 1. 토큰: tokens.css (이 파일을 import한다고 가정)
 2. 컴포넌트 매핑: 04-components.md의 표 그대로
@@ -266,7 +273,7 @@ row:
 
 ### 8.2 코드젠 후 검증
 
-생성된 코드를 다음 순서로 검사:
+생성된 웹앱 화면 코드를 다음 순서로 검사:
 
 1. `scripts/lint_design_tokens.py {file}` — 토큰 위반 검사
 2. HTML validator — semantic 마크업 확인
@@ -275,9 +282,9 @@ row:
 
 ---
 
-## 9. 점진적 마이그레이션 가이드
+## 9. HTML 리포트 마이그레이션 가드
 
-기존 `templates/report_newsstream.html.j2`를 새 시스템으로 옮길 때:
+기존 `templates/report_newsstream.html.j2`는 이 디자인 시스템의 기본 적용 대상이 아닙니다. 아래 절차는 사용자가 명시적으로 HTML 리포트 디자인 마이그레이션을 요청한 경우에만 사용합니다.
 
 ### Phase 1. 토큰 임포트
 - `<style>` 블록 상단에 `tokens.css` 내용 삽입
@@ -319,14 +326,15 @@ python scripts/build_tokens.py \
 
 ```bash
 # CI에서 실행
-python scripts/lint_design_tokens.py templates/ public/
+python scripts/lint_design_tokens.py app/ docs/design/
 ```
 
 ### 10.3 PR 자동화
 
 PR에 다음 파일이 변경되면 자동 검사:
 - `docs/design/**` → 토큰 빌드 + 린트 자동 실행
-- `templates/**.j2` → 린트 자동 실행
+- 웹앱 UI 파일 → 린트 자동 실행
+- `templates/**.j2`, `public/news/**` → 기본 제외. 명시적 HTML 리포트 마이그레이션 PR에서만 별도 린트
 - 새 컴포넌트 추가 시 → 04-components.md 갱신 확인
 
 ---
