@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 export type Theme = "dark" | "light";
 export type PreviewMode = "live" | "section";
@@ -97,12 +98,18 @@ interface AppState {
   setPreviewMode: (m: PreviewMode) => void;
 }
 
-const STORAGE_KEY = "theme";
+// ThemeToggle path persists the preferred theme under this localStorage key.
+// We keep the same key here so the two writers stay in sync (single source).
+const THEME_STORAGE_KEY = "theme";
+
+// Bumped together with the persisted shape below. If the persisted run
+// options shape changes incompatibly, bump this and add a `migrate` hook.
+const PERSIST_VERSION = 1;
 
 function readInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     if (stored === "light" || stored === "dark") return stored;
   } catch {
     // ignore
@@ -114,36 +121,62 @@ function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("dark", theme === "dark");
   try {
-    window.localStorage.setItem(STORAGE_KEY, theme);
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {
     // ignore
   }
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  theme: readInitialTheme(),
-  setTheme: (theme) => {
-    applyTheme(theme);
-    set({ theme });
-  },
-  toggleTheme: () => {
-    const next: Theme = get().theme === "dark" ? "light" : "dark";
-    applyTheme(next);
-    set({ theme: next });
-  },
+/**
+ * Slice-shape persisted to `localStorage` under `news-studio-options`.
+ * Only fields that should survive refresh — `theme` is intentionally NOT in
+ * here because `ThemeToggle`/`applyTheme` already write it under the legacy
+ * "theme" key (used by the inline pre-React boot script in `index.html`).
+ * `previewMode` is duplicated in `useReviewStore` for the Review screen and
+ * is not persisted from here.
+ */
+interface PersistedAppState {
+  runOptions: RunOptions;
+}
 
-  runOptions: { ...DEFAULT_RUN_OPTIONS },
-  setOption: (key, value) =>
-    set((s) => ({ runOptions: { ...s.runOptions, [key]: value } })),
-  setQuota: (key, value) =>
-    set((s) => ({
-      runOptions: {
-        ...s.runOptions,
-        quotas: { ...s.runOptions.quotas, [key]: value },
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      theme: readInitialTheme(),
+      setTheme: (theme) => {
+        applyTheme(theme);
+        set({ theme });
       },
-    })),
-  resetOptions: () => set({ runOptions: { ...DEFAULT_RUN_OPTIONS } }),
+      toggleTheme: () => {
+        const next: Theme = get().theme === "dark" ? "light" : "dark";
+        applyTheme(next);
+        set({ theme: next });
+      },
 
-  previewMode: "live",
-  setPreviewMode: (previewMode) => set({ previewMode }),
-}));
+      runOptions: { ...DEFAULT_RUN_OPTIONS },
+      setOption: (key, value) =>
+        set((s) => ({ runOptions: { ...s.runOptions, [key]: value } })),
+      setQuota: (key, value) =>
+        set((s) => ({
+          runOptions: {
+            ...s.runOptions,
+            quotas: { ...s.runOptions.quotas, [key]: value },
+          },
+        })),
+      resetOptions: () => set({ runOptions: { ...DEFAULT_RUN_OPTIONS } }),
+
+      previewMode: "live",
+      setPreviewMode: (previewMode) => set({ previewMode }),
+    }),
+    {
+      name: "news-studio-options",
+      version: PERSIST_VERSION,
+      storage: createJSONStorage(() => window.localStorage),
+      // Only persist runOptions; theme has its own writer, previewMode is
+      // ephemeral (the Review screen has its own persisted store).
+      partialize: (state): PersistedAppState => ({
+        runOptions: state.runOptions,
+      }),
+    },
+  ),
+);

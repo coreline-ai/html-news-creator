@@ -49,7 +49,7 @@ describe("Dashboard (TC-2.E1)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/no reports yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/아직 리포트가 없습니다/)).toBeInTheDocument();
     });
   });
 

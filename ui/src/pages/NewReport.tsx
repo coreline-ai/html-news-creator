@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Play, Save } from "lucide-react";
+import { Play, Save, Sparkles } from "lucide-react";
 import { RunOptionsPanel } from "@/components/RunOptionsPanel";
 import { LivePreview } from "@/components/LivePreview";
 import { RunProgressToast } from "@/components/RunProgressToast";
@@ -92,11 +92,28 @@ export function NewReport() {
         style={{ gridTemplateColumns: "minmax(360px, 40%) 1fr" }}
       >
         <RunOptionsPanel />
-        <LivePreview
-          html={preview.html}
-          isLoading={preview.isLoading}
-          error={preview.error}
-        />
+        <div className="relative flex min-w-0 flex-col">
+          {!preview.html && !preview.error ? (
+            <div
+              data-testid="new-report-preview-hint"
+              role="note"
+              className="border-border bg-muted/40 text-muted-foreground flex items-center gap-2 border-b px-4 py-2 text-xs"
+            >
+              <Sparkles className="size-3.5" aria-hidden="true" />
+              <span>
+                옵션을 변경하면 미리보기가 생성됩니다.
+                {preview.isLoading ? " 첫 렌더 대기 중…" : ""}
+              </span>
+            </div>
+          ) : null}
+          <div className="min-h-0 flex-1">
+            <LivePreview
+              html={preview.html}
+              isLoading={preview.isLoading}
+              error={preview.error}
+            />
+          </div>
+        </div>
       </div>
 
       <footer

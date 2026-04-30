@@ -131,12 +131,23 @@ export function Dashboard() {
             ) : !reports || reports.length === 0 ? (
               <EmptyState
                 icon={FileText}
-                title="No reports yet"
-                description="Run the pipeline to generate the first daily report."
+                title="아직 리포트가 없습니다"
+                description={`오늘(${today})자 첫 리포트를 만들어보세요. 옵션을 조정하고 Run을 누르면 파이프라인이 실행됩니다.`}
                 action={
-                  <Button asChild size="sm">
-                    <Link to="/reports/new">New report</Link>
-                  </Button>
+                  <div
+                    className="flex items-center gap-3"
+                    data-testid="dashboard-empty-actions"
+                  >
+                    <Button asChild size="sm">
+                      <Link to="/reports/new">오늘자 첫 리포트 생성</Link>
+                    </Button>
+                    <Link
+                      to="/settings"
+                      className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                    >
+                      도움말 / 정책 보기
+                    </Link>
+                  </div>
                 }
               />
             ) : (

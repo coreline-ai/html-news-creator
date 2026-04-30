@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 /**
  * Phase 4 — ReviewReport local state.
@@ -7,9 +8,13 @@ import { create } from "zustand";
  * to avoid merge conflicts. Holds only Review-screen UI state:
  *
  *   - previewMode:     toggle between iframe live preview vs section editor
- *   - selectedSectionId: which section row is being edited
+ *   - selectedSectionId: which section row is being edited (NOT persisted —
+ *                        the row may not exist on a future load)
  *   - disabledSectionIds: client-only "off" toggle (DB has no `enabled` col).
  *                         Publish should exclude these.
+ *
+ * `previewMode` and `disabledSectionIds` survive refresh under the
+ * `news-studio-review` localStorage key.
  */
 
 export type ReviewPreviewMode = "live" | "section";
@@ -28,50 +33,74 @@ interface ReviewStoreState {
   reset: () => void;
 }
 
-export const useReviewStore = create<ReviewStoreState>((set, get) => ({
-  previewMode: "live",
-  selectedSectionId: null,
-  disabledSectionIds: {},
+const REVIEW_PERSIST_VERSION = 1;
 
-  setPreviewMode: (mode) => set({ previewMode: mode }),
-  togglePreviewMode: () =>
-    set((s) => ({ previewMode: s.previewMode === "live" ? "section" : "live" })),
+interface PersistedReviewState {
+  previewMode: ReviewPreviewMode;
+  disabledSectionIds: Record<string, boolean>;
+}
 
-  selectSection: (id) =>
-    set({
-      selectedSectionId: id,
-      // Selecting a section implicitly switches to the editor pane.
-      previewMode: id ? "section" : get().previewMode,
-    }),
-
-  toggleSectionEnabled: (id) =>
-    set((s) => {
-      const next = { ...s.disabledSectionIds };
-      if (next[id]) {
-        delete next[id];
-      } else {
-        next[id] = true;
-      }
-      return { disabledSectionIds: next };
-    }),
-
-  setSectionEnabled: (id, enabled) =>
-    set((s) => {
-      const next = { ...s.disabledSectionIds };
-      if (enabled) {
-        delete next[id];
-      } else {
-        next[id] = true;
-      }
-      return { disabledSectionIds: next };
-    }),
-
-  isSectionEnabled: (id) => !get().disabledSectionIds[id],
-
-  reset: () =>
-    set({
+export const useReviewStore = create<ReviewStoreState>()(
+  persist(
+    (set, get) => ({
       previewMode: "live",
       selectedSectionId: null,
       disabledSectionIds: {},
+
+      setPreviewMode: (mode) => set({ previewMode: mode }),
+      togglePreviewMode: () =>
+        set((s) => ({
+          previewMode: s.previewMode === "live" ? "section" : "live",
+        })),
+
+      selectSection: (id) =>
+        set({
+          selectedSectionId: id,
+          // Selecting a section implicitly switches to the editor pane.
+          previewMode: id ? "section" : get().previewMode,
+        }),
+
+      toggleSectionEnabled: (id) =>
+        set((s) => {
+          const next = { ...s.disabledSectionIds };
+          if (next[id]) {
+            delete next[id];
+          } else {
+            next[id] = true;
+          }
+          return { disabledSectionIds: next };
+        }),
+
+      setSectionEnabled: (id, enabled) =>
+        set((s) => {
+          const next = { ...s.disabledSectionIds };
+          if (enabled) {
+            delete next[id];
+          } else {
+            next[id] = true;
+          }
+          return { disabledSectionIds: next };
+        }),
+
+      isSectionEnabled: (id) => !get().disabledSectionIds[id],
+
+      reset: () =>
+        set({
+          previewMode: "live",
+          selectedSectionId: null,
+          disabledSectionIds: {},
+        }),
     }),
-}));
+    {
+      name: "news-studio-review",
+      version: REVIEW_PERSIST_VERSION,
+      storage: createJSONStorage(() => window.localStorage),
+      // selectedSectionId is intentionally omitted — its identity is
+      // tied to a single fetched report and should not leak across reloads.
+      partialize: (state): PersistedReviewState => ({
+        previewMode: state.previewMode,
+        disabledSectionIds: state.disabledSectionIds,
+      }),
+    },
+  ),
+);
