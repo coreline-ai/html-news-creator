@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { SectionList } from "@/components/SectionList";
 import { SectionEditor } from "@/components/SectionEditor";
-import { LivePreview } from "@/components/LivePreview";
 import { useReport } from "@/hooks/useReports";
 import {
   usePatchSection,
@@ -310,13 +309,27 @@ export function ReviewReport() {
 
         <div data-testid="review-right-pane" className="min-h-[60vh]">
           {previewMode === "live" ? (
-            <LivePreview
-              html={null}
-              isLoading={false}
-              error={
-                "Live preview is read-only here — published HTML is rendered via /api/preview."
-              }
-            />
+            <div className="border-border bg-card flex min-h-[60vh] flex-col overflow-hidden rounded-md border">
+              <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-2 text-xs">
+                <span>발행된 HTML — <span className="font-mono">{date}</span></span>
+                <a
+                  href={`/api/reports/${date}/html`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  새 탭에서 열기
+                </a>
+              </div>
+              <iframe
+                key={date}
+                title={`Published report ${date}`}
+                src={`/api/reports/${date}/html`}
+                className="flex-1 w-full border-0"
+                sandbox="allow-same-origin"
+                data-testid="review-live-iframe"
+              />
+            </div>
           ) : (
             <SectionEditor
               section={selectedSection}
