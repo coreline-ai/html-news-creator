@@ -55,3 +55,4 @@ public/assets/generated/
 ui/node_modules/
 ui/dist/
 ui/.vite/
+ui/*.tsbuildinfo
