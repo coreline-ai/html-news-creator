@@ -627,9 +627,13 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
         for ri, ec, source_db in rows:
             ec_metadata = _json_dict(ec.metadata_json if ec else {})
             raw_json = _json_dict(ri.raw_json)
+            content_image_candidates = ec_metadata.get("content_image_urls", [])
+            if not isinstance(content_image_candidates, list):
+                content_image_candidates = []
             image_candidates = (
                 ec_metadata.get("og_image_url"),
-                raw_json.get("image_url"),  # RSS/YouTube/Reddit thumbnail from collect step
+                *content_image_candidates,
+                raw_json.get("image_url"),  # RSS/YouTube/Reddit thumbnail fallback
             )
             image_url = next(
                 (
@@ -663,7 +667,18 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
                 else raw_json.get("source_trust_level", "")
             )
             source_for_editorial = _source_dict_for_editorial(source_db, ri)
-            editorial = editorial_ranker.rank(ri, source=source_for_editorial)
+            editorial_item = {
+                "source_id": source_name or raw_json.get("source_name", ""),
+                "source_type": ri.source_type,
+                "title": ri.title or "",
+                "url": ri.url or "",
+                "canonical_url": ri.canonical_url or "",
+                "raw_text": ri.raw_text or "",
+                "metrics_json": ri.metrics_json or {},
+                "raw_json": raw_json,
+                "image_url": image_url,
+            }
+            editorial = editorial_ranker.rank(editorial_item, source=source_for_editorial)
 
             items.append(
                 {
@@ -671,7 +686,7 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
                     "url": ri.url or "",
                     "content_text": (ec.content_text if ec else ri.raw_text) or "",
                     "og_image_url": image_url,
-                    "content_image_urls": ec_metadata.get("content_image_urls", []),
+                    "content_image_urls": content_image_candidates,
                     "source_name": source_name,
                     "source_trust_level": source_trust_level,
                     "video_id": raw_json.get("video_id") or _youtube_video_id_from_url(ri.url or ""),
@@ -740,7 +755,9 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
         )
         og_image_url = next(
             (it["og_image_url"] for it in items
-             if it.get("og_image_url") and not any(s in it["og_image_url"] for s in _OG_IMG_SKIP)),
+             if it.get("og_image_url")
+             and is_usable_representative_image_url(it["og_image_url"])
+             and not any(s in it["og_image_url"] for s in _OG_IMG_SKIP)),
             "",
         )
         image_source = "content" if content_image_urls else ("source" if og_image_url else "")
@@ -864,11 +881,20 @@ async def run_render(run_date: date, dry_run: bool, logger) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import Report, ReportSection, Verification, RawItem, AnalysisResult
     from app.rendering.jinja_renderer import JinjaRenderer
+    from app.utils.source_images import is_usable_representative_image_url
     from sqlalchemy import select, func
 
     renderer = JinjaRenderer()
     report_data = None
     sections_data = []
+
+    def _is_allowed_render_image(evidence: dict) -> bool:
+        image_url = evidence.get("url", "")
+        if not image_url:
+            return False
+        if evidence.get("source") == "generated_svg":
+            return image_url.startswith("../assets/generated/") and image_url.endswith(".svg")
+        return is_usable_representative_image_url(image_url)
 
     async with AsyncSessionLocal() as session:
         db_report = await session.scalar(
@@ -917,12 +943,14 @@ async def run_render(run_date: date, dry_run: bool, logger) -> dict:
                     e["url"]
                     for e in image_evidence
                     if e.get("url") and e.get("source") == "content"
+                    and _is_allowed_render_image(e)
                 ]
                 fallback_image = next(
                     (
                         e["url"]
                         for e in image_evidence
                         if e.get("url") and e.get("source") != "content"
+                        and _is_allowed_render_image(e)
                     ),
                     "",
                 )

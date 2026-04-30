@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.editorial.policy import load_policy
+from app.utils.source_images import is_complete_main_image_url
 
 
 @dataclass(frozen=True)
@@ -13,6 +14,7 @@ class RankedItem:
     topic_type: str
     source_tier: str
     eligible_for_main: bool
+    has_complete_main_image: bool = False
     rejected: bool = False
     rejection_reason: str | None = None
     score_breakdown: dict[str, float] | None = None
@@ -131,6 +133,36 @@ def _metrics_score(item: Any, weight: float) -> float:
     return min(total * weight, 10.0)
 
 
+def _dict_value(obj: Any, key: str) -> Any:
+    return obj.get(key) if isinstance(obj, dict) else None
+
+
+def _main_image_url(item: Any) -> str:
+    candidates = [
+        _get(item, "image_url"),
+        _get(item, "og_image_url"),
+        _get(item, "representative_image_url"),
+    ]
+
+    raw_json = _get(item, "raw_json", None)
+    metadata_json = _get(item, "metadata_json", None)
+    for mapping in (raw_json, metadata_json):
+        if isinstance(mapping, dict):
+            candidates.extend(
+                [
+                    _dict_value(mapping, "image_url"),
+                    _dict_value(mapping, "og_image_url"),
+                    _dict_value(mapping, "representative_image_url"),
+                ]
+            )
+
+    for candidate in candidates:
+        image_url = str(candidate or "")
+        if is_complete_main_image_url(image_url):
+            return image_url
+    return ""
+
+
 class EditorialRanker:
     """Pure, deterministic ranker for raw collected AI-news items."""
 
@@ -149,6 +181,7 @@ class EditorialRanker:
         source_tier = _normalize_source_tier(item, source, policy)
         topic_type = _classify_topic(item, source, source_tier)
         arxiv_only = _is_arxiv(item, source)
+        has_complete_main_image = bool(_main_image_url(item)) and not arxiv_only
 
         rejection_reason = None
         if gates.get("require_source", True) and not _source_present(item, source):
@@ -172,6 +205,11 @@ class EditorialRanker:
         if topic_type == "research":
             breakdown["research_signal"] = float(weights.get("research_signal", 0))
         breakdown["metrics_signal"] = _metrics_score(item, float(weights.get("metrics_signal", 0)))
+        breakdown["main_image_signal"] = (
+            float(weights.get("main_image_signal", 0))
+            if has_complete_main_image
+            else 0.0
+        )
 
         penalty_total = 0.0
         if arxiv_only:
@@ -200,6 +238,7 @@ class EditorialRanker:
             topic_type=topic_type,
             source_tier=source_tier,
             eligible_for_main=eligible_for_main,
+            has_complete_main_image=has_complete_main_image,
             rejected=bool(rejection_reason),
             rejection_reason=rejection_reason,
             score_breakdown={k: round(v, 2) for k, v in breakdown.items()},

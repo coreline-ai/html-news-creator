@@ -79,3 +79,42 @@ def test_github_source_is_developer_signal_not_main_headline():
 
     assert result["source_tier"] == "developer_signal"
     assert result["eligible_for_main"] is True
+
+
+def test_complete_main_image_boosts_editorial_score():
+    source = {"source_type": "trusted_media", "source_tier": "mainstream"}
+    base_item = {
+        "source_id": "the-verge",
+        "source_type": "rss",
+        "title": "Major AI model update reaches enterprise customers",
+        "url": "https://www.theverge.com/ai/model-update",
+    }
+
+    without_image = rank_item(base_item, source=source)
+    with_image = rank_item(
+        {
+            **base_item,
+            "image_url": "https://cdn.vox-cdn.com/uploads/chorus_image/image/ai-model-hero.jpg",
+        },
+        source=source,
+    )
+
+    assert with_image["has_complete_main_image"] is True
+    assert with_image["score_breakdown"]["main_image_signal"] > 0
+    assert with_image["editorial_score"] > without_image["editorial_score"]
+
+
+def test_journalist_or_author_image_does_not_boost_score():
+    source = {"source_type": "trusted_media", "source_tier": "mainstream"}
+    item = {
+        "source_id": "the-verge",
+        "source_type": "rss",
+        "title": "Major AI model update reaches enterprise customers",
+        "url": "https://www.theverge.com/ai/model-update",
+        "image_url": "https://cdn.vox-cdn.com/author_profile_images/reporter_blurple.jpg",
+    }
+
+    result = rank_item(item, source=source)
+
+    assert result["has_complete_main_image"] is False
+    assert result["score_breakdown"]["main_image_signal"] == 0

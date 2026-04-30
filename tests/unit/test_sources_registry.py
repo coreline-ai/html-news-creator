@@ -25,6 +25,8 @@ EXPANDED_SOURCE_NAMES = {
     "AI타임스",
     "Hacker News AI",
     "Reddit MachineLearning",
+    "Reddit Artificial",
+    "Reddit OpenAI",
     "Reddit LocalLLaMA",
 }
 EXCLUDED_DEFAULT_SOURCE_NAMES = {
@@ -153,3 +155,27 @@ def test_yahoo_finance_ai_uses_ai_filter():
     sources = {source["name"]: source for source in load_sources()}
 
     assert sources["Yahoo Finance AI"].get("ai_filter") is True
+
+
+def test_reddit_ai_sources_are_community_capped_candidates():
+    sources = {source["name"]: source for source in load_sources()}
+    reddit_names = {
+        "Reddit MachineLearning",
+        "Reddit Artificial",
+        "Reddit OpenAI",
+        "Reddit LocalLLaMA",
+    }
+
+    for name in reddit_names:
+        source = sources[name]
+        assert source["source_type"] == "rss"
+        assert source["source_tier"] == "community"
+        assert source["trust_level"] == "community"
+        assert source["max_items"] <= 10
+
+
+def test_meta_ai_blog_remains_registered():
+    sources = {source["name"]: source for source in load_sources()}
+
+    assert sources["Meta AI Blog"]["source_type"] == "website"
+    assert sources["Meta AI Blog"]["source_tier"] == "official"

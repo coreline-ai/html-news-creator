@@ -54,10 +54,12 @@ def _extract_attrs(tag: str) -> dict[str, str]:
     return attrs
 
 
-_SKIP_PATTERNS = (
-    "avatar", "logo", "front/assets", "favicon", "icon", "badge",
-    "noborder", "button", "pixel", "tracking", "analytics", "emoji",
-    "spinner", "placeholder", "spacer", "separator", "divider",
+_SKIP_SUBSTRINGS = (
+    "front/assets", "favicon", "tracking", "analytics", "placeholder",
+)
+_SKIP_TOKENS = (
+    "avatar", "logo", "icon", "badge", "noborder", "button", "pixel",
+    "emoji", "spinner", "spacer", "separator", "divider",
 )
 _SKIP_EXTENSIONS = (".svg", ".ico")
 _REDDIT_STATIC_HOSTS = ("styles.redditmedia.com", "redditstatic.com")
@@ -66,15 +68,45 @@ _REDDIT_STATIC_HOSTS = ("styles.redditmedia.com", "redditstatic.com")
 # mistakenly picked up as representative article images.
 _AUTHOR_PORTRAIT_PATTERNS = (
     "author_profile_images",   # Chorus CMS (The Verge, Polygon, etc.)
+    "profile_images",
     "/chorus/author",          # Chorus CMS author asset path
     "_blurple",                # The Verge's journalist portrait naming scheme
+    "/author/",
+    "/authors/",
     "/headshot",               # Generic headshot path
     "/byline",                 # Byline image path
+    "/reporter",
+    "/journalist",
+    "/contributor",
+    "/writer",
+    "/staff/",
+    "/profile/",
+    "/portrait",
     "author-photo",
     "author-image",
     "staff-photo",
     "reporter-photo",
+    "journalist-photo",
+    "profile-photo",
+    "headshot",
 )
+_UNRELATED_ATTR_PATTERNS = (
+    "author", "byline", "reporter", "journalist", "contributor", "writer",
+    "staff", "profile", "portrait", "headshot", "avatar", "logo", "icon",
+    "sponsor", "ad", "ads", "advertisement",
+)
+_UNRELATED_ATTR_RE = re.compile(
+    r"(?:^|[^a-z0-9])("
+    + "|".join(re.escape(pattern) for pattern in _UNRELATED_ATTR_PATTERNS)
+    + r")(?:$|[^a-z0-9])"
+)
+_SKIP_TOKEN_RE = re.compile(
+    r"(?:^|[^a-z0-9])("
+    + "|".join(re.escape(pattern) for pattern in _SKIP_TOKENS)
+    + r")(?:$|[^a-z0-9])"
+)
+_MIN_CONTENT_IMAGE_WIDTH = 300
+_MIN_CONTENT_IMAGE_HEIGHT = 160
 
 
 def _is_reddit_static_image_url(url: str) -> bool:
@@ -90,15 +122,56 @@ def _is_unsuitable_image_url(url: str) -> bool:
     lower = url.lower()
     if _is_reddit_static_image_url(lower):
         return True
-    if any(k in lower for k in _SKIP_PATTERNS):
+    if any(k in lower for k in _SKIP_SUBSTRINGS):
+        return True
+    if _SKIP_TOKEN_RE.search(lower):
         return True
     if any(k in lower for k in _AUTHOR_PORTRAIT_PATTERNS):
         return True
     return any(lower.endswith(ext) for ext in _SKIP_EXTENSIONS)
 
 
+def _numeric_attr(attrs: dict[str, str], key: str) -> int | None:
+    raw = attrs.get(key, "")
+    match = re.search(r"\d+", raw)
+    return int(match.group(0)) if match else None
+
+
+def _is_unsuitable_image_attrs(attrs: dict[str, str]) -> bool:
+    """Reject author/profile/decorative images using local tag metadata.
+
+    We cannot perform visual recognition in the collector, so the policy is
+    intentionally conservative: if an image is labelled as author/byline/profile
+    or is explicitly tiny, do not let it become report evidence.
+    """
+    blob = " ".join(
+        str(attrs.get(key, "") or "").lower()
+        for key in ("alt", "class", "id", "aria-label", "title", "data-testid")
+    )
+    if _UNRELATED_ATTR_RE.search(blob):
+        return True
+
+    width = _numeric_attr(attrs, "width")
+    height = _numeric_attr(attrs, "height")
+    if width is not None and width < _MIN_CONTENT_IMAGE_WIDTH:
+        return True
+    if height is not None and height < _MIN_CONTENT_IMAGE_HEIGHT:
+        return True
+    return False
+
+
 def is_usable_representative_image_url(url: str) -> bool:
     return bool(url) and _is_http_url(url) and not _is_unsuitable_image_url(url)
+
+
+def is_complete_main_image_url(url: str) -> bool:
+    """Return whether a URL is safe enough to boost an article as image-backed.
+
+    This is deliberately stricter than "any image exists": logos, avatars,
+    journalist headshots, tracking pixels, SVG icons, Reddit UI assets, and
+    other decorative URLs are all rejected by `is_usable_representative_image_url`.
+    """
+    return is_usable_representative_image_url(url)
 
 
 def extract_content_images_from_html(
@@ -123,6 +196,8 @@ def extract_content_images_from_html(
             or attrs.get("data-original", "")
         )
         if not src:
+            continue
+        if _is_unsuitable_image_attrs(attrs):
             continue
 
         abs_src = _normalize_image_url(src, base_url)
@@ -181,6 +256,17 @@ def extract_representative_image_from_feed_entry(entry: Any) -> str:
             # Skip non-image media (e.g. YouTube returns application/x-shockwave-flash)
             if mime_type and not mime_type.startswith("image/"):
                 continue
+            width = _dict_get(media, "width", None)
+            height = _dict_get(media, "height", None)
+            if width is not None or height is not None:
+                attrs = {
+                    "width": str(width or ""),
+                    "height": str(height or ""),
+                    "alt": str(_dict_get(media, "alt", "") or ""),
+                    "class": str(_dict_get(media, "class", "") or ""),
+                }
+                if _is_unsuitable_image_attrs(attrs):
+                    continue
             image_url = _normalize_image_url(
                 _dict_get(media, "url", "") or _dict_get(media, "href", "")
             )
