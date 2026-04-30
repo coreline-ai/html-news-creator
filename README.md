@@ -120,7 +120,7 @@ html-news-creator/
 
 ## 📰 소스 구성
 
-### 소스 등급 (35개 활성 소스)
+### 소스 등급 (37개 활성 소스)
 
 | 등급 | 소스 예시 | 부스트 |
 |------|----------|--------|
@@ -133,12 +133,15 @@ html-news-creator/
 ### 소스 유형별 분류
 
 ```
-RSS           ████████████████████  23개  (OpenAI, Verge, TechCrunch, YouTube 채널 등)
-GitHub        ██████                 6개  (주요 AI org 릴리스)
-arXiv         ████                   4개  (cs.AI / cs.LG / cs.CL / cs.CV)
-Website       ████                   4개  (Anthropic, Meta, HackerNews 크롤러)
-Community     ████                   3개  (Reddit, HN 필터링)
+RSS       █████████████████████  24개  (OpenAI, Verge, TechCrunch, YouTube, Reddit 피드 등)
+GitHub    █████                   6개  (주요 AI org 릴리스)
+arXiv     ████                    4개  (cs.AI / cs.LG / cs.CL / cs.CV)
+Website   ███                     3개  (커스텀 크롤러)
+                                ───
+                                 37개
 ```
+
+> 등급별 분포: official 12 · mainstream 10 · developer_signal 6 · research 4 · community 5
 
 ---
 
@@ -193,8 +196,7 @@ final_score = min(100, editorial_score + cluster_size_bonus)
 ### 사전 요구사항
 
 - Python 3.11+
-- PostgreSQL 14+
-- [uv](https://github.com/astral-sh/uv) 패키지 매니저
+- PostgreSQL 16+
 
 ### 1. 설치
 
@@ -203,9 +205,6 @@ git clone https://github.com/coreline-ai/html-news-creator.git
 cd html-news-creator
 
 # 의존성 설치
-uv sync
-
-# 또는 pip
 pip install -r requirements.txt
 ```
 
