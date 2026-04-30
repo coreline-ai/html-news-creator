@@ -240,7 +240,7 @@ DESIGN.md 4.3.1의 "반응형은 밀도 변화로" 원칙 적용.
 ### 6.2 스크롤바
 
 ```css
-/* paperclip 패턴 — 다크모드 전용 커스텀 */
+/* 다크모드 전용 커스텀 스크롤바 */
 .dark *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
