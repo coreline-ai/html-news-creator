@@ -292,6 +292,40 @@ async def api_list_reports(
 
 
 # 2) GET /api/reports/{date_kst} — single report + sections
+@app.get("/api/reports/{date_kst}/html", include_in_schema=False)
+async def api_get_report_html(
+    date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
+):
+    """Serve the published HTML file produced by the static publisher.
+
+    Used by ReviewReport's "Live" preview pane so the operator can see the
+    actual rendered output (not the synthetic preview used by NewReport).
+    Returns 404 if the report has not been published yet. Cache-Control
+    no-store so a republish is reflected immediately.
+    """
+    try:
+        date.fromisoformat(date_kst)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
+        )
+    project_root = Path(__file__).resolve().parents[2]
+    html_path = (project_root / "public" / "news" / f"{date_kst}-trend.html").resolve()
+    try:
+        html_path.relative_to((project_root / "public" / "news").resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid path")
+    if not html_path.is_file():
+        raise HTTPException(
+            status_code=404, detail=f"published HTML not found for {date_kst}"
+        )
+    return FileResponse(
+        str(html_path),
+        media_type="text/html",
+        headers={"Cache-Control": "no-store, must-revalidate"},
+    )
+
+
 @app.get("/api/reports/{date_kst}")
 async def api_get_report(
     date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
