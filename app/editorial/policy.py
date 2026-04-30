@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -7,6 +8,11 @@ from typing import Any
 import yaml
 
 DEFAULT_POLICY_PATH = Path(__file__).resolve().parents[2] / "data" / "editorial_policy.yaml"
+
+# Env var that lets the API hand a temporary policy file to a subprocess.
+# When set, ``load_policy()`` reads from this path instead of the repo-level
+# yaml — see ``app/admin/run_runner.py`` for the producer side.
+POLICY_PATH_ENV = "EDITORIAL_POLICY_PATH"
 
 
 DEFAULT_POLICY: dict[str, Any] = {
@@ -84,11 +90,26 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 def load_policy(path: str | Path | None = None) -> dict[str, Any]:
     """Load editorial ranking policy from YAML.
 
-    The returned object is a plain dict to keep tests and downstream code simple.
-    Missing sections are filled from ``DEFAULT_POLICY`` so partial test fixtures are
-    valid and production behavior remains stable if the YAML is edited.
+    Resolution order for the source file:
+      1. Explicit ``path`` argument (used by tests and one-off callers).
+      2. ``$EDITORIAL_POLICY_PATH`` environment variable. The admin API sets
+         this when handing a runtime-override-materialized yaml down to the
+         ``scripts/run_daily.py`` subprocess so operator-tuned policies actually
+         drive the pipeline.
+      3. ``DEFAULT_POLICY_PATH`` (``data/editorial_policy.yaml``).
+
+    Missing sections are filled from ``DEFAULT_POLICY`` so partial fixtures and
+    materialized override files remain valid. Returns a plain dict.
     """
-    policy_path = Path(path) if path is not None else DEFAULT_POLICY_PATH
+    if path is not None:
+        policy_path = Path(path)
+    else:
+        env_value = os.environ.get(POLICY_PATH_ENV)
+        if env_value:
+            policy_path = Path(env_value)
+        else:
+            policy_path = DEFAULT_POLICY_PATH
+
     if not policy_path.exists():
         return deepcopy(DEFAULT_POLICY)
 
