@@ -1,19 +1,50 @@
 from __future__ import annotations
 from datetime import date
-from fastapi import FastAPI, Depends, Query
+from typing import Any, Optional
+
+from fastapi import Body, Depends, FastAPI, HTTPException, Path as PathParam, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+
+from app.admin.policy_admin import get_policy, set_policy_override
+from app.admin.preview import render_preview
+from app.admin.run_runner import get_run, start_run
+from app.admin.sources_admin import (
+    ALLOWED_UPDATE_FIELDS,
+    list_sources as registry_list_sources,
+    update_source as registry_update_source,
+)
+from app.admin.sse import stream_run
+from app.config import settings
 from app.db import get_db
-from app.models.db_models import JobRun, JobLog, Report, Source, RawItem, Cluster
+from app.models.db_models import Cluster, JobLog, JobRun, RawItem, Report, ReportSection, Source
 from app.utils.logger import get_logger
 
 app = FastAPI(
-    title="AI Trend Report Engine — Admin API",
-    description="Internal admin dashboard for monitoring the pipeline",
-    version="0.1.0",
+    title="News Studio API",
+    description="Admin + News Studio web UI for the AI Trend Report engine",
+    version="0.2.0",
 )
+
+# CORS — Vite dev server lives at localhost:5173 by default; honor the
+# configured origin for non-default deploys.
+_allowed_origins = list({"http://localhost:5173", settings.ui_dev_origin})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 logger = get_logger(step="admin")
 
+
+# ---------------------------------------------------------------------------
+# Health + legacy v1 endpoints (kept as-is so existing tests still pass)
+# ---------------------------------------------------------------------------
 
 @app.get("/health")
 async def health():
@@ -25,7 +56,7 @@ async def list_runs(
     limit: int = Query(default=20, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """List recent job runs."""
+    """List recent job runs (legacy v1)."""
     result = await db.execute(
         select(JobRun).order_by(desc(JobRun.started_at)).limit(limit)
     )
@@ -38,7 +69,6 @@ async def list_runs(
                 "status": r.status,
                 "started_at": str(r.started_at) if r.started_at else None,
                 "completed_at": str(r.completed_at) if r.completed_at else None,
-                # JobRun uses metadata_json (not stats_json)
                 "metadata_json": r.metadata_json,
             }
             for r in runs
@@ -52,7 +82,7 @@ async def get_run_logs(
     limit: int = Query(default=100, le=500),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get logs for a specific job run."""
+    """Get logs for a specific job run (legacy v1)."""
     result = await db.execute(
         select(JobLog)
         .where(JobLog.job_run_id == run_id)
@@ -65,7 +95,6 @@ async def get_run_logs(
         "logs": [
             {
                 "level": log.level,
-                # JobLog uses step_name (not step)
                 "step": log.step_name,
                 "message": log.message,
                 "created_at": str(log.created_at) if log.created_at else None,
@@ -76,11 +105,11 @@ async def get_run_logs(
 
 
 @app.get("/api/v1/reports")
-async def list_reports(
+async def list_reports_v1(
     limit: int = Query(default=10, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """List recent reports."""
+    """List recent reports (legacy v1 — unchanged response shape)."""
     result = await db.execute(
         select(Report).order_by(desc(Report.created_at)).limit(limit)
     )
@@ -104,23 +133,18 @@ async def list_reports(
 async def today_stats(db: AsyncSession = Depends(get_db)):
     """Get today's pipeline statistics."""
     today = date.today()
-
-    # Count raw items today
     raw_count_result = await db.execute(
         select(func.count(RawItem.id)).where(
             func.date(RawItem.collected_at) == today
         )
     )
     raw_count = raw_count_result.scalar() or 0
-
-    # Count clusters today
     cluster_count_result = await db.execute(
         select(func.count(Cluster.id)).where(
             func.date(Cluster.created_at) == today
         )
     )
     cluster_count = cluster_count_result.scalar() or 0
-
     return {
         "date": str(today),
         "raw_items": raw_count,
@@ -129,14 +153,13 @@ async def today_stats(db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/api/v1/sources")
-async def list_sources(
+async def list_sources_v1(
     active_only: bool = True,
     db: AsyncSession = Depends(get_db),
 ):
-    """List registered sources."""
+    """List registered sources (legacy v1, DB-backed)."""
     query = select(Source)
     if active_only:
-        # Source uses `enabled` column (not `is_active`)
         query = query.where(Source.enabled.is_(True))
     result = await db.execute(query.order_by(Source.name))
     sources = result.scalars().all()
@@ -148,9 +171,207 @@ async def list_sources(
                 "source_type": s.source_type,
                 "url": s.url,
                 "trust_level": s.trust_level,
-                # Source uses `enabled` column (not `is_active`)
                 "is_active": s.enabled,
             }
             for s in sources
         ]
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 — News Studio API (8 endpoints, all under /api/)
+# ---------------------------------------------------------------------------
+
+class PreviewRequest(BaseModel):
+    target_sections: Optional[int] = Field(default=None, ge=1, le=30)
+    date_kst: Optional[str] = None
+    # Free-form policy overrides — accepted as a nested dict.
+    policy_override: Optional[dict] = None
+
+    model_config = {"extra": "allow"}
+
+
+class RunRequest(BaseModel):
+    date: Optional[str] = None
+    mode: Optional[str] = None
+    from_step: Optional[str] = None
+    to_step: Optional[str] = None
+    dry_run: bool = False
+
+    model_config = {"extra": "allow"}
+
+
+class PolicyPatchRequest(BaseModel):
+    patch: Optional[dict] = None
+
+
+class SourcePatchRequest(BaseModel):
+    enabled: Optional[bool] = None
+    priority: Optional[int] = None
+    max_items: Optional[int] = None
+    trust_level: Optional[str] = None
+    source_tier: Optional[str] = None
+    category: Optional[str] = None
+
+    def to_fields(self) -> dict[str, Any]:
+        return {
+            key: getattr(self, key)
+            for key in ALLOWED_UPDATE_FIELDS
+            if getattr(self, key, None) is not None
+        }
+
+
+# 1) GET /api/reports — recent reports (lightweight summary)
+@app.get("/api/reports")
+async def api_list_reports(
+    limit: int = Query(default=20, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Report).order_by(desc(Report.report_date)).limit(limit)
+    )
+    reports = result.scalars().all()
+    return {
+        "reports": [
+            {
+                "id": str(r.id),
+                "report_date": str(r.report_date) if r.report_date else None,
+                "title": r.title,
+                "status": r.status,
+                "summary_ko": r.summary_ko,
+                "stats_json": r.stats_json,
+                "created_at": str(r.created_at) if r.created_at else None,
+                "updated_at": str(r.updated_at) if r.updated_at else None,
+                "published_at": str(r.published_at) if r.published_at else None,
+            }
+            for r in reports
+        ]
+    }
+
+
+# 2) GET /api/reports/{date_kst} — single report + sections
+@app.get("/api/reports/{date_kst}")
+async def api_get_report(
+    date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        run_date = date.fromisoformat(date_kst)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
+        )
+
+    result = await db.execute(select(Report).where(Report.report_date == run_date))
+    db_report = result.scalars().first()
+    if db_report is None:
+        raise HTTPException(status_code=404, detail=f"report not found: {date_kst}")
+
+    sections_result = await db.execute(
+        select(ReportSection)
+        .where(ReportSection.report_id == db_report.id)
+        .order_by(ReportSection.section_order)
+    )
+    sections = sections_result.scalars().all()
+
+    return {
+        "id": str(db_report.id),
+        "report_date": str(db_report.report_date),
+        "title": db_report.title,
+        "status": db_report.status,
+        "summary_ko": db_report.summary_ko,
+        "stats_json": db_report.stats_json,
+        "method_json": db_report.method_json,
+        "created_at": str(db_report.created_at) if db_report.created_at else None,
+        "updated_at": str(db_report.updated_at) if db_report.updated_at else None,
+        "published_at": str(db_report.published_at) if db_report.published_at else None,
+        "sections": [
+            {
+                "id": str(s.id),
+                "section_order": s.section_order,
+                "title": s.title,
+                "lead": s.lead,
+                "fact_summary": s.fact_summary,
+                "social_signal_summary": s.social_signal_summary,
+                "inference_summary": s.inference_summary,
+                "caution": s.caution,
+                "image_evidence_json": s.image_evidence_json,
+                "sources_json": s.sources_json,
+                "confidence": s.confidence,
+                "importance_score": s.importance_score,
+                "tags_json": s.tags_json,
+            }
+            for s in sections
+        ],
+    }
+
+
+# 3) POST /api/preview — in-memory render with options override (NO DB writes)
+@app.post("/api/preview")
+async def api_preview(payload: PreviewRequest = Body(default_factory=PreviewRequest)):
+    options: dict[str, Any] = payload.model_dump(exclude_none=True)
+    date_kst = options.pop("date_kst", None)
+    try:
+        html = render_preview(options=options, date_kst=date_kst)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"html": html, "length": len(html)}
+
+
+# 4) POST /api/runs — kick off a background run
+@app.post("/api/runs")
+async def api_start_run(payload: RunRequest = Body(default_factory=RunRequest)):
+    options = payload.model_dump(exclude_none=True)
+    run_id = await start_run(options)
+    state = get_run(run_id)
+    return {
+        "run_id": run_id,
+        "status": state.status if state else "queued",
+        "options": options,
+    }
+
+
+# 5) GET /api/runs/{run_id}/stream — SSE progress stream
+@app.get("/api/runs/{run_id}/stream")
+async def api_stream_run(run_id: str):
+    return stream_run(run_id)
+
+
+# 6) GET /api/policy — yaml + runtime override merged
+@app.get("/api/policy")
+async def api_get_policy():
+    return {"policy": get_policy()}
+
+
+# 7) PUT /api/policy — replace runtime override (volatile)
+@app.put("/api/policy")
+async def api_put_policy(payload: PolicyPatchRequest = Body(default_factory=PolicyPatchRequest)):
+    try:
+        merged = set_policy_override(payload.patch or {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"policy": merged}
+
+
+# 8a) GET /api/sources — registry sources (yaml-backed)
+@app.get("/api/sources")
+async def api_list_sources():
+    return {"sources": registry_list_sources()}
+
+
+# 8b) PUT /api/sources/{name} — patch enabled/priority/etc.
+@app.put("/api/sources/{name}")
+async def api_update_source(
+    name: str,
+    payload: SourcePatchRequest = Body(default_factory=SourcePatchRequest),
+):
+    fields = payload.to_fields()
+    if not fields:
+        raise HTTPException(status_code=400, detail="no updatable fields supplied")
+    try:
+        updated = registry_update_source(name, fields)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"source": updated}

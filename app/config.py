@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     max_images_per_run: int = 50
     generated_image_fallback_enabled: bool = True
 
+    # News Studio web UI (Phase 1)
+    ui_dist_path: str = "ui/dist"
+    ui_dev_origin: str = "http://localhost:5173"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
