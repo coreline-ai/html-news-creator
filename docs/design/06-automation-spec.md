@@ -12,7 +12,7 @@
 name: html-news-creator-design-system
 version: 1.0.0
 basis:
-  - paperclip@master (shadcn/ui new-york style)
+  - shadcn/ui new-york style (OKLCH monochrome convention)
   - DESIGN.md (project-internal standard)
 license: MIT (token values), proprietary (this guide content)
 color_space: oklch
@@ -335,7 +335,7 @@ PR에 다음 파일이 변경되면 자동 검사:
 
 - 이 디자인 시스템 버전: `1.0.0`
 - 의존하는 외부 표준:
-  - shadcn/ui new-york style (snapshot from paperclip@master, 2026-04-30)
+  - shadcn/ui new-york style (OKLCH monochrome convention, snapshot 2026-04-30)
   - Tailwind CSS v4 (호환은 yes, 강제는 아님)
 - breaking change 정책: token 키 삭제·rename은 minor↑ (`1.x → 2.0`)
 - 토큰 값 변경(라이트/다크 OKLCH 수정)은 patch↑
