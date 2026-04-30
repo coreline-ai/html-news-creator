@@ -1,4 +1,4 @@
-.PHONY: dev migrate run run-dry test test-all lint ui-dev ui-build ui-test
+.PHONY: dev migrate run run-dry test test-all lint ui-dev ui-build ui-test serve
 
 dev:
 	docker compose up -d
@@ -29,3 +29,7 @@ ui-build:
 
 ui-test:
 	cd ui && npm run test
+
+# Build the SPA bundle, then serve it (and the API) from FastAPI on :8000.
+serve: ui-build
+	uvicorn app.admin.api:app --port 8000
