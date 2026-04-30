@@ -2,8 +2,10 @@
 """Daily AI trend report pipeline entrypoint."""
 from __future__ import annotations
 import asyncio
+import os
 from datetime import date, datetime, timezone
 import click
+from app.editorial.policy import POLICY_PATH_ENV
 from app.utils.logger import get_logger
 
 STEPS = [
@@ -1300,7 +1302,16 @@ async def run_pipeline(
 @click.option("--from-step", default="collect", type=click.Choice(STEPS))
 @click.option("--to-step", default="notify", type=click.Choice(STEPS))
 @click.option("--dry-run", is_flag=True, default=False, help="Skip DB writes, log only")
-def main(run_date_str, mode, from_step, to_step, dry_run):
+@click.option(
+    "--policy-path",
+    default=None,
+    help=(
+        "Path to a yaml editorial policy. Equivalent to setting "
+        "$EDITORIAL_POLICY_PATH — handy when launching ad-hoc runs with a "
+        "tuned policy without touching data/editorial_policy.yaml."
+    ),
+)
+def main(run_date_str, mode, from_step, to_step, dry_run, policy_path):
     """Run the daily AI trend report pipeline."""
     if run_date_str:
         run_date = date.fromisoformat(run_date_str)
@@ -1309,6 +1320,12 @@ def main(run_date_str, mode, from_step, to_step, dry_run):
 
     if mode == "dry-run":
         dry_run = True
+
+    # ``--policy-path`` is the explicit operator-facing knob; the env var is
+    # how the API subprocess flow injects the runtime override. Both end up at
+    # the same dispatch point in ``app.editorial.policy.load_policy``.
+    if policy_path:
+        os.environ[POLICY_PATH_ENV] = policy_path
 
     asyncio.run(run_pipeline(run_date, mode, from_step, to_step, dry_run))
 

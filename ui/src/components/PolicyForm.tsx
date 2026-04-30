@@ -41,7 +41,7 @@ const DEFAULTS = {
     missing_url_penalty: 40,
     missing_title_penalty: 30,
   },
-  quotas: {
+  section_quotas: {
     product: 4,
     tooling: 4,
     research: 1,
@@ -75,7 +75,7 @@ interface FormState {
   source_tiers: Record<TierKey, { boost: number; eligible_for_main: boolean }>;
   scoring_weights: Record<keyof typeof DEFAULTS.scoring_weights, number>;
   penalties: Record<keyof typeof DEFAULTS.penalties, number>;
-  quotas: Record<keyof typeof DEFAULTS.quotas, number>;
+  section_quotas: Record<keyof typeof DEFAULTS.section_quotas, number>;
   report_selection: {
     max_sections: number;
     target_sections: number;
@@ -107,9 +107,13 @@ function buildInitial(policy: Policy | undefined): FormState {
   const tiers = (root.source_tiers ?? {}) as Record<string, unknown>;
   const sw = (root.scoring_weights ?? {}) as Record<string, unknown>;
   const pen = (root.penalties ?? {}) as Record<string, unknown>;
+  // Backend canonical key is ``section_quotas`` (matches yaml). Older runtime
+  // overrides may still have a flat ``quotas`` key — accept either as input
+  // so a stale override doesn't blank the form, but always emit the canonical
+  // ``section_quotas`` shape on save (see toPatch).
   const quotas =
-    ((root.quotas as Record<string, unknown>) ??
-      (root.section_quotas as Record<string, unknown>) ??
+    ((root.section_quotas as Record<string, unknown>) ??
+      (root.quotas as Record<string, unknown>) ??
       {}) as Record<string, unknown>;
   const sel = (root.report_selection ?? {}) as Record<string, unknown>;
 
@@ -137,10 +141,12 @@ function buildInitial(policy: Policy | undefined): FormState {
     penOut[k] = asNumber(pen[k], DEFAULTS.penalties[k]);
   });
 
-  const qOut = {} as FormState["quotas"];
-  (Object.keys(DEFAULTS.quotas) as Array<keyof typeof DEFAULTS.quotas>).forEach((k) => {
-    qOut[k] = asNumber(quotas[k], DEFAULTS.quotas[k]);
-  });
+  const qOut = {} as FormState["section_quotas"];
+  (Object.keys(DEFAULTS.section_quotas) as Array<keyof typeof DEFAULTS.section_quotas>).forEach(
+    (k) => {
+      qOut[k] = asNumber(quotas[k], DEFAULTS.section_quotas[k]);
+    },
+  );
 
   const selOut: FormState["report_selection"] = {
     max_sections: asNumber(sel.max_sections, DEFAULTS.report_selection.max_sections),
@@ -178,7 +184,7 @@ function buildInitial(policy: Policy | undefined): FormState {
     source_tiers: tiersOut,
     scoring_weights: swOut,
     penalties: penOut,
-    quotas: qOut,
+    section_quotas: qOut,
     report_selection: selOut,
   };
 }
@@ -188,7 +194,8 @@ function toPatch(form: FormState): Policy {
     source_tiers: form.source_tiers,
     scoring_weights: form.scoring_weights,
     penalties: form.penalties,
-    quotas: form.quotas,
+    // Backend canonical key — matches data/editorial_policy.yaml.
+    section_quotas: form.section_quotas,
     report_selection: form.report_selection,
   };
 }
@@ -394,21 +401,23 @@ export function PolicyForm() {
 
       <Section title="Quotas" description="Topic quotas per report.">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          {(Object.keys(DEFAULTS.quotas) as Array<keyof typeof DEFAULTS.quotas>).map(
-            (k) => (
-              <NumberField
-                key={k}
-                id={`quota-${k}`}
-                label={prettyLabel(k)}
-                value={form.quotas[k]}
-                defaultValue={DEFAULTS.quotas[k]}
-                min={0}
-                max={20}
-                step={1}
-                onChange={(v) => updateNumber("quotas", k, v)}
-              />
-            ),
-          )}
+          {(
+            Object.keys(DEFAULTS.section_quotas) as Array<
+              keyof typeof DEFAULTS.section_quotas
+            >
+          ).map((k) => (
+            <NumberField
+              key={k}
+              id={`quota-${k}`}
+              label={prettyLabel(k)}
+              value={form.section_quotas[k]}
+              defaultValue={DEFAULTS.section_quotas[k]}
+              min={0}
+              max={20}
+              step={1}
+              onChange={(v) => updateNumber("section_quotas", k, v)}
+            />
+          ))}
         </div>
       </Section>
 

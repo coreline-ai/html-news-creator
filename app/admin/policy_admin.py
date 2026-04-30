@@ -8,8 +8,11 @@ preview alternative settings via the News Studio UI.
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 from threading import RLock
 from typing import Any
+
+import yaml
 
 from app.editorial.policy import _deep_merge, load_policy
 
@@ -73,3 +76,22 @@ def merge_with_options(options: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(options, dict):
         raise ValueError("preview options must be a mapping")
     return _deep_merge(base, options)
+
+
+def materialize_to(tmp_path: str | Path) -> Path:
+    """Dump the current effective policy (yaml + runtime override) to a yaml file.
+
+    Used by :mod:`app.admin.run_runner` to hand the runtime override to a
+    subprocess via the ``EDITORIAL_POLICY_PATH`` env var. The resulting file is
+    a complete, self-contained policy — :func:`app.editorial.policy.load_policy`
+    will deep-merge it onto ``DEFAULT_POLICY`` exactly as it does for the
+    repo-level yaml.
+
+    Returns the resolved :class:`Path` so callers can pass it through env vars.
+    """
+    target = Path(tmp_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload = get_policy()
+    with target.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(payload, f, allow_unicode=True, sort_keys=False)
+    return target
