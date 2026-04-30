@@ -23,7 +23,9 @@ export function NewReport() {
 
   const stream = useRunStream(runId);
 
-  // Once the stream signals done, navigate to the review page.
+  // Once the stream signals done, navigate to the review page. On a failed
+  // run (`status === "error"`), keep the user on this page so the toast stays
+  // visible — the operator should see the error before any nav happens.
   if (stream.status === "done" && runId) {
     // Schedule navigation after current render commit.
     queueMicrotask(() => {
