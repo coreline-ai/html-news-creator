@@ -1,0 +1,332 @@
+/* =========================================================================
+ * html-news-creator — Design Tokens
+ *
+ * Generated: 2026-04-30
+ * Source: docs/design/02-tokens.md
+ * Basis: paperclipai/paperclip (shadcn/ui new-york) + DESIGN.md
+ *
+ * Import this file once at the root of any HTML/template/component.
+ * Do NOT define raw colors, radius, or shadows elsewhere — only reference
+ * the variables declared here.
+ * ========================================================================= */
+
+/* -----------------------------------------------------------------------
+ * Tailwind v4 inline theme (optional — activates `bg-primary` etc. utilities)
+ * ----------------------------------------------------------------------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+/* -----------------------------------------------------------------------
+ * Light mode (default)
+ * ----------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --background:           oklch(1 0 0);
+  --foreground:           oklch(0.145 0 0);
+  --card:                 oklch(1 0 0);
+  --card-foreground:      oklch(0.145 0 0);
+  --popover:              oklch(1 0 0);
+  --popover-foreground:   oklch(0.145 0 0);
+
+  /* Action */
+  --primary:              oklch(0.205 0 0);
+  --primary-foreground:   oklch(0.985 0 0);
+  --secondary:            oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+
+  /* Muted / Accent */
+  --muted:                oklch(0.97 0 0);
+  --muted-foreground:     oklch(0.556 0 0);
+  --accent:               oklch(0.97 0 0);
+  --accent-foreground:    oklch(0.205 0 0);
+
+  /* Feedback */
+  --destructive:          oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+
+  /* Outline / Focus */
+  --border:               oklch(0.922 0 0);
+  --input:                oklch(0.922 0 0);
+  --ring:                 oklch(0.708 0 0);
+
+  /* Sidebar */
+  --sidebar:                      oklch(0.985 0 0);
+  --sidebar-foreground:           oklch(0.145 0 0);
+  --sidebar-primary:              oklch(0.205 0 0);
+  --sidebar-primary-foreground:   oklch(0.985 0 0);
+  --sidebar-accent:               oklch(0.97 0 0);
+  --sidebar-accent-foreground:    oklch(0.205 0 0);
+  --sidebar-border:               oklch(0.922 0 0);
+  --sidebar-ring:                 oklch(0.708 0 0);
+
+  /* Chart palette (data viz only) */
+  --chart-1:              oklch(0.646 0.222 41.116);
+  --chart-2:              oklch(0.6 0.118 184.704);
+  --chart-3:              oklch(0.398 0.07 227.392);
+  --chart-4:              oklch(0.828 0.189 84.429);
+  --chart-5:              oklch(0.769 0.188 70.08);
+
+  /* Status (domain) */
+  --status-success:       oklch(0.65 0.15 145);
+  --status-warning:       oklch(0.75 0.15 75);
+  --status-error:         var(--destructive);
+  --status-info:          oklch(0.55 0.15 240);
+  --status-neutral:       var(--muted-foreground);
+
+  /* Radius */
+  --radius:               0;
+  --radius-sm:            0.375rem;  /* 6px  */
+  --radius-md:            0.5rem;    /* 8px  */
+  --radius-lg:            0px;
+  --radius-xl:            0px;
+
+  /* Shadow */
+  --shadow-xs:            0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm:            0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px 0 rgb(0 0 0 / 0.06);
+  --shadow-md:            0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
+
+  /* Spacing scale */
+  --space-1:              0.25rem;   /* 4px  */
+  --space-2:              0.5rem;    /* 8px  */
+  --space-3:              0.75rem;   /* 12px */
+  --space-4:              1rem;      /* 16px */
+  --space-5:              1.25rem;   /* 20px */
+  --space-6:              1.5rem;    /* 24px */
+  --space-8:              2rem;      /* 32px */
+  --space-12:             3rem;      /* 48px */
+  --space-16:             4rem;      /* 64px */
+
+  /* Typography — families */
+  --font-display:         "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+                          "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-body:            var(--font-display);
+  --font-mono:            "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  /* Typography — sizes */
+  --text-xs:              0.75rem;   /* 12px */
+  --text-sm:              0.875rem;  /* 14px */
+  --text-base:            1rem;      /* 16px */
+  --text-lg:              1.125rem;  /* 18px */
+  --text-xl:              1.25rem;   /* 20px */
+  --text-2xl:             1.5rem;    /* 24px */
+  --text-3xl:             1.875rem;  /* 30px */
+  --text-4xl:             2.25rem;   /* 36px */
+
+  /* Typography — leading */
+  --leading-tight:        1.2;
+  --leading-snug:         1.35;
+  --leading-normal:       1.5;
+  --leading-relaxed:      1.6;
+  --leading-loose:        1.75;
+
+  /* Typography — tracking */
+  --tracking-tight:       -0.01em;
+  --tracking-normal:      0;
+  --tracking-wide:        0.02em;
+  --tracking-wider:       0.04em;
+
+  /* Motion */
+  --duration-fast:        120ms;
+  --duration-base:        180ms;
+  --duration-slow:        280ms;
+  --ease-standard:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized:      cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate:      cubic-bezier(0, 0, 0.2, 1);
+
+  /* Z-index scale */
+  --z-base:               0;
+  --z-sticky:             10;
+  --z-dropdown:           20;
+  --z-popover:            30;
+  --z-overlay:            50;
+  --z-modal:              51;
+  --z-toast:              60;
+
+  /* Layout widths */
+  --width-report:         820px;
+  --width-workspace-max:  1440px;
+  --sidebar-width:        240px;
+  --right-panel-width:    320px;
+}
+
+/* -----------------------------------------------------------------------
+ * Dark mode (toggle via `.dark` on <html> or <body>)
+ * ----------------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+
+  --background:           oklch(0.145 0 0);
+  --foreground:           oklch(0.985 0 0);
+  --card:                 oklch(0.205 0 0);
+  --card-foreground:      oklch(0.985 0 0);
+  --popover:              oklch(0.205 0 0);
+  --popover-foreground:   oklch(0.985 0 0);
+
+  --primary:              oklch(0.985 0 0);
+  --primary-foreground:   oklch(0.205 0 0);
+  --secondary:            oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted:                oklch(0.269 0 0);
+  --muted-foreground:     oklch(0.708 0 0);
+  --accent:               oklch(0.269 0 0);
+  --accent-foreground:    oklch(0.985 0 0);
+
+  --destructive:          oklch(0.637 0.237 25.331);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border:               oklch(0.269 0 0);
+  --input:                oklch(0.269 0 0);
+  --ring:                 oklch(0.439 0 0);
+
+  --sidebar:                      oklch(0.145 0 0);
+  --sidebar-foreground:           oklch(0.985 0 0);
+  --sidebar-primary:              oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground:   oklch(0.985 0 0);
+  --sidebar-accent:               oklch(0.269 0 0);
+  --sidebar-accent-foreground:    oklch(0.985 0 0);
+  --sidebar-border:               oklch(0.269 0 0);
+  --sidebar-ring:                 oklch(0.439 0 0);
+
+  --chart-1:              oklch(0.488 0.243 264.376);
+  --chart-2:              oklch(0.696 0.17 162.48);
+  --chart-3:              oklch(0.769 0.188 70.08);
+  --chart-4:              oklch(0.627 0.265 303.9);
+  --chart-5:              oklch(0.645 0.246 16.439);
+
+  --status-success:       oklch(0.7 0.15 145);
+  --status-warning:       oklch(0.78 0.15 75);
+  --status-info:          oklch(0.65 0.15 240);
+}
+
+/* -----------------------------------------------------------------------
+ * Auto dark mode (respects OS preference if .dark class not set)
+ * Comment out if you only want manual toggle.
+ * ----------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+
+    --background:           oklch(0.145 0 0);
+    --foreground:           oklch(0.985 0 0);
+    --card:                 oklch(0.205 0 0);
+    --card-foreground:      oklch(0.985 0 0);
+    --popover:              oklch(0.205 0 0);
+    --popover-foreground:   oklch(0.985 0 0);
+    --primary:              oklch(0.985 0 0);
+    --primary-foreground:   oklch(0.205 0 0);
+    --secondary:            oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted:                oklch(0.269 0 0);
+    --muted-foreground:     oklch(0.708 0 0);
+    --accent:               oklch(0.269 0 0);
+    --accent-foreground:    oklch(0.985 0 0);
+    --destructive:          oklch(0.637 0.237 25.331);
+    --destructive-foreground: oklch(0.985 0 0);
+    --border:               oklch(0.269 0 0);
+    --input:                oklch(0.269 0 0);
+    --ring:                 oklch(0.439 0 0);
+  }
+}
+
+/* -----------------------------------------------------------------------
+ * Base resets aligned with the system
+ * ----------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  height: 100%;
+  -webkit-tap-highlight-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Mobile hit targets */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  [data-slot="select-trigger"] {
+    min-height: 44px;
+  }
+}
+
+/* Dark mode scrollbars */
+.dark *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dark *::-webkit-scrollbar-track {
+  background: oklch(0.205 0 0);
+}
+.dark *::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0 0);
+  border-radius: 4px;
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0);
+}
