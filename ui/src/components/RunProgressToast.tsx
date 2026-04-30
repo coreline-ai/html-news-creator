@@ -44,6 +44,11 @@ export function RunProgressToast({
             className="text-primary size-4"
             aria-hidden="true"
           />
+        ) : status === "stalled" ? (
+          <AlertTriangle
+            className="size-4 text-[var(--status-warning)]"
+            aria-hidden="true"
+          />
         ) : (
           <AlertTriangle
             className="text-destructive size-4"
@@ -55,7 +60,9 @@ export function RunProgressToast({
             ? "Running pipeline"
             : status === "done"
               ? "Run complete"
-              : "Run failed"}
+              : status === "stalled"
+                ? "응답 없음 — 잠시 후 자동 복구되거나 취소하세요"
+                : "Run failed"}
         </div>
         {onDismiss ? (
           <button

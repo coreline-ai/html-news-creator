@@ -633,6 +633,13 @@ if _ui_dist.is_dir():
         if full_path.startswith("api/") or full_path == "api":
             raise HTTPException(status_code=404, detail="Not Found")
 
+        # index.html and SPA fallback responses must NEVER be cached, otherwise
+        # users keep loading old chunk hashes after a fresh build (the symptom
+        # was 404 on Sources-XXXX.js after rebuilding tokens.css). /assets/* is
+        # already content-hashed by Vite so the StaticFiles mount above can
+        # cache long-term — this only applies to the shell.
+        no_store = {"Cache-Control": "no-store, must-revalidate"}
+
         # Top-level static files (favicon.ico, robots.txt, etc.) ship straight
         # from disk when they exist.
         candidate = (_ui_dist / full_path).resolve()
@@ -642,10 +649,14 @@ if _ui_dist.is_dir():
             # Path traversal — fall through to index.html.
             candidate = None  # type: ignore[assignment]
         if candidate and candidate.is_file():
+            # Top-level non-hashed files (favicon, robots) get default caching
+            # via FileResponse, but if the request is for an unhashed JS/CSS
+            # at the root we still want freshness. Apply no-store only to the
+            # shell entry.
             return FileResponse(str(candidate))
 
-        # All other paths render the SPA shell.
-        return FileResponse(str(_index_html))
+        # All other paths render the SPA shell — must always be fresh.
+        return FileResponse(str(_index_html), headers=no_store)
 
 else:
     logger.info(
