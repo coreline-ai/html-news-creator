@@ -16,6 +16,7 @@ import { apiFetch } from "@/lib/api";
 
 // Lazy-load page bundles. All pages export `default` (verified Phase 5).
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Reports = lazy(() => import("@/pages/Reports"));
 const NewReport = lazy(() => import("@/pages/NewReport"));
 const ReviewReport = lazy(() => import("@/pages/ReviewReport"));
 const Sources = lazy(() => import("@/pages/Sources"));
@@ -175,7 +176,7 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="/reports" element={<Dashboard />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/reports/new" element={<NewReport />} />
           <Route path="/reports/:date" element={<ReviewReport />} />
           <Route path="/sources" element={<Sources />} />
