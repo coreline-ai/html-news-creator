@@ -209,3 +209,67 @@ cd ui && npm run typecheck && npm run build && npm run test -- --run src/__tests
 1. 에러 출력 분석 → 근본 원인 식별
 2. 원인 수정 → 재테스트
 3. 모든 테스트가 통과할 때까지 main push 보류
+
+---
+
+## 11. Phase F — Precision Gap Closure (외부 분석 후속, 2026-05-01)
+> Source: 외부 검증 (per-run options 미반영 / output_theme 끝단 누락 / image validation 약함 / reorder exact-set / utcnow / materialize hard-fail / RuntimeWarning)
+> Dependencies: Phase A~E 머지 후 (이미 main)
+> 3 에이전트 병렬 진행 (X / Y / Z)
+
+### 11.1 Why
+Phase A~E로 큰 계약은 회복됐으나 외부 검증이 잡은 잔존 정밀도 갭이 7건 있다. UI/문서는 "per-run options가 최우선 정책"이라 약속하지만 코드는 swallow, output_theme은 preview에만 전달, admin render path에 이미지 필터 부재 등.
+
+### 11.2 검증된 갭
+
+| # | 갭 | 위치 | 분류 |
+|---|---|---|---|
+| 1 | per-run options 미반영 (target_sections/quotas/source_types 등) | `_build_argv`가 5개만 처리 | 운영 계약 |
+| 2 | `output_theme`이 실제 run/published HTML에 안 닿음 | `scripts/run_daily.py:1102,1104` | 운영 계약 |
+| 3 | `admin/render.py` 이미지 필터 부재 | `app/admin/render.py` | 품질 |
+| 4 | reorder API exact-set 검증 X | `routers/reports.py::api_reorder_sections` | 안정성 |
+| 5 | `datetime.utcnow()` (deprecated, naive UTC) | `app/admin/publish.py:99` | 위생 |
+| 6 | policy materialize 실패 시 silent fallback | `run_runner.py::_supervise` | 신뢰성 |
+| + | `db.add(artifact)` AsyncMock 경고 | `app/admin/render.py:152` 호출 + 테스트 mock | 테스트 위생 |
+
+### 11.3 묶음 X — per-run options + output_theme 끝단 전달
+> File overlap: `scripts/run_daily.py` 공유 → 단일 에이전트 처리.
+
+- [ ] `scripts/run_daily.py` — 신규 click 옵션 `--policy-override-json` (string), `--output-theme` (choice: light/dark/newsroom-white). 받으면 즉시 환경변수 또는 컨텍스트로 전달.
+- [ ] `scripts/run_daily.py::run_render()` — `output_theme`을 `renderer.render_to_file(..., output_theme=...)` / `render_report(..., output_theme=...)`에 전달.
+- [ ] `app/admin/render.py::render_published` — `output_theme: str = "dark"` 인자 추가, JinjaRenderer로 전달.
+- [ ] `app/admin/run_runner.py::_build_argv` — `output_theme`, `target_sections`, `min_section_score`, `quotas` (section_quotas), `source_types`, `image_required`, `arxiv_max`, `community_max` 등을 **임시 policy yaml + per-run subset**으로 묶어 `--policy-override-json` 인자로 직렬화. (output_theme은 별도 `--output-theme` flag로.)
+- [ ] `app/editorial/policy.py::load_policy` — `--policy-override-json` 또는 동치 env에서 들어온 dict를 yaml 위에 deep-merge. 기존 `EDITORIAL_POLICY_PATH`와 함께 동작.
+- [ ] `ui/src/components/RunOptionsPanel.tsx` — "Preview only" 배지 제거 (output_theme / target_sections / quotas / source_types 등). 미지원 잔여 키(`deploy_target`/`slack_notify`/`publish_at`)는 라벨 유지.
+- [ ] 단위 테스트: `tests/unit/test_per_run_options_pipeline.py` — `_build_argv` + `load_policy` 통합으로 per-run target_sections=5가 실제 generate에 도달함을 mock 통과.
+
+### 11.4 묶음 Y — 이미지 검증 강화 + reorder exact-set
+- [ ] `app/admin/render.py` — 섹션 이미지 후보를 `app/utils/source_images::is_usable_representative_image_url`로 한 번 더 필터. Phase 4 client-only `disabled_section_ids`와 함께 **출처 자동 검증**.
+- [ ] `app/admin/routers/reports.py::api_reorder_sections` — 받은 `section_ids`가 해당 report의 전체 section id set과 **정확히 일치**해야 함. 누락/추가 모두 400 + 명확한 메시지.
+- [ ] 단위 테스트: `tests/unit/test_admin_render_image_filter.py`, `tests/unit/test_admin_sections.py`에 reorder exact-set 케이스 추가.
+
+### 11.5 묶음 Z — utcnow + materialize hard-fail + RuntimeWarning
+- [ ] `app/admin/publish.py:99` — `datetime.utcnow()` → `datetime.now(timezone.utc)`. timezone import 정리.
+- [ ] `app/admin/run_runner.py::_supervise` — `_materialize_policy_override()` 예외를 swallow하지 말고 run을 즉시 fail로 마감 (`status=failed`, `error=policy_override_materialize_failed:...`). 운영자가 의도한 정책이 묵살되는 silent regress 방지.
+- [ ] `tests/unit/test_admin_render.py` 또는 관련 테스트에서 `db.add()`를 sync mock으로 (RuntimeWarning 제거). `MagicMock()` 또는 `mock.create_autospec`.
+- [ ] 단위 테스트: `tests/unit/test_run_runner_policy_fail.py` — materialize 실패 시 run이 failed로 마감되고 subprocess 시작 안 됨.
+
+### 11.6 검증 (모든 묶음 후)
+```bash
+PYTHONPATH=. uv run pytest tests/unit/ -m "not integration" -q
+PYTHONPATH=. uv run pytest tests/integration/ -m integration -q
+make lint-design && make check-tokens
+cd ui && npm run typecheck && npm run build && npm run test -- --run
+```
+- BE 단위 회귀 0건
+- per-run target_sections=N 옵션이 실제 generate에 N개 섹션을 만들어내는 mock-based 테스트 통과
+- output_theme=newsroom-white로 발행 시 published HTML의 `data-theme="newsroom-white"` 검증
+
+### 11.7 추정
+
+| 묶음 | 신규 | 수정 | LOC | 시간 |
+|---|---|---|---|---|
+| X | 1 | 5 | ~260 | 1.5h |
+| Y | 1 | 2 | ~110 | 0.5h |
+| Z | 1 | 3 | ~80 | 0.5h |
+| **총계** | **3** | **10** | **~450** | **2.5h** (병렬 ~1h) |
