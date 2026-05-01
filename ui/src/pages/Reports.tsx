@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FileText,
@@ -5,11 +6,19 @@ import {
   FileDown,
   RefreshCw,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { useReports } from "@/hooks/useReports";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { formatKstDateTime } from "@/lib/kst";
 
 const PAGE_LIMIT = 50;
@@ -38,6 +47,10 @@ export function Reports() {
   const { data, isLoading, isError, error, refetch } = useReports({
     limit: PAGE_LIMIT,
   });
+  const [pdfPreview, setPdfPreview] = useState<{
+    date: string;
+    title: string | null;
+  } | null>(null);
 
   return (
     <div className="mx-auto max-w-[1200px] px-6 py-6">
@@ -170,19 +183,23 @@ export function Reports() {
                               aria-hidden="true"
                             />
                           </a>
-                          <a
-                            href={`/api/reports/${dateStr}/pdf`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPdfPreview({
+                                date: dateStr,
+                                title: r.title,
+                              })
+                            }
                             className="text-muted-foreground hover:text-foreground inline-flex items-center"
-                            title="PDF 보기/다운로드"
-                            aria-label="PDF 보기/다운로드"
+                            title="PDF 미리보기"
+                            aria-label="PDF 미리보기"
                           >
                             <FileDown
                               className="size-3.5"
                               aria-hidden="true"
                             />
-                          </a>
+                          </button>
                         </div>
                       ) : null}
                     </td>
@@ -193,6 +210,71 @@ export function Reports() {
           </table>
         </div>
       )}
+
+      <Dialog
+        open={pdfPreview !== null}
+        onOpenChange={(open) => !open && setPdfPreview(null)}
+      >
+        <DialogContent
+          className="flex h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0"
+          data-testid="pdf-preview-dialog"
+        >
+          <DialogHeader className="border-border border-b px-6 py-3">
+            <DialogTitle className="text-base font-semibold">
+              <span className="font-mono text-sm text-muted-foreground">
+                {pdfPreview?.date}
+              </span>
+              {pdfPreview?.title ? (
+                <span className="ml-3 text-foreground">{pdfPreview.title}</span>
+              ) : null}
+            </DialogTitle>
+          </DialogHeader>
+
+          {pdfPreview ? (
+            <iframe
+              key={pdfPreview.date}
+              src={`/api/reports/${pdfPreview.date}/pdf`}
+              title={`PDF preview ${pdfPreview.date}`}
+              className="border-0 flex-1 w-full"
+              data-testid="pdf-preview-iframe"
+            />
+          ) : null}
+
+          <DialogFooter className="border-border border-t px-6 py-3 sm:justify-end">
+            {pdfPreview ? (
+              <>
+                <Button asChild variant="outline" size="sm">
+                  <a
+                    href={`/api/reports/${pdfPreview.date}/pdf`}
+                    download={`${pdfPreview.date}-trend.pdf`}
+                  >
+                    <FileDown className="size-4" aria-hidden="true" />
+                    다운로드
+                  </a>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <a
+                    href={`/api/reports/${pdfPreview.date}/pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="size-4" aria-hidden="true" />
+                    새 탭
+                  </a>
+                </Button>
+              </>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPdfPreview(null)}
+            >
+              <X className="size-4" aria-hidden="true" />
+              닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
