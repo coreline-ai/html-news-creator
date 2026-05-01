@@ -43,11 +43,11 @@ function Calendar({
           "text-muted-foreground w-8 font-medium text-[11px] uppercase tracking-wide",
         week: "flex w-full mt-1",
         day: cn(
-          "relative size-8 p-0 text-center text-sm focus-within:relative focus-within:z-20",
+          "relative h-9 w-8 p-0 text-center text-sm focus-within:relative focus-within:z-20",
         ),
         day_button: cn(
           buttonVariants({ variant: "ghost" }),
-          "size-8 p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground rounded-md focus-visible:ring-1 focus-visible:ring-ring",
+          "h-9 w-8 p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground rounded-md focus-visible:ring-1 focus-visible:ring-ring",
         ),
         range_start:
           "day-range-start aria-selected:bg-primary aria-selected:text-primary-foreground",
