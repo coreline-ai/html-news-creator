@@ -396,15 +396,35 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 |------|-----|------|
 | 대시보드 | `/` | 오늘 카드 · Quick actions · 최근 실행 테이블 |
 | 신규 리포트 | `/reports/new` | 5그룹 옵션 + 라이브 미리보기 + Run |
-| 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · Publish |
-| 소스 / 설정 | `/sources`, `/settings` | 37개 소스 토글 · `editorial_policy.yaml` 런타임 오버라이드 |
+| 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · 재렌더 · Publish (Live 모드는 발행된 HTML iframe) |
+| 소스 / 설정 | `/sources`, `/settings` | 37개 소스 토글 · 신규 소스 추가 · 정책 런타임 오버라이드 + `[Persist to yaml]` |
 
-### 단축키
+### 주요 API 엔드포인트
 
-- `⌘K` / `Ctrl+K` — 명령 팔레트
-- `R` — 마지막 옵션으로 재실행
-- `P` — 현재 리포트 발행 (검토 화면 한정)
+| 메서드 | 경로 | 용도 |
+|------|------|------|
+| POST | `/api/runs` | 백그라운드 파이프라인 실행 (옵션 + 정책 오버라이드 전달) |
+| GET | `/api/runs/{id}/stream` | SSE 진행률 (`{step, progress, message, raw_line}`, 실패 run은 `error`로 종료) |
+| POST | `/api/preview` | 옵션만 적용한 in-memory 미리보기 (DB 쓰기 없음) |
+| POST | `/api/reports/{date}/render` | DB 기준 fresh 재렌더 (disabled 섹션 제외, 배포 없음) |
+| GET | `/api/reports/{date}/html` | 발행된 HTML 원본 (검토 Live 모드용) |
+| POST | `/api/reports/{date}/publish` | 재렌더 후 Netlify 배포 트리거 |
+| POST | `/api/sources` | 신규 소스 yaml registry에 atomic append |
+| PUT | `/api/policy` | 런타임 오버라이드 저장 (메모리, 휘발) |
+| POST | `/api/policy/persist` | 런타임 오버라이드를 `editorial_policy.yaml`에 영구 저장 (`*.yaml.bak` 자동 백업) |
+
+> 정책 우선순위: **per-run options > runtime override (`PUT /api/policy`) > yaml**. 오른쪽으로 갈수록 약하며, `[Persist to yaml]` 버튼이 메모리 오버라이드를 yaml에 머지합니다.
+
+### 단축키 / UX
+
+- `⌘K` / `Ctrl+K` — 명령 팔레트, `R` — 마지막 옵션 재실행, `P` — 발행 (검토 화면 한정)
 - HeaderBar 토글 — 다크 ↔ 라이트 (`localStorage` 영속)
+
+### 운영 가드
+
+- LLM 호출 60s 하드 타임아웃 + 스톨 감지, `run_runner` 5분 max-runtime으로 행 멈춤 차단
+- 리포트 HTML 응답에 `Cache-Control: no-store`로 stale chunk 방지
+- 정책/소스 yaml 저장은 임시파일 → atomic rename + `.bak` 자동 생성
 
 상세 가이드: [`docs/news-studio-usage.md`](docs/news-studio-usage.md) · 디자인 토큰/컴포넌트: [`docs/design/`](docs/design/)
 
