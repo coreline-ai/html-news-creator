@@ -257,6 +257,50 @@ def test_api_policy_put_rejects_non_mapping():
 
 
 # ---------------------------------------------------------------------------
+# Phase E — TC-E.1: POST /api/policy/persist (yaml flush)
+# ---------------------------------------------------------------------------
+
+def test_api_policy_persist_400_when_no_override(monkeypatch, tmp_path):
+    policy_admin.clear_policy_override()
+    # Even though no override is present, route the helper at a temp path so
+    # the test never touches the real yaml.
+    fake_path = tmp_path / "editorial_policy.yaml"
+    monkeypatch.setattr(policy_admin, "DEFAULT_POLICY_PATH", fake_path)
+    resp = client.post("/api/policy/persist")
+    assert resp.status_code == 400
+    assert "no runtime override" in resp.json().get("detail", "")
+    # Sanity — yaml was not created either.
+    assert not fake_path.exists()
+
+
+def test_api_policy_persist_writes_yaml_with_override(monkeypatch, tmp_path):
+    """An override + an existing yaml ⇒ merged write + .bak backup."""
+    fake_path = tmp_path / "editorial_policy.yaml"
+    fake_path.write_text(
+        yaml.safe_dump({"section_quotas": {"product": 4, "tooling": 4}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(policy_admin, "DEFAULT_POLICY_PATH", fake_path)
+
+    policy_admin.clear_policy_override()
+    policy_admin.set_policy_override({"section_quotas": {"product": 9}})
+    try:
+        resp = client.post("/api/policy/persist")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["persisted_to"].endswith("editorial_policy.yaml")
+        assert body["backup"] is not None
+        assert body["backup"].endswith("editorial_policy.yaml.bak")
+
+        loaded = yaml.safe_load(fake_path.read_text(encoding="utf-8"))
+        assert loaded["section_quotas"]["product"] == 9
+        # Merge preserved untouched keys.
+        assert loaded["section_quotas"]["tooling"] == 4
+    finally:
+        policy_admin.clear_policy_override()
+
+
+# ---------------------------------------------------------------------------
 # Phase 1 — TC-1.7: GET /api/sources + PUT /api/sources/{name}
 # ---------------------------------------------------------------------------
 

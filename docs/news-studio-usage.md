@@ -84,6 +84,27 @@ Vite dev 서버(5173)가 `/api/*` 요청을 8000으로 프록시합니다. `app/
 - **AddSourceDialog**: 신규 소스 폼 (name/url/source_type/tier) — 잘못된 url 스키마는 검증 차단
 - **PolicyForm** (`/settings`): `source_tiers / scoring_weights / penalties / quotas / report_selection` 5섹션 슬라이더
 - 정책 저장 → `PUT /api/policy`, **런타임 오버라이드만 적용** (yaml 미수정, 재시작 시 휘발). 화면 상단에 휘발성 배너 노출
+- **Persist to yaml** 버튼 → `POST /api/policy/persist`, 런타임 오버라이드를 `data/editorial_policy.yaml`에 영구 저장 (백업 `*.yaml.bak` 자동 생성, 서버 재시작 후에도 유지)
+
+---
+
+## 3.5 Policy precedence
+
+PolicyForm이 변경하는 값은 3개의 레이어 중 하나에 들어갑니다. 우선순위는 **per-run options > runtime override > yaml** 입니다 (오른쪽이 더 약함).
+
+| Layer | 변경 위치 | 영속성 | 적용 범위 |
+|---|---|---|---|
+| **yaml (영구)** | `data/editorial_policy.yaml` 직접 편집 또는 `[Persist to yaml]` 버튼 | 디스크에 보존, 재시작 시 유지 | 이후 모든 Run의 baseline |
+| **runtime override** | `/settings` PolicyForm `[Save]` (= `PUT /api/policy`) | 메모리(휘발), 서버 재시작 시 소실 | 이후 모든 Run에 누적 적용 |
+| **per-run options** | `/reports/new`의 옵션 패널 (RunOptionsPanel) | 단일 Run 한정 | 해당 Run만 |
+
+세 시나리오:
+
+1. **실험만** — PolicyForm `[Save]` → 메모리 오버라이드만 적용. 만족스러우면 `[Persist to yaml]`, 아니면 서버 재시작으로 폐기.
+2. **운영 영구 변경** — PolicyForm에서 값 조정 → `[Save]` → 다음 Run 결과로 검증 → `[Persist to yaml]` 클릭 → yaml 저장 + `.bak` 백업.
+3. **단일 Run 한정** — runtime override에 손대지 않고 `/reports/new`의 RunOptionsPanel에서 `target_sections` 등을 일시적으로 바꿔 Run.
+
+`[Persist to yaml]`은 현재 메모리에 살아있는 runtime override만 yaml에 머지합니다. 오버라이드가 비어있으면 (`Save`가 한 번도 일어나지 않았거나 빈 값으로 초기화한 상태) 400을 반환합니다.
 
 ---
 
@@ -113,6 +134,7 @@ Vite dev 서버(5173)가 `/api/*` 요청을 8000으로 프록시합니다. `app/
 | 5 | GET | `/api/runs/{run_id}/stream` | 9단계 진행률 SSE |
 | 6 | GET | `/api/policy` | yaml + 런타임 오버라이드 병합 정책 |
 | 7 | PUT | `/api/policy` | 런타임 오버라이드 저장 (휘발) |
+| 7b | POST | `/api/policy/persist` | 런타임 오버라이드를 yaml에 영구 저장 (`.bak` 백업) |
 | 8a | GET | `/api/sources` | 레지스트리(yaml) 기반 소스 목록 |
 | 8b | PUT | `/api/sources/{name}` | enabled/priority/max_items 등 패치 |
 | 9 | PATCH | `/api/sections/{id}` | 단일 섹션 title/summary/implication/image_url 수정 |
@@ -132,7 +154,7 @@ Vite dev 서버(5173)가 `/api/*` 요청을 8000으로 프록시합니다. `app/
 | `/api/*` 호출 CORS 에러 | dev origin이 8000과 다름 | `app/config.py`의 `ui_dev_origin` 또는 `.env`의 동명 변수 확인 |
 | 미리보기가 갱신되지 않음 | 디바운스 2초 대기 중이거나 옵션 검증 400 | DevTools Network에서 `POST /api/preview` 응답 확인. `target_sections` < 1 등 음수/범위 외 값은 400 |
 | Run 진행률이 멈춤 | SSE 연결 끊김 또는 subprocess 좀비 | 페이지 새로고침 → 자동 재연결. 동일 날짜 재실행 시 이전 프로세스 정리 필요하면 `pkill -f run_daily.py` |
-| 정책 변경이 다음 run에 반영 안됨 | 런타임 오버라이드는 휘발 (재시작 시 소실) | yaml에 영구 저장하려면 `data/editorial_policy.yaml` 직접 편집 후 재시작 |
+| 정책 변경이 다음 run에 반영 안됨 | 런타임 오버라이드는 휘발 (재시작 시 소실) | `/settings`의 `[Persist to yaml]` 버튼으로 영구 저장 (또는 `data/editorial_policy.yaml` 직접 편집 후 재시작) |
 | Publish 실패 | Netlify CLI/토큰 누락 | `.env`의 `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID` 확인. dry_run 옵션으로 URL만 검증 가능 |
 
 ---
@@ -142,7 +164,7 @@ Vite dev 서버(5173)가 `/api/*` 요청을 8000으로 프록시합니다. `app/
 회귀 테스트 시 참고할 현재 구현의 stub 및 제한 사항입니다.
 
 - **단일 섹션 regenerate (`POST /api/sections/:id/regenerate`)**: 현재 큐잉 응답만 반환하는 stub. 실제 LLM 재호출은 `app/generation/` 와의 통합 작업이 필요합니다.
-- **정책 오버라이드 영속화**: `PUT /api/policy`는 메모리에만 머물며 프로세스 재시작 시 소실됩니다. yaml로 영구 저장하는 별도 버튼은 미구현.
+- **정책 오버라이드 영속화**: `PUT /api/policy`는 메모리에만 머물며 프로세스 재시작 시 소실됩니다. 영구 저장은 `/settings`의 `[Persist to yaml]` 버튼(`POST /api/policy/persist`)으로 처리하며, 기존 yaml은 `.bak`으로 자동 백업됩니다.
 - **인증/권한**: 단일 사용자 가정으로 인증 없음. 기본은 `127.0.0.1` 바인드. 외부 호스트에 노출 시 별도 reverse proxy + 인증 필수.
 - **소스 신규 타입**: rss / github / arxiv / website 외 타입은 UI에서 추가 불가 (Out of scope).
 - **모바일 검토 화면**: `dnd-kit` 터치 충돌 가능성 — 모바일에서는 화살표 버튼 fallback 사용.

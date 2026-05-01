@@ -1,11 +1,31 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { usePolicy, useUpdatePolicy, type Policy } from "@/hooks/usePolicy";
+import {
+  usePolicy,
+  usePersistPolicy,
+  useUpdatePolicy,
+  type Policy,
+} from "@/hooks/usePolicy";
 import { ApiError } from "@/lib/api";
-import { AlertCircle, AlertTriangle, Save, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  HardDriveDownload,
+  Info,
+  Save,
+  RotateCcw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -203,6 +223,7 @@ function toPatch(form: FormState): Policy {
 export function PolicyForm() {
   const policyQuery = usePolicy();
   const updatePolicy = useUpdatePolicy();
+  const persistPolicy = usePersistPolicy();
 
   const initial = useMemo(
     () => buildInitial(policyQuery.data),
@@ -211,6 +232,11 @@ export function PolicyForm() {
 
   const [form, setForm] = useState<FormState>(initial);
   const [dirty, setDirty] = useState(false);
+  const [persistDialogOpen, setPersistDialogOpen] = useState(false);
+  const [persistToast, setPersistToast] = useState<{
+    persisted_to: string;
+    backup: string | null;
+  } | null>(null);
 
   // Sync initial state on first successful load.
   useEffect(() => {
@@ -308,11 +334,32 @@ export function PolicyForm() {
     );
   };
 
+  const onConfirmPersist = () => {
+    persistPolicy.mutate(undefined, {
+      onSuccess: (data) => {
+        setPersistToast(data);
+        setPersistDialogOpen(false);
+      },
+    });
+  };
+
   const apiError = updatePolicy.error;
   const apiMessage =
     apiError instanceof ApiError
       ? `${apiError.status}: ${typeof apiError.body === "string" ? apiError.body : apiError.message}`
       : apiError?.message;
+
+  const persistError = persistPolicy.error;
+  const persistErrorMessage =
+    persistError instanceof ApiError
+      ? `${persistError.status}: ${typeof persistError.body === "string" ? persistError.body : persistError.message}`
+      : persistError?.message;
+
+  // The server is the source of truth for whether a runtime override exists
+  // (it lives in `_RUNTIME_OVERRIDE`). The button stays enabled — if the
+  // override is empty the server returns 400 and we surface it via the
+  // persistError banner. We only block while an in-flight persist is pending.
+  const persistEnabled = !persistPolicy.isPending;
 
   return (
     <form
@@ -325,6 +372,7 @@ export function PolicyForm() {
       aria-label="Editorial policy form"
     >
       <VolatileBanner />
+      <PrecedenceNote />
 
       {apiMessage ? (
         <div
@@ -335,12 +383,38 @@ export function PolicyForm() {
         </div>
       ) : null}
 
+      {persistErrorMessage ? (
+        <div
+          role="alert"
+          data-testid="policy-persist-error"
+          className="border-destructive bg-destructive/10 text-destructive border px-3 py-2 text-xs"
+        >
+          Persist failed — {persistErrorMessage}
+        </div>
+      ) : null}
+
       {updatePolicy.isSuccess && !dirty ? (
         <div
           role="status"
+          data-testid="policy-saved-banner"
           className="border-border bg-muted text-muted-foreground border px-3 py-2 text-xs"
         >
-          Policy override saved (runtime only).
+          다음 Run에 반영됩니다 · data/editorial_policy.yaml은 수정되지 않습니다 · 영구 저장은 [Persist] 버튼
+        </div>
+      ) : null}
+
+      {persistToast ? (
+        <div
+          role="status"
+          data-testid="policy-persist-toast"
+          className="border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border px-3 py-2 text-xs"
+        >
+          yaml에 저장됨 — <code>{persistToast.persisted_to}</code>
+          {persistToast.backup ? (
+            <>
+              {" "}· backup <code>{persistToast.backup}</code>
+            </>
+          ) : null}
         </div>
       ) : null}
 
@@ -513,7 +587,9 @@ export function PolicyForm() {
 
       <div className="border-border bg-card sticky bottom-0 flex items-center justify-between gap-3 border-t px-4 py-3">
         <span className="text-muted-foreground text-xs">
-          {dirty ? "Unsaved changes — runtime override only." : "All changes saved."}
+          {dirty
+            ? "변경 중 — 저장 시 다음 Run부터 반영 (서버 재시작 시 유실)"
+            : "All changes saved."}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -533,9 +609,83 @@ export function PolicyForm() {
             <Save className="size-4" />
             {updatePolicy.isPending ? "Saving…" : "Save policy"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            data-testid="policy-persist-button"
+            onClick={() => setPersistDialogOpen(true)}
+            disabled={!persistEnabled}
+            title="yaml 파일에 영구 저장"
+          >
+            <HardDriveDownload className="size-4" />
+            {persistPolicy.isPending ? "Persisting…" : "Persist to yaml"}
+          </Button>
         </div>
       </div>
+
+      <Dialog open={persistDialogOpen} onOpenChange={setPersistDialogOpen}>
+        <DialogContent data-testid="policy-persist-dialog">
+          <DialogHeader>
+            <DialogTitle>yaml 파일에 영구 저장?</DialogTitle>
+            <DialogDescription>
+              이 작업은 <code>data/editorial_policy.yaml</code>을 덮어쓰고{" "}
+              <code>*.yaml.bak</code>에 백업을 만듭니다. 서버 재시작 후에도
+              변경이 유지됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPersistDialogOpen(false)}
+              disabled={persistPolicy.isPending}
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              data-testid="policy-persist-confirm"
+              onClick={onConfirmPersist}
+              disabled={persistPolicy.isPending}
+            >
+              <HardDriveDownload className="size-4" />
+              {persistPolicy.isPending ? "Persisting…" : "yaml에 저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
+  );
+}
+
+function PrecedenceNote() {
+  return (
+    <details
+      data-testid="policy-precedence-note"
+      className="border-border bg-muted/40 text-muted-foreground border px-3 py-2 text-xs"
+    >
+      <summary className="cursor-pointer select-none flex items-center gap-2">
+        <Info className="size-4 shrink-0" aria-hidden="true" />
+        정책 우선순위: yaml(영구) &lt; runtime override(이 화면) &lt; per-run options
+      </summary>
+      <ul className="mt-2 ml-6 list-disc space-y-1">
+        <li>
+          <strong>yaml</strong> — <code>data/editorial_policy.yaml</code>
+          (영구). [Persist to yaml] 버튼으로 갱신.
+        </li>
+        <li>
+          <strong>runtime override</strong> — 이 화면의 [Save] 결과. 다음
+          Run부터 반영, 서버 재시작 시 유실.
+        </li>
+        <li>
+          <strong>per-run options</strong> — NewReport의 옵션 패널. 단일 Run
+          한정으로 가장 우선.
+        </li>
+      </ul>
+    </details>
   );
 }
 

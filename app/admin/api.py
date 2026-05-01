@@ -12,7 +12,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.admin.policy_admin import get_policy, set_policy_override
+from app.admin.policy_admin import (
+    get_policy,
+    persist_runtime_override_to_yaml,
+    set_policy_override,
+)
 from app.admin.preview import render_preview
 from app.admin.run_runner import get_run, start_run
 from app.admin.sources_admin import (
@@ -474,6 +478,44 @@ async def api_put_policy(payload: PolicyPatchRequest = Body(default_factory=Poli
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"policy": merged}
+
+
+# 7b) POST /api/policy/persist — flush the volatile override into yaml.
+# Errors:
+#   400 — runtime override is empty (nothing to persist).
+#   500 — atomic write failed (disk full, permissions, etc.).
+@app.post("/api/policy/persist")
+async def api_persist_policy():
+    """Atomically write the in-memory runtime override into ``editorial_policy.yaml``.
+
+    Creates a ``*.yaml.bak`` next to the target on success so the operator can
+    recover the previous policy. Body is intentionally empty — the helper uses
+    the project-default yaml path.
+    """
+    try:
+        result = persist_runtime_override_to_yaml()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.error("policy_persist_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=f"policy persist failed: {exc}")
+
+    project_root = Path(__file__).resolve().parents[2]
+    persisted = result["persisted_to"]
+    backup = result["backup"]
+
+    def _to_rel(path: Path | None) -> str | None:
+        if path is None:
+            return None
+        try:
+            return str(Path(path).resolve().relative_to(project_root))
+        except ValueError:
+            return str(path)
+
+    return {
+        "persisted_to": _to_rel(persisted),
+        "backup": _to_rel(backup),
+    }
 
 
 # 8a) GET /api/sources — registry sources (yaml-backed)
