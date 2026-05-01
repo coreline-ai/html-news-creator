@@ -1,5 +1,6 @@
 """Unit tests for Phase 5 rendering components."""
 from __future__ import annotations
+from pathlib import Path
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -83,6 +84,77 @@ def test_playwright_unavailable_raises(monkeypatch):
     with pytest.raises(PlaywrightUnavailableError):
         import asyncio
         asyncio.run(renderer.screenshot("dummy.html", "dummy.png"))
+
+
+@pytest.mark.asyncio
+async def test_playwright_pdf_uses_screen_media_and_print_background(tmp_path):
+    html_path = tmp_path / "report.html"
+    html_path.write_text("<html><body>report</body></html>", encoding="utf-8")
+    pdf_path = tmp_path / "report.pdf"
+    calls: dict[str, object] = {}
+
+    class FakePage:
+        async def goto(self, url):
+            calls["goto"] = url
+
+        async def wait_for_load_state(self, state):
+            calls["load_state"] = state
+
+        async def emulate_media(self, media):
+            calls["media"] = media
+
+        async def evaluate(self, script):
+            calls["evaluate"] = script
+
+        async def pdf(self, **kwargs):
+            calls["pdf"] = kwargs
+            Path(kwargs["path"]).write_bytes(b"%PDF-1.4 fake")
+
+    class FakeBrowser:
+        async def new_page(self):
+            return FakePage()
+
+        async def close(self):
+            calls["closed"] = True
+
+    class FakeChromium:
+        async def launch(self, headless=True):
+            calls["headless"] = headless
+            return FakeBrowser()
+
+    class FakePlaywright:
+        chromium = FakeChromium()
+
+    class FakeAsyncPlaywright:
+        async def __aenter__(self):
+            return FakePlaywright()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    renderer = PlaywrightRenderer()
+    renderer._playwright_module = lambda: FakeAsyncPlaywright()
+
+    result = await renderer.export_pdf(str(html_path), str(pdf_path))
+
+    assert result == pdf_path
+    assert pdf_path.read_bytes().startswith(b"%PDF")
+    assert calls["media"] == "screen"
+    assert calls["load_state"] == "networkidle"
+    assert calls["headless"] is True
+    assert calls["closed"] is True
+    assert "document.fonts" in str(calls["evaluate"])
+    assert calls["pdf"] == {
+        "path": str(pdf_path),
+        "format": "A4",
+        "print_background": True,
+        "margin": {
+            "top": "12mm",
+            "right": "10mm",
+            "bottom": "12mm",
+            "left": "10mm",
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
