@@ -53,6 +53,9 @@ public/news/*.pdf
 public/news/*.png
 public/assets/generated/
 
+# Demo-generated export artifacts
+demo/**/*.pdf
+
 # UI build artifacts
 ui/node_modules/
 ui/dist/
