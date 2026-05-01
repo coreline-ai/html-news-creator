@@ -51,6 +51,10 @@ describe("Dashboard (TC-2.E1)", () => {
     await waitFor(() => {
       expect(screen.getByText(/아직 리포트가 없습니다/)).toBeInTheDocument();
     });
+    expect(screen.getByTestId("dashboard-header-new-report")).toHaveAttribute(
+      "href",
+      "/reports/new",
+    );
   });
 
   it("renders the recent runs table when /api/reports returns rows", async () => {
@@ -84,6 +88,15 @@ describe("Dashboard (TC-2.E1)", () => {
       expect(screen.getByTestId("recent-runs-table")).toBeInTheDocument();
     });
     expect(screen.getByText("AI Trend — Yesterday")).toBeInTheDocument();
+    const viewAll = screen.getByTestId("dashboard-view-all-link");
+    const table = screen.getByTestId("recent-runs-table");
+    expect(viewAll).toHaveAttribute("href", "/reports");
+    expect(
+      Boolean(
+        viewAll.compareDocumentPosition(table) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
     const dateLink = screen.getByRole("link", { name: "2026-04-29" });
     expect(dateLink).toHaveAttribute("href", "/reports/2026-04-29");
   });
@@ -106,5 +119,25 @@ describe("Dashboard (TC-2.E1)", () => {
       name: /schedule run/i,
     });
     expect(scheduleRun).toHaveAttribute("href", "/policy");
+  });
+
+  it("visually highlights the New report quick action", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ reports: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
+
+    render(
+      <AllProviders>
+        <Dashboard />
+      </AllProviders>,
+    );
+
+    const newReport = await screen.findByTestId("dashboard-new-report-card");
+    expect(newReport).toHaveAttribute("href", "/reports/new");
+    expect(newReport.className).toContain("bg-primary/10");
+    expect(newReport.className).toContain("border-primary/40");
   });
 });

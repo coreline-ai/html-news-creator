@@ -133,3 +133,25 @@ def test_ai_chip_images_are_not_rejected_by_icon_substring():
         )
         is True
     )
+
+
+def test_arxiv_static_social_icons_are_rejected():
+    bad_urls = [
+        "https://arxiv.org/static/browse/0.3.4/images/icons/social/bibsonomy.png",
+        "https://static.arxiv.org/icons/twitter/arxiv-logo-twitter-square.png",
+    ]
+    for url in bad_urls:
+        assert is_complete_main_image_url(url) is False
+
+    html = """
+    <article>
+      <img src="/static/browse/0.3.4/images/icons/social/bibsonomy.png"
+           alt="BibSonomy" width="32" height="32">
+      <img src="https://example.com/paper/figure-main.png"
+           alt="3D reconstruction result" width="1200" height="675">
+    </article>
+    """
+
+    images = extract_content_images_from_html(html, "https://arxiv.org/abs/2604.28025")
+
+    assert images == ["https://example.com/paper/figure-main.png"]

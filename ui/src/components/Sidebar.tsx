@@ -1,8 +1,10 @@
 import { NavLink } from "react-router-dom";
+import { XIcon } from "lucide-react";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -39,7 +41,10 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-4 pb-4">
-        <div className="text-sidebar-foreground text-lg leading-tight font-semibold tracking-tight">
+        <div
+          className="text-sidebar-foreground leading-tight font-semibold tracking-tight"
+          style={{ fontSize: "1.46rem" }}
+        >
           <span className="block">Coreline</span>
           <span className="block">News Studio</span>
         </div>
@@ -123,7 +128,21 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
         side="left"
         className="bg-sidebar text-sidebar-foreground w-64 p-0"
         data-testid="mobile-sidebar"
+        showCloseButton={false}
       >
+        <SheetClose
+          aria-label="Close navigation"
+          data-testid="mobile-sidebar-close"
+          className={cn(
+            "border-sidebar-border bg-sidebar text-sidebar-foreground absolute top-3 right-3 z-10",
+            "inline-flex size-9 items-center justify-center rounded-full border shadow-sm",
+            "opacity-100 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+          )}
+        >
+          <XIcon className="size-5 stroke-[2.5]" aria-hidden="true" />
+          <span className="sr-only">Close navigation</span>
+        </SheetClose>
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
           <SheetDescription>Primary navigation links</SheetDescription>

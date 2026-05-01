@@ -52,6 +52,38 @@ const reports: ReportSummary[] = [
 ];
 
 describe("ReportCalendar — month view (TC-1)", () => {
+  it("keeps month navigation positioned inside the calendar root", () => {
+    render(
+      <AllProviders>
+        <ReportCalendar reports={reports} todayIso={TODAY} />
+      </AllProviders>,
+    );
+
+    const calendar = screen
+      .getByTestId("report-calendar-month-view")
+      .querySelector(".rdp-root");
+    expect(calendar?.className).toContain("relative");
+  });
+
+  it("moves to the previous month when the calendar previous button is clicked", () => {
+    render(
+      <AllProviders>
+        <ReportCalendar reports={reports} todayIso={TODAY} />
+      </AllProviders>,
+    );
+
+    const monthView = screen.getByTestId("report-calendar-month-view");
+    expect(within(monthView).getByText("April 2026")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(monthView).getByRole("button", {
+        name: /go to the previous month/i,
+      }),
+    );
+
+    expect(within(monthView).getByText("March 2026")).toBeInTheDocument();
+  });
+
   it("renders the month view by default and tags published days with the success token", () => {
     render(
       <AllProviders>
