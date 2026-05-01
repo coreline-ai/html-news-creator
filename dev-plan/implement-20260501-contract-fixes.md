@@ -50,13 +50,13 @@ Phase D: P1 안정화                             ─┘
 > Dependencies: 없음
 
 ### 3.1 Tasks
-- [ ] `app/admin/sse.py` — `progress` 이벤트의 `data`를 구조화: `{step, progress, message, raw_line}`. BE에서 `line` 내부의 JSON을 파싱해 step/level/event를 뽑아 전달. 파싱 실패 시에도 raw_line은 포함.
-- [ ] `app/admin/sse.py` — `done` 이벤트의 status 보존(이미 그렇게 동작). FE가 정확히 처리하도록 schema 명시.
-- [ ] `ui/src/hooks/useRunStream.ts` — 새 schema 파싱. `done` 이벤트의 `status === "failed"` 시 hook status를 `"error"`로 전환 (현재 항상 `"done"`).
-- [ ] `ui/src/pages/NewReport.tsx` — Run 완료 후 navigate 분기: 성공 시 `/reports/{date}`, 실패 시 navigate 금지 + 에러 토스트 유지.
-- [ ] `app/admin/run_runner.py` — `_build_argv`를 **현재 CLI 지원 옵션으로 명시 제한**. 미지원 옵션은 warning 로그.
-- [ ] `ui/src/components/RunOptionsPanel.tsx` — 미지원 옵션 그룹(D 출력의 `output_theme`/`format`, E 발행의 `deploy_target`/`slack_notify`/`publish_at`)에 "Preview only — not yet applied to actual run" 배지. 또는 disabled.
-- [ ] 단위 테스트: `tests/unit/test_admin_sse_schema.py` (새 schema), `ui/src/__tests__/useRunStream.test.tsx`(실패 처리), `ui/src/__tests__/NewReport.failure.test.tsx`.
+- [x] `app/admin/sse.py` — `progress` 이벤트의 `data`를 구조화: `{step, progress, message, raw_line}`. BE에서 `line` 내부의 JSON을 파싱해 step/level/event를 뽑아 전달. 파싱 실패 시에도 raw_line은 포함.
+- [x] `app/admin/sse.py` — `done` 이벤트의 status 보존(이미 그렇게 동작). FE가 정확히 처리하도록 schema 명시.
+- [x] `ui/src/hooks/useRunStream.ts` — 새 schema 파싱. `done` 이벤트의 `status === "failed"` 시 hook status를 `"error"`로 전환 (현재 항상 `"done"`).
+- [x] `ui/src/pages/NewReport.tsx` — Run 완료 후 navigate 분기: 성공 시 `/reports/{date}`, 실패 시 navigate 금지 + 에러 토스트 유지.
+- [x] `app/admin/run_runner.py` — `_build_argv`를 **현재 CLI 지원 옵션으로 명시 제한**. 미지원 옵션은 warning 로그.
+- [x] `ui/src/components/RunOptionsPanel.tsx` — 미지원 옵션 그룹(D 출력의 `output_theme`/`format`, E 발행의 `deploy_target`/`slack_notify`/`publish_at`)에 "Preview only — not yet applied to actual run" 배지. 또는 disabled.
+- [x] 단위 테스트: `tests/unit/test_admin_sse_schema.py` (새 schema), `ui/src/__tests__/useRunStream.test.tsx`(실패 처리), `ui/src/__tests__/NewReport.failure.test.tsx`.
 
 ### 3.2 Success Criteria
 - BE SSE에서 progress event 받을 때 `data.step`이 항상 string (collect/extract/.../notify), 알 수 없으면 `"unknown"`.
@@ -68,18 +68,18 @@ Phase D: P1 안정화                             ─┘
 > Dependencies: 없음 (Phase A와 병렬 가능)
 
 ### 4.1 Tasks
-- [ ] `app/admin/render.py` (신규) — `render_published(date_kst, db, disabled_section_ids) -> Path`:
+- [x] `app/admin/render.py` (신규) — `render_published(date_kst, db, disabled_section_ids) -> Path`:
   1. DB의 최신 `Report` + `ReportSection` 로드 (선택된 날짜)
   2. `disabled_section_ids` 제외
   3. `app/rendering/jinja_renderer.py`로 `report_newsstream.html.j2` 렌더
   4. `public/news/{date}-trend.html` 덮어쓰기
   5. `ReportArtifact` (artifact_type=html, storage_path) 기록
-- [ ] `app/admin/publish.py` — `publish_report` 호출 흐름을 `render_published` → `NetlifyPublisher.deploy` 순서로 변경. 실패 시 명확한 에러.
-- [ ] `app/admin/api.py` — 신규 `POST /api/reports/{date}/render` 라우트 (publish 없이 render만, 디버그용).
-- [ ] `app/admin/api.py` — `api_publish_report`가 body에서 `disabled_section_ids: string[]`를 받음. publish 헬퍼에 전달.
-- [ ] `ui/src/hooks/useSections.ts::usePublishReport()` — body에 `disabled_section_ids` 포함.
-- [ ] `ui/src/pages/ReviewReport.tsx::handlePublishConfirm` — `useReviewStore.disabledSectionIds`의 key 배열을 mutation에 전달.
-- [ ] 단위 테스트: `tests/unit/test_admin_render.py` (render_published mock with disabled), `tests/unit/test_admin_publish_disabled.py`.
+- [x] `app/admin/publish.py` — `publish_report` 호출 흐름을 `render_published` → `NetlifyPublisher.deploy` 순서로 변경. 실패 시 명확한 에러.
+- [x] `app/admin/api.py` — 신규 `POST /api/reports/{date}/render` 라우트 (publish 없이 render만, 디버그용).
+- [x] `app/admin/api.py` — `api_publish_report`가 body에서 `disabled_section_ids: string[]`를 받음. publish 헬퍼에 전달.
+- [x] `ui/src/hooks/useSections.ts::usePublishReport()` — body에 `disabled_section_ids` 포함.
+- [x] `ui/src/pages/ReviewReport.tsx::handlePublishConfirm` — `useReviewStore.disabledSectionIds`의 key 배열을 mutation에 전달.
+- [x] 단위 테스트: `tests/unit/test_admin_render.py` (render_published mock with disabled), `tests/unit/test_admin_publish_disabled.py`.
 
 ### 4.2 Success Criteria
 - `POST /api/reports/2026-05-01/publish` body=`{disabled_section_ids:["abc-123"]}` → 발행 HTML에서 해당 섹션 미포함.
@@ -91,15 +91,15 @@ Phase D: P1 안정화                             ─┘
 > Dependencies: 없음
 
 ### 5.1 Tasks
-- [ ] `app/admin/sources_admin.py` — `add_source(fields) -> dict`. 중복 name 검사, 필수 필드(name/source_type) 검증, atomic write (tempfile + os.replace).
-- [ ] `app/admin/sources_admin.py::update_source` — atomic write 동일 적용.
-- [ ] `app/admin/api.py` — `POST /api/sources` 라우트 추가 (호출만, 본문은 `add_source`로).
-- [ ] `ui/src/components/PolicyForm.tsx` — `toPatch()`가 `quotas` 대신 **`section_quotas`** 키로 보냄. types도 `section_quotas`로 통일.
-- [ ] `app/admin/policy_admin.py::set_policy_override` — runtime override를 임시 yaml 파일로 dump하는 헬퍼 추가 (`materialize_to(tmp_path)`).
-- [ ] `app/admin/run_runner.py` — runtime override가 비어있지 않으면 임시 yaml로 dump → `EDITORIAL_POLICY_PATH=/tmp/...` 환경변수로 subprocess에 전달.
-- [ ] `app/editorial/policy.py` — 환경변수 `EDITORIAL_POLICY_PATH` 우선 읽기 (없으면 `data/editorial_policy.yaml`).
-- [ ] `scripts/run_daily.py` — `--policy-path` 옵션도 같이 추가 (env과 동치, 명시적 운영 편의).
-- [ ] 단위 테스트: `test_admin_sources_post`, `test_policy_override_subprocess_pass_through`, `test_sources_admin_atomic`.
+- [x] `app/admin/sources_admin.py` — `add_source(fields) -> dict`. 중복 name 검사, 필수 필드(name/source_type) 검증, atomic write (tempfile + os.replace).
+- [x] `app/admin/sources_admin.py::update_source` — atomic write 동일 적용.
+- [x] `app/admin/api.py` — `POST /api/sources` 라우트 추가 (호출만, 본문은 `add_source`로).
+- [x] `ui/src/components/PolicyForm.tsx` — `toPatch()`가 `quotas` 대신 **`section_quotas`** 키로 보냄. types도 `section_quotas`로 통일.
+- [x] `app/admin/policy_admin.py::set_policy_override` — runtime override를 임시 yaml 파일로 dump하는 헬퍼 추가 (`materialize_to(tmp_path)`).
+- [x] `app/admin/run_runner.py` — runtime override가 비어있지 않으면 임시 yaml로 dump → `EDITORIAL_POLICY_PATH=/tmp/...` 환경변수로 subprocess에 전달.
+- [x] `app/editorial/policy.py` — 환경변수 `EDITORIAL_POLICY_PATH` 우선 읽기 (없으면 `data/editorial_policy.yaml`).
+- [x] `scripts/run_daily.py` — `--policy-path` 옵션도 같이 추가 (env과 동치, 명시적 운영 편의).
+- [x] 단위 테스트: `test_admin_sources_post`, `test_policy_override_subprocess_pass_through`, `test_sources_admin_atomic`.
 
 ### 5.2 Success Criteria
 - AddSourceDialog 제출 → 200 + 새 소스 목록 갱신.
@@ -111,12 +111,12 @@ Phase D: P1 안정화                             ─┘
 > Dependencies: 없음
 
 ### 6.1 Tasks
-- [ ] `app/admin/api.py::api_patch_section` — `image_url` 입력 시 URL 검증 (`http(s)://` 스키마, host 존재). 부적합하면 400.
-- [ ] `ui/src/lib/kst.ts` (신규) — `todayKstISO()`, `formatKstDateTime(iso)` 두 helper. `Asia/Seoul`을 `Intl.DateTimeFormat`의 `timeZone` 옵션으로 명시.
-- [ ] `ui/src/lib/store.ts`, `ui/src/pages/Dashboard.tsx`, `ui/src/pages/Reports.tsx` — 각자 정의한 KST 함수를 `@/lib/kst`로 교체.
-- [ ] `templates/report_newsstream.html.j2` — `{{ output_theme | default("dark") }}`을 `<html data-theme>` 또는 `class="dark"` 초기값에 반영.
-- [ ] `app/rendering/jinja_renderer.py` — render 호출 시 `output_theme`을 컨텍스트에 주입 (Phase B의 render도 같은 경로).
-- [ ] `ui/src/__tests__/kst.test.tsx`, `tests/unit/test_section_image_url_validation.py`.
+- [x] `app/admin/api.py::api_patch_section` — `image_url` 입력 시 URL 검증 (`http(s)://` 스키마, host 존재). 부적합하면 400.
+- [x] `ui/src/lib/kst.ts` (신규) — `todayKstISO()`, `formatKstDateTime(iso)` 두 helper. `Asia/Seoul`을 `Intl.DateTimeFormat`의 `timeZone` 옵션으로 명시.
+- [x] `ui/src/lib/store.ts`, `ui/src/pages/Dashboard.tsx`, `ui/src/pages/Reports.tsx` — 각자 정의한 KST 함수를 `@/lib/kst`로 교체.
+- [x] `templates/report_newsstream.html.j2` — `{{ output_theme | default("dark") }}`을 `<html data-theme>` 또는 `class="dark"` 초기값에 반영.
+- [x] `app/rendering/jinja_renderer.py` — render 호출 시 `output_theme`을 컨텍스트에 주입 (Phase B의 render도 같은 경로).
+- [x] `ui/src/__tests__/kst.test.tsx`, `tests/unit/test_section_image_url_validation.py`.
 
 ### 6.2 Success Criteria
 - 부적합한 image_url 제출 → 400.
@@ -176,16 +176,16 @@ Phase C로 runtime override가 subprocess까지 전달되지만, 운영자에게
 - 영구 보존하려면 ssh로 yaml 직접 수정해야 하는 운영 UX 결함이 있다.
 
 ### 10.2 Tasks
-- [ ] **R1** [`ui/src/components/PolicyForm.tsx`](ui/src/components/PolicyForm.tsx) — dirty/saved 배너 카피 강화:
+- [x] **R1** [`ui/src/components/PolicyForm.tsx`](ui/src/components/PolicyForm.tsx) — dirty/saved 배너 카피 강화:
   - dirty: "변경 중 — 저장 시 다음 Run부터 반영 (서버 재시작 시 유실)"
   - saved: "다음 Run에 반영됩니다 · `data/editorial_policy.yaml`은 수정되지 않습니다"
   - 상단에 작은 ⓘ 헬프: "정책 우선순위: yaml < runtime override < per-run options"
-- [ ] **R2-BE** [`app/admin/policy_admin.py`](app/admin/policy_admin.py) — `persist_runtime_override_to_yaml() -> Path` 헬퍼: 현재 `_RUNTIME_OVERRIDE`를 yaml과 머지해 atomic write (`tempfile + os.replace`), 기존 파일은 `*.yaml.bak`로 백업.
-- [ ] **R2-API** [`app/admin/api.py`](app/admin/api.py) — `POST /api/policy/persist` 라우트. 성공 시 `{persisted_to: "data/editorial_policy.yaml", backup: "data/editorial_policy.yaml.bak"}` 반환. override가 비어있으면 400.
-- [ ] **R2-FE** [`ui/src/components/PolicyForm.tsx`](ui/src/components/PolicyForm.tsx) — 푸터에 `[Persist to yaml]` 버튼 + 확인 다이얼로그 ("이 작업은 디스크의 yaml 파일을 덮어씁니다. 백업이 함께 생성됩니다.").
-- [ ] **R2-Hook** [`ui/src/hooks/usePolicy.ts`](ui/src/hooks/usePolicy.ts) — `usePersistPolicy` mutation 추가.
-- [ ] **R3** [`docs/news-studio-usage.md`](docs/news-studio-usage.md) — "Policy precedence" 섹션 신규: 우선순위 표 + 시나리오 3건 (Preview / Per-run / Permanent).
-- [ ] 단위 테스트: `tests/unit/test_policy_persist.py` (override → yaml dump + backup), `ui/src/__tests__/PolicyForm.persist.test.tsx`.
+- [x] **R2-BE** [`app/admin/policy_admin.py`](app/admin/policy_admin.py) — `persist_runtime_override_to_yaml() -> Path` 헬퍼: 현재 `_RUNTIME_OVERRIDE`를 yaml과 머지해 atomic write (`tempfile + os.replace`), 기존 파일은 `*.yaml.bak`로 백업.
+- [x] **R2-API** [`app/admin/api.py`](app/admin/api.py) — `POST /api/policy/persist` 라우트. 성공 시 `{persisted_to: "data/editorial_policy.yaml", backup: "data/editorial_policy.yaml.bak"}` 반환. override가 비어있으면 400.
+- [x] **R2-FE** [`ui/src/components/PolicyForm.tsx`](ui/src/components/PolicyForm.tsx) — 푸터에 `[Persist to yaml]` 버튼 + 확인 다이얼로그 ("이 작업은 디스크의 yaml 파일을 덮어씁니다. 백업이 함께 생성됩니다.").
+- [x] **R2-Hook** [`ui/src/hooks/usePolicy.ts`](ui/src/hooks/usePolicy.ts) — `usePersistPolicy` mutation 추가.
+- [x] **R3** [`docs/news-studio-usage.md`](docs/news-studio-usage.md) — "Policy precedence" 섹션 신규: 우선순위 표 + 시나리오 3건 (Preview / Per-run / Permanent).
+- [x] 단위 테스트: `tests/unit/test_policy_persist.py` (override → yaml dump + backup), `ui/src/__tests__/PolicyForm.persist.test.tsx`.
 
 ### 10.3 Success Criteria
 - Settings에서 `target_sections=7` 변경 → `[Persist to yaml]` 클릭 → 확인 → `data/editorial_policy.yaml`의 해당 키가 7로 변경됨 + `*.yaml.bak`에 이전 값 보존.
@@ -193,11 +193,11 @@ Phase C로 runtime override가 subprocess까지 전달되지만, 운영자에게
 - 운영자가 dirty 상태에서 "재시작 시 유실"이라는 안내를 명확히 본다.
 
 ### 10.4 Test Cases
-- [ ] TC-E.1: `_RUNTIME_OVERRIDE = {"section_quotas": {"product": 6}}` → `persist_runtime_override_to_yaml()` → yaml 파일에 `section_quotas.product: 6` 반영, 백업 파일 생성.
-- [ ] TC-E.2: override가 빈 dict → `persist` API → 400 + "no override to persist".
-- [ ] TC-E.3: persist 도중 yaml dump 실패 → 원본 무손상 (atomic write 검증).
-- [ ] TC-E.4: PolicyForm dirty 배너 → "재시작 시 유실" 문자열 포함.
-- [ ] TC-E.5: persist 다이얼로그 확인 → API 호출 + 토스트 + 배너 → "all changes saved (persisted)".
+- [x] TC-E.1: `_RUNTIME_OVERRIDE = {"section_quotas": {"product": 6}}` → `persist_runtime_override_to_yaml()` → yaml 파일에 `section_quotas.product: 6` 반영, 백업 파일 생성.
+- [x] TC-E.2: override가 빈 dict → `persist` API → 400 + "no override to persist".
+- [x] TC-E.3: persist 도중 yaml dump 실패 → 원본 무손상 (atomic write 검증).
+- [x] TC-E.4: PolicyForm dirty 배너 → "재시작 시 유실" 문자열 포함.
+- [x] TC-E.5: persist 다이얼로그 확인 → API 호출 + 토스트 + 배너 → "all changes saved (persisted)".
 
 ### 10.5 Testing Instructions
 ```bash
@@ -235,24 +235,24 @@ Phase A~E로 큰 계약은 회복됐으나 외부 검증이 잡은 잔존 정밀
 ### 11.3 묶음 X — per-run options + output_theme 끝단 전달
 > File overlap: `scripts/run_daily.py` 공유 → 단일 에이전트 처리.
 
-- [ ] `scripts/run_daily.py` — 신규 click 옵션 `--policy-override-json` (string), `--output-theme` (choice: light/dark/newsroom-white). 받으면 즉시 환경변수 또는 컨텍스트로 전달.
-- [ ] `scripts/run_daily.py::run_render()` — `output_theme`을 `renderer.render_to_file(..., output_theme=...)` / `render_report(..., output_theme=...)`에 전달.
-- [ ] `app/admin/render.py::render_published` — `output_theme: str = "dark"` 인자 추가, JinjaRenderer로 전달.
-- [ ] `app/admin/run_runner.py::_build_argv` — `output_theme`, `target_sections`, `min_section_score`, `quotas` (section_quotas), `source_types`, `image_required`, `arxiv_max`, `community_max` 등을 **임시 policy yaml + per-run subset**으로 묶어 `--policy-override-json` 인자로 직렬화. (output_theme은 별도 `--output-theme` flag로.)
-- [ ] `app/editorial/policy.py::load_policy` — `--policy-override-json` 또는 동치 env에서 들어온 dict를 yaml 위에 deep-merge. 기존 `EDITORIAL_POLICY_PATH`와 함께 동작.
-- [ ] `ui/src/components/RunOptionsPanel.tsx` — "Preview only" 배지 제거 (output_theme / target_sections / quotas / source_types 등). 미지원 잔여 키(`deploy_target`/`slack_notify`/`publish_at`)는 라벨 유지.
-- [ ] 단위 테스트: `tests/unit/test_per_run_options_pipeline.py` — `_build_argv` + `load_policy` 통합으로 per-run target_sections=5가 실제 generate에 도달함을 mock 통과.
+- [x] `scripts/run_daily.py` — 신규 click 옵션 `--policy-override-json` (string), `--output-theme` (choice: light/dark/newsroom-white). 받으면 즉시 환경변수 또는 컨텍스트로 전달.
+- [x] `scripts/run_daily.py::run_render()` — `output_theme`을 `renderer.render_to_file(..., output_theme=...)` / `render_report(..., output_theme=...)`에 전달.
+- [x] `app/admin/render.py::render_published` — `output_theme: str = "dark"` 인자 추가, JinjaRenderer로 전달.
+- [x] `app/admin/run_runner.py::_build_argv` — `output_theme`, `target_sections`, `min_section_score`, `quotas` (section_quotas), `source_types`, `image_required`, `arxiv_max`, `community_max` 등을 **임시 policy yaml + per-run subset**으로 묶어 `--policy-override-json` 인자로 직렬화. (output_theme은 별도 `--output-theme` flag로.)
+- [x] `app/editorial/policy.py::load_policy` — `--policy-override-json` 또는 동치 env에서 들어온 dict를 yaml 위에 deep-merge. 기존 `EDITORIAL_POLICY_PATH`와 함께 동작.
+- [x] `ui/src/components/RunOptionsPanel.tsx` — "Preview only" 배지 제거 (output_theme / target_sections / quotas / source_types 등). 미지원 잔여 키(`deploy_target`/`slack_notify`/`publish_at`)는 라벨 유지.
+- [x] 단위 테스트: `tests/unit/test_per_run_options_pipeline.py` — `_build_argv` + `load_policy` 통합으로 per-run target_sections=5가 실제 generate에 도달함을 mock 통과.
 
 ### 11.4 묶음 Y — 이미지 검증 강화 + reorder exact-set
-- [ ] `app/admin/render.py` — 섹션 이미지 후보를 `app/utils/source_images::is_usable_representative_image_url`로 한 번 더 필터. Phase 4 client-only `disabled_section_ids`와 함께 **출처 자동 검증**.
-- [ ] `app/admin/routers/reports.py::api_reorder_sections` — 받은 `section_ids`가 해당 report의 전체 section id set과 **정확히 일치**해야 함. 누락/추가 모두 400 + 명확한 메시지.
-- [ ] 단위 테스트: `tests/unit/test_admin_render_image_filter.py`, `tests/unit/test_admin_sections.py`에 reorder exact-set 케이스 추가.
+- [x] `app/admin/render.py` — 섹션 이미지 후보를 `app/utils/source_images::is_usable_representative_image_url`로 한 번 더 필터. Phase 4 client-only `disabled_section_ids`와 함께 **출처 자동 검증**.
+- [x] `app/admin/routers/reports.py::api_reorder_sections` — 받은 `section_ids`가 해당 report의 전체 section id set과 **정확히 일치**해야 함. 누락/추가 모두 400 + 명확한 메시지.
+- [x] 단위 테스트: `tests/unit/test_admin_render_image_filter.py`, `tests/unit/test_admin_sections.py`에 reorder exact-set 케이스 추가.
 
 ### 11.5 묶음 Z — utcnow + materialize hard-fail + RuntimeWarning
-- [ ] `app/admin/publish.py:99` — `datetime.utcnow()` → `datetime.now(timezone.utc)`. timezone import 정리.
-- [ ] `app/admin/run_runner.py::_supervise` — `_materialize_policy_override()` 예외를 swallow하지 말고 run을 즉시 fail로 마감 (`status=failed`, `error=policy_override_materialize_failed:...`). 운영자가 의도한 정책이 묵살되는 silent regress 방지.
-- [ ] `tests/unit/test_admin_render.py` 또는 관련 테스트에서 `db.add()`를 sync mock으로 (RuntimeWarning 제거). `MagicMock()` 또는 `mock.create_autospec`.
-- [ ] 단위 테스트: `tests/unit/test_run_runner_policy_fail.py` — materialize 실패 시 run이 failed로 마감되고 subprocess 시작 안 됨.
+- [x] `app/admin/publish.py:99` — `datetime.utcnow()` → `datetime.now(timezone.utc)`. timezone import 정리.
+- [x] `app/admin/run_runner.py::_supervise` — `_materialize_policy_override()` 예외를 swallow하지 말고 run을 즉시 fail로 마감 (`status=failed`, `error=policy_override_materialize_failed:...`). 운영자가 의도한 정책이 묵살되는 silent regress 방지.
+- [x] `tests/unit/test_admin_render.py` 또는 관련 테스트에서 `db.add()`를 sync mock으로 (RuntimeWarning 제거). `MagicMock()` 또는 `mock.create_autospec`.
+- [x] 단위 테스트: `tests/unit/test_run_runner_policy_fail.py` — materialize 실패 시 run이 failed로 마감되고 subprocess 시작 안 됨.
 
 ### 11.6 검증 (모든 묶음 후)
 ```bash
