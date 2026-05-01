@@ -36,7 +36,7 @@ interface CommandItem {
 
 /**
  * ⌘K command palette. Built on `cmdk` and shadcn `Dialog` so it inherits
- * focus management + dark/light tokens. Items: 4 nav routes + Re-run last +
+ * focus management + dark/light tokens. Items: 5 nav routes + Re-run last +
  * Publish current.
  */
 export function CommandPalette({
@@ -50,7 +50,7 @@ export function CommandPalette({
   // Close on route change initiated from a command.
   const close = () => onOpenChange(false);
 
-  const items: CommandItem[] = [
+  const navigationItems: CommandItem[] = [
     {
       id: "go-home",
       label: "Go to Dashboard",
@@ -82,15 +82,28 @@ export function CommandPalette({
       },
     },
     {
+      id: "go-policy",
+      label: "Editorial Policy",
+      hint: "/policy",
+      icon: SIDEBAR_NAV_ICONS.policy,
+      perform: () => {
+        navigate("/policy");
+        close();
+      },
+    },
+    {
       id: "go-settings",
       label: "Settings",
       hint: "/settings",
-      icon: SIDEBAR_NAV_ICONS.policy,
+      icon: SIDEBAR_NAV_ICONS.settings,
       perform: () => {
         navigate("/settings");
         close();
       },
     },
+  ];
+
+  const actionItems: CommandItem[] = [
     {
       id: "rerun-last",
       label: "Re-run last",
@@ -126,7 +139,7 @@ export function CommandPalette({
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <DialogDescription className="sr-only">
-          Search and run commands across News Studio.
+          Search and run commands across Coreline News Studio.
         </DialogDescription>
         <Command
           label="Command palette"
@@ -155,7 +168,7 @@ export function CommandPalette({
               heading="Navigate"
               className="text-muted-foreground [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:uppercase"
             >
-              {items.slice(0, 4).map((item) => (
+              {navigationItems.map((item) => (
                 <CommandRow key={item.id} item={item} />
               ))}
             </Command.Group>
@@ -164,7 +177,7 @@ export function CommandPalette({
               heading="Actions"
               className="text-muted-foreground [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:uppercase"
             >
-              {items.slice(4).map((item) => (
+              {actionItems.map((item) => (
                 <CommandRow key={item.id} item={item} />
               ))}
             </Command.Group>

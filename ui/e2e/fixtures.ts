@@ -137,7 +137,7 @@ export function defaultPolicy(targetSections = 10): Record<string, unknown> {
       max_community_sections: 1,
       max_same_source_name: 2,
       prefer_mainstream_first: true,
-      backfill_require_image: true,
+      backfill_require_image: false,
     },
   };
 }
@@ -174,6 +174,8 @@ export async function mockApi(
   const publishCalls: Array<Record<string, unknown>> = [];
   const policyPuts: Array<Record<string, unknown>> = [];
   const sourcePuts: Array<{ name: string; body: Record<string, unknown> }> = [];
+  let latestRunId = "test-run-1";
+  let runStarted = false;
 
   // GET /api/reports
   await page.route(/\/api\/reports(?:\?.*)?$/, async (route: Route) => {
@@ -279,19 +281,75 @@ export async function mockApi(
     });
   });
 
-  // POST /api/runs (no /stream suffix)
+  // GET/POST /api/runs (no /stream suffix)
   await page.route(/\/api\/runs$/, async (route: Route) => {
-    if (route.request().method() !== "POST") {
+    const method = route.request().method();
+    if (method === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          runs: runStarted
+            ? [
+                {
+                  run_id: latestRunId,
+                  status: "running",
+                  started_at: "2026-05-01T00:00:00Z",
+                  options: {},
+                  trackable: true,
+                  source: "memory",
+                },
+              ]
+            : [],
+        }),
+      });
+      return;
+    }
+    if (method !== "POST") {
       await route.continue();
+      return;
+    }
+    runStarted = true;
+    latestRunId = "test-run-1";
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        run_id: latestRunId,
+        status: "running",
+        options: {},
+      }),
+    });
+  });
+
+  // GET /api/runs/{id} — activeRun preflight before SSE subscription.
+  await page.route(/\/api\/runs\/[^/]+$/, async (route: Route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    const url = new URL(route.request().url());
+    const runId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+    if (!runStarted || runId !== latestRunId) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: `unknown run_id: ${runId}` }),
+      });
       return;
     }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        run_id: "test-run-1",
-        status: "started",
-        options: {},
+        run: {
+          run_id: runId,
+          status: "running",
+          started_at: "2026-05-01T00:00:00Z",
+          options: {},
+          trackable: true,
+          source: "memory",
+        },
       }),
     });
   });

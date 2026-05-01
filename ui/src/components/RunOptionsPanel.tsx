@@ -60,7 +60,7 @@ export function RunOptionsPanel() {
   return (
     <aside
       data-testid="run-options-panel"
-      className="border-border bg-card text-card-foreground flex h-full flex-col border-r"
+      className="border-border bg-card text-card-foreground flex h-full min-h-0 flex-col overflow-hidden border-r"
       aria-label="Run options"
     >
       <div className="border-border flex items-center justify-between border-b px-4 py-3">
@@ -81,7 +81,7 @@ export function RunOptionsPanel() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {GROUPS.map((group) => (
           <AccordionGroup
             key={group.id}
@@ -351,7 +351,8 @@ function EditorialGroup({
       />
       <Toggle
         id="opt-image-required"
-        label="Require image"
+        label="Require source image"
+        hint="Off: 이미지가 없는 섹션도 유지하고 대표 카드 SVG를 생성합니다."
         checked={runOptions.image_required}
         onChange={(v) => setOption("image_required", v)}
       />

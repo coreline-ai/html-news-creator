@@ -56,6 +56,7 @@ def _extract_attrs(tag: str) -> dict[str, str]:
 
 _SKIP_SUBSTRINGS = (
     "front/assets", "favicon", "tracking", "analytics", "placeholder",
+    "default-user", "default_user", "default-avatar", "default_avatar",
     # Recurring publisher promo/event assets that are commonly embedded in
     # article bodies but are not evidence images for the article itself.
     "strictlyvc",

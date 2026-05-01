@@ -87,4 +87,24 @@ describe("Dashboard (TC-2.E1)", () => {
     const dateLink = screen.getByRole("link", { name: "2026-04-29" });
     expect(dateLink).toHaveAttribute("href", "/reports/2026-04-29");
   });
+
+  it("links Schedule run to the Policy page", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ reports: [] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
+
+    render(
+      <AllProviders>
+        <Dashboard />
+      </AllProviders>,
+    );
+
+    const scheduleRun = await screen.findByRole("link", {
+      name: /schedule run/i,
+    });
+    expect(scheduleRun).toHaveAttribute("href", "/policy");
+  });
 });

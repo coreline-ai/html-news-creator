@@ -61,7 +61,7 @@ export function Dashboard() {
           icon={<RefreshCw className="size-4" aria-hidden="true" />}
         />
         <QuickActionCard
-          to="/settings"
+          to="/policy"
           title="Schedule run"
           description="Configure cadence and policy."
           icon={

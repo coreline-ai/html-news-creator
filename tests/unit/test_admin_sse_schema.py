@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import json
 
-from app.admin.sse import STEPS, _normalise_progress
+import pytest
+
+from app.admin.run_runner import RunState
+from app.admin.sse import STEPS, _event_iter, _normalise_progress
 
 
 def test_progress_payload_extracts_step_from_structlog_line():
@@ -72,3 +75,33 @@ def test_progress_payload_handles_empty_payload_dict():
         "message": "",
         "raw_line": "",
     }
+
+
+@pytest.mark.asyncio
+async def test_event_iter_replays_done_for_terminal_late_subscriber(monkeypatch):
+    """A completed run must still terminate late SSE subscribers."""
+    state = RunState(run_id="run-1", options={"dry_run": True})
+    state.status = "completed"
+    state.started_at = "2026-05-01T00:00:00+00:00"
+    state.completed_at = "2026-05-01T00:00:01+00:00"
+    state.return_code = 0
+    state.history.append(
+        {
+            "stream": "stdout",
+            "line": json.dumps({"step": "render", "event": "rendered"}),
+            "ts": state.started_at,
+        }
+    )
+
+    monkeypatch.setattr(
+        "app.admin.sse.get_run",
+        lambda run_id: state if run_id == "run-1" else None,
+    )
+
+    frames = [frame async for frame in _event_iter("run-1")]
+
+    assert [frame["event"] for frame in frames] == ["progress", "done"]
+    done = json.loads(frames[-1]["data"])
+    assert done["event"] == "done"
+    assert done["status"] == "completed"
+    assert done["return_code"] == 0

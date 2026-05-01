@@ -822,6 +822,20 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
         )
 
     selected_candidates = select_editorial_clusters(cluster_candidates, editorial_policy)
+    selection_cfg = editorial_policy.get("report_selection", {}) or {}
+    try:
+        max_sections = int(selection_cfg.get("max_sections", 6))
+    except (TypeError, ValueError):
+        max_sections = 6
+    try:
+        target_sections = min(
+            int(selection_cfg.get("target_sections", max_sections)),
+            max_sections,
+        )
+    except (TypeError, ValueError):
+        target_sections = max_sections
+    generated_image_fallbacks = 0
+    source_image_sections = 0
 
     for candidate in selected_candidates:
         cluster = candidate["cluster"]
@@ -889,6 +903,11 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
             )
             image_source = "generated_svg"
 
+        if image_source == "generated_svg":
+            generated_image_fallbacks += 1
+        elif content_image_urls or og_image_url:
+            source_image_sections += 1
+
         section["sources_json"] = sources
         section["content_image_urls"] = content_image_urls
         section["og_image_url"] = og_image_url if not content_image_urls else ""
@@ -919,8 +938,20 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
             "candidate_clusters": len(cluster_candidates),
             "selected_clusters": len(selected_candidates),
             "editorial_filtered": max(0, len(cluster_candidates) - len(selected_candidates)),
+            "target_sections": target_sections,
+            "section_shortfall": max(0, target_sections - len(selected_candidates)),
+            "source_image_sections": source_image_sections,
+            "generated_image_fallbacks": generated_image_fallbacks,
         },
     )
+    if len(selected_candidates) < target_sections:
+        logger.warning(
+            "section_target_shortfall",
+            target_sections=target_sections,
+            selected_clusters=len(selected_candidates),
+            candidate_clusters=len(cluster_candidates),
+            generated_image_fallbacks=generated_image_fallbacks,
+        )
 
     method_json = {
         "editorial_policy": "data/editorial_policy.yaml",

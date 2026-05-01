@@ -96,6 +96,12 @@ def test_complete_main_image_rejects_reporter_headshot():
         )
         is False
     )
+    assert (
+        is_complete_main_image_url(
+            "https://cdn.aitimes.com/image/newsroom/default-user.png"
+        )
+        is False
+    )
 
 
 def test_complete_main_image_rejects_recurring_promo_asset():

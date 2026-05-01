@@ -7,6 +7,8 @@
 .DS_Store
 Thumbs.db
 .claude/
+.logs/
+.playwright-cli/
 .cursor/
 .idea/
 .vscode/

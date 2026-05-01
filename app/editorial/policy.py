@@ -45,7 +45,7 @@ DEFAULT_POLICY: dict[str, Any] = {
         "max_same_source_name": 2,
         "max_same_source_tier_ratio": 0.75,
         "backfill_min_section_score": 35,
-        "backfill_require_image": True,
+        "backfill_require_image": False,
         "backfill_relax_topic_quotas": True,
         "backfill_max_community_sections": 2,
         "backfill_max_same_source_name": 5,

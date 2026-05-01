@@ -8,6 +8,9 @@ export interface RunProgressToastProps {
   events: RunProgressEvent[];
   error?: string | null;
   onDismiss?: () => void;
+  title?: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
 export function RunProgressToast({
@@ -16,12 +19,31 @@ export function RunProgressToast({
   events,
   error,
   onDismiss,
+  title,
+  actionLabel,
+  onAction,
 }: RunProgressToastProps) {
   if (status === "idle") return null;
 
   const pct = Math.round(
     Math.max(0, Math.min(1, lastEvent?.progress ?? 0)) * 100,
   );
+  const defaultTitle =
+    status === "running"
+      ? "파이프라인 실행 중"
+      : status === "done"
+        ? "리포트 생성 완료"
+        : status === "stalled"
+          ? "응답 대기 중"
+          : "실행 실패";
+  const fallbackMessage =
+    status === "running"
+      ? "실행 로그를 연결하는 중입니다…"
+      : status === "done"
+        ? "최신 리포트가 준비되었습니다."
+        : status === "stalled"
+          ? "서버 응답을 기다리고 있습니다. 잠시 후 자동 복구를 시도합니다."
+          : "실행 상태를 확인할 수 없습니다.";
 
   return (
     <div
@@ -56,13 +78,7 @@ export function RunProgressToast({
           />
         )}
         <div className="text-foreground text-sm font-medium">
-          {status === "running"
-            ? "Running pipeline"
-            : status === "done"
-              ? "Run complete"
-              : status === "stalled"
-                ? "응답 없음 — 잠시 후 자동 복구되거나 취소하세요"
-                : "Run failed"}
+          {title ?? defaultTitle}
         </div>
         {onDismiss ? (
           <button
@@ -101,9 +117,19 @@ export function RunProgressToast({
             {events.length} event{events.length === 1 ? "" : "s"}
           </>
         ) : (
-          "Waiting for first event…"
+          fallbackMessage
         )}
       </div>
+
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={onAction}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 self-start px-2.5 py-1.5 text-[11px] font-semibold"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

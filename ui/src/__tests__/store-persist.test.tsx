@@ -3,6 +3,7 @@ import {
   useAppStore,
   DEFAULT_RUN_OPTIONS,
   type RunOptions,
+  type ActiveRun,
 } from "@/lib/store";
 import { useReviewStore } from "@/hooks/useReviewStore";
 
@@ -12,7 +13,10 @@ const REVIEW_KEY = "news-studio-review";
 beforeEach(() => {
   window.localStorage.clear();
   // Reset stores to defaults so each test sees a known state.
-  useAppStore.setState({ runOptions: { ...DEFAULT_RUN_OPTIONS } });
+  useAppStore.setState({
+    runOptions: { ...DEFAULT_RUN_OPTIONS },
+    activeRun: null,
+  });
   useReviewStore.setState({
     previewMode: "live",
     selectedSectionId: null,
@@ -31,16 +35,41 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
 
     const parsed = JSON.parse(raw!) as {
       version: number;
-      state: { runOptions: RunOptions };
+      state: { runOptions: RunOptions; activeRun: ActiveRun | null };
     };
     expect(parsed.version).toBe(1);
     expect(parsed.state.runOptions.target_sections).toBe(7);
     expect(parsed.state.runOptions.dry_run).toBe(true);
+    expect(parsed.state.activeRun).toBeNull();
     // theme must NOT be in the persisted slice — ThemeToggle owns the
     // legacy "theme" key.
     expect(parsed.state).not.toHaveProperty("theme");
     // previewMode must NOT be persisted from this store either.
     expect(parsed.state).not.toHaveProperty("previewMode");
+  });
+
+  it("persists activeRun for refresh-safe pipeline tracking", async () => {
+    const activeRun: ActiveRun = {
+      run_id: "run-abc",
+      started_at: "2026-05-01T00:00:00.000Z",
+      options: { ...DEFAULT_RUN_OPTIONS, date: "2026-05-01" },
+    };
+
+    useAppStore.getState().setActiveRun(activeRun);
+
+    const raw = window.localStorage.getItem(APP_KEY);
+    expect(raw).toBeTruthy();
+    const parsed = JSON.parse(raw!) as {
+      version: number;
+      state: { runOptions: RunOptions; activeRun: ActiveRun | null };
+    };
+    expect(parsed.version).toBe(1);
+    expect(parsed.state.activeRun).toEqual(activeRun);
+
+    useAppStore.setState({ activeRun: null });
+    window.localStorage.setItem(APP_KEY, raw!);
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().activeRun).toEqual(activeRun);
   });
 
   it("rehydrates runOptions from localStorage on store re-creation", async () => {
