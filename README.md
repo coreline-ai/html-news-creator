@@ -32,8 +32,10 @@
 | 🤖 **LLM 분류·요약** | AI 관련성 판별, 한국어 팩트 요약, 시사점 생성 |
 | 📐 **임베딩 클러스터링** | HDBSCAN으로 동일 주제 기사를 자동 그룹화 |
 | 📰 **편집 정책 기반 선정** | 소스 등급·클러스터 크기·토픽 할당량·이미지 우선 backfill로 최대 10개 섹션 선정 |
-| 🖼️ **스마트 이미지 선택** | 기자 초상·로고·UI 요소 자동 제외, 기사 대표 이미지 추출 |
+| 🖼️ **스마트 이미지 선택** | 원본 대표 이미지 우선, 기자 초상·로고·UI 요소 자동 제외, 이미지 부재 시 생성형 SVG 카드 대체 |
 | 🎨 **3가지 리포트 테마** | 기본 라이트, 다크, `newsroom-white` 공개용 테마 |
+| 🖥️ **Coreline News Studio** | 옵션·정책·소스·검토·발행을 처리하는 React + FastAPI 운영 웹앱 |
+| 📡 **Run 상태 추적** | SSE history replay + `localStorage` activeRun 복원 + JobRun 종료 이력으로 새로고침/탭 이동 대응 |
 | 🚀 **Netlify 자동 배포** | GitHub Actions → Netlify 원클릭 배포 |
 | 📢 **Slack 알림** | 생성 완료 후 Webhook 통보 |
 
@@ -57,6 +59,23 @@
 │  신뢰 점수       생성·요약     3테마 지원       + Slack 알림       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Coreline News Studio 제어 흐름
+
+```
+React SPA (ui/)
+  ├─ New Report 옵션 조정 → POST /api/preview      # DB 쓰기 없는 미리보기
+  ├─ Run 실행           → POST /api/runs         # subprocess로 CLI 실행
+  ├─ 진행률 구독        → GET /api/runs/{id}/stream (SSE)
+  ├─ 완료/실패 이력     → GET /api/runs + JobRun
+  └─ 검토/발행          → /api/reports/*, /api/sections/*
+
+FastAPI app/admin/*
+  → scripts/run_daily.py
+  → collect/extract/classify/cluster/verify/generate/render/publish/notify
+```
+
+> 웹앱은 파이프라인 내부 함수를 직접 import하지 않고, `scripts/run_daily.py`를 subprocess로 실행하는 운영 UI입니다. CLI 독립 실행 경계를 유지하기 위해 웹앱 옵션은 per-run override로 전달하며, 기본 yaml은 명시적 persist 전까지 자동 변경하지 않습니다.
 
 ### 파이프라인 단계별 상세
 
@@ -83,7 +102,7 @@ notify    │ Slack Webhook 발송
 ```
 html-news-creator/
 ├── app/
-│   ├── admin/               # 관리자/운영 API (FastAPI)
+│   ├── admin/               # 관리자/운영 API (FastAPI, run_runner/SSE/JobRun)
 │   ├── collectors/          # 소스별 수집기
 │   │   ├── orchestrator.py  # 컬렉터 통합 실행
 │   │   ├── rss_collector.py # RSS / YouTube
@@ -109,6 +128,12 @@ html-news-creator/
 │   │   └── generated_images.py # SVG 폴백 생성
 │   ├── verification/        # 소스 교차 검증
 │   └── vision/              # OCR (Surya) / 미디어 다운로더
+│
+├── ui/                         # Coreline News Studio React SPA
+│   ├── src/components/          # Sidebar/Header/LivePreview/RunProgress 등
+│   ├── src/pages/               # Dashboard/Reports/NewReport/ReviewReport/Policy/Settings
+│   ├── src/lib/                 # API client, Zustand store, theme/run options
+│   └── src/__tests__/           # Vitest 컴포넌트·store 테스트
 │
 ├── data/
 │   ├── sources_registry.yaml   # 37개 활성 소스 설정
@@ -219,11 +244,13 @@ Backfill 단계에서 유지/완화되는 기준:
 | 기준 | 동작 |
 |------|------|
 | 최소 점수 | `backfill_min_section_score: 35` 유지 |
-| 이미지 | `backfill_require_image: true`로 대표 이미지 후보 우선 |
+| 이미지 | 대표 이미지 후보를 우선하되, 없으면 생성형 SVG 카드로 대체 |
 | 토픽 할당량 | 부족분 보강 시 완화 |
-| 커뮤니티 섹션 | 최대 2개까지 완화 |
+| 커뮤니티 섹션 | 커뮤니티 단독/우세 후보만 cap 소비, backfill에서는 최대 2개까지 완화 |
 | 동일 소스 반복 | 최대 5개까지 완화 |
 | arXiv-only | 최대 1개 hard cap 유지 |
+
+> `community` tier가 포함되어도 TechCrunch/The Verge/공식 GitHub처럼 mainstream·official·developer_signal 출처로 함께 확인된 클러스터는 community cap을 소비하지 않습니다. 이 cap은 Reddit/HN 단독 후보가 메인 섹션을 과도하게 차지하지 못하게 하는 용도입니다.
 
 ---
 
@@ -296,13 +323,17 @@ Usage: run_daily.py [OPTIONS]
 
 Options:
   --date TEXT         실행 날짜 (YYYY-MM-DD, 기본값: 오늘)
-  --mode TEXT         full | rss-only  [default: full]
+  --mode TEXT         full | rss-only | dry-run  [default: full]
   --from-step TEXT    시작 단계 (collect/extract/classify/cluster/verify/
                       image_analyze/generate/render/publish/notify)
   --to-step TEXT      종료 단계
   --dry-run           DB 저장·배포 없이 시뮬레이션
-  --source-types TEXT 특정 소스 타입만 수집 (comma-separated)
+  --policy-path TEXT  ad-hoc 정책 yaml 경로 (기본 yaml 미수정)
+  --policy-override-json TEXT  per-run 정책 deep-merge JSON
+  --output-theme TEXT light | dark | newsroom-white
 ```
+
+> CLI에는 `--source-types` 옵션이 없습니다. 소스 타입 제한은 현재 웹앱/API 실행 시 per-run 정책 오버라이드(`__source_filter`)로 전달됩니다. 순수 CLI에서 특정 소스만 돌릴 때는 별도 정책 파일 또는 코드 레벨 실행 래퍼를 사용하세요.
 
 ---
 
@@ -379,9 +410,9 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
 
 ---
 
-## 🖥️ News Studio 웹앱
+## 🖥️ Coreline News Studio 웹앱
 
-CLI(`scripts/run_daily.py`)와 yaml 편집을 반복하는 운영 흐름을 대체하기 위한 단일 사용자 GUI입니다. React 19 + Vite SPA(`ui/`)와 FastAPI(`app/admin/api.py`)로 구성되며, 옵션 변경 → 라이브 미리보기 → Run → 섹션 검토 → Netlify 발행을 한 화면에서 처리합니다.
+CLI(`scripts/run_daily.py`)와 yaml 편집을 반복하는 운영 흐름을 대체하기 위한 단일 사용자 GUI입니다. React 19 + Vite SPA(`ui/`)와 FastAPI(`app/admin/api.py`)로 구성되며, 옵션 변경 → 라이브 미리보기 → Run 상태 추적 → 섹션 검토 → Netlify 발행을 한 흐름에서 처리합니다.
 
 ### 시작
 
@@ -390,39 +421,51 @@ make ui-build && make serve     # http://localhost:8000 (운영)
 cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvicorn 8000 필요)
 ```
 
-### 4 화면
+### 화면 구성
 
 | 이름 | URL | 역할 |
 |------|-----|------|
-| 대시보드 | `/` | 오늘 카드 · Quick actions · 최근 실행 테이블 |
-| 신규 리포트 | `/reports/new` | 5그룹 옵션 + 라이브 미리보기 + Run |
+| 대시보드 | `/` | 오늘 카드 · Quick actions · 최근 실행/JobRun 테이블 |
+| 리포트 목록 | `/reports` | 생성된 날짜별 리포트 목록과 검토 진입 |
+| 신규 리포트 | `/reports/new` | 5그룹 옵션 + 라이브 미리보기 + Run 실행 |
 | 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · 재렌더 · Publish (Live 모드는 발행된 HTML iframe) |
-| 소스 / 설정 | `/sources`, `/settings` | 37개 소스 토글 · 신규 소스 추가 · 정책 런타임 오버라이드 + `[Persist to yaml]` |
+| 소스 | `/sources` | 37개 소스 토글 · 신규 소스 추가 · registry yaml 반영 |
+| 정책 | `/policy` | 점수·할당량·선정 정책 런타임 오버라이드 + `[Persist to yaml]` |
+| 설정 | `/settings` | 앱 테마 · 기본 출력 테마 · 브라우저별 Run 기본값 · 발행 기본값 |
 
 ### 주요 API 엔드포인트
 
 | 메서드 | 경로 | 용도 |
 |------|------|------|
 | POST | `/api/runs` | 백그라운드 파이프라인 실행 (옵션 + 정책 오버라이드 전달) |
-| GET | `/api/runs/{id}/stream` | SSE 진행률 (`{step, progress, message, raw_line}`, 실패 run은 `error`로 종료) |
+| GET | `/api/runs` | 메모리 실행 + DB JobRun 이력 병합 조회 |
+| GET | `/api/runs/{id}` | 단일 Run 상태 조회 (`trackable` 포함) |
+| GET | `/api/runs/{id}/stream` | SSE 진행률 (`{step, progress, message, raw_line}`) + history replay + terminal done |
 | POST | `/api/preview` | 옵션만 적용한 in-memory 미리보기 (DB 쓰기 없음) |
+| GET | `/api/reports/{date}` | 리포트·섹션·통계 조회 |
+| PATCH | `/api/sections/{id}` | 단일 섹션 제목/요약/이미지 등 편집 |
+| POST | `/api/sections/{id}/regenerate` | 단일 섹션 LLM 재생성 |
 | POST | `/api/reports/{date}/render` | DB 기준 fresh 재렌더 (disabled 섹션 제외, 배포 없음) |
 | GET | `/api/reports/{date}/html` | 발행된 HTML 원본 (검토 Live 모드용) |
 | POST | `/api/reports/{date}/publish` | 재렌더 후 Netlify 배포 트리거 |
 | POST | `/api/sources` | 신규 소스 yaml registry에 atomic append |
+| PUT | `/api/sources/{name}` | 소스 활성화/메타데이터 업데이트 |
 | PUT | `/api/policy` | 런타임 오버라이드 저장 (메모리, 휘발) |
 | POST | `/api/policy/persist` | 런타임 오버라이드를 `editorial_policy.yaml`에 영구 저장 (`*.yaml.bak` 자동 백업) |
 
-> 정책 우선순위: **per-run options > runtime override (`PUT /api/policy`) > yaml**. 오른쪽으로 갈수록 약하며, `[Persist to yaml]` 버튼이 메모리 오버라이드를 yaml에 머지합니다.
+> 정책 우선순위: **per-run options > runtime override (`PUT /api/policy`) > yaml**. 오른쪽으로 갈수록 약하며, `/policy`의 `[Persist to yaml]` 버튼이 메모리 오버라이드를 yaml에 머지합니다.
 
 ### 단축키 / UX
 
 - `⌘K` / `Ctrl+K` — 명령 팔레트, `R` — 마지막 옵션 재실행, `P` — 발행 (검토 화면 한정)
-- HeaderBar 토글 — 다크 ↔ 라이트 (`localStorage` 영속)
+- HeaderBar 토글 — 앱 크롬 다크 ↔ 라이트 (`localStorage` 영속)
+- 전역 Run 토스트 — 새로고침/탭 이동 후에도 `activeRun`을 복원해 SSE에 재연결, 완료 시 `결과 리포트 보기` CTA 제공
 
 ### 운영 가드
 
-- LLM 호출 60s 하드 타임아웃 + 스톨 감지, `run_runner` 5분 max-runtime으로 행 멈춤 차단
+- LLM 호출 60s 하드 타임아웃 + 스톨 감지, `run_runner` 기본 15분 max-runtime으로 장시간 Run 행 멈춤 차단
+- SSE는 history replay와 terminal done 합성을 지원해 late subscriber/새로고침 후 진행률 복구
+- Run 종료 시 JobRun을 best-effort로 저장해 Dashboard 최근 실행 표와 `/api/runs` 이력에 반영
 - 리포트 HTML 응답에 `Cache-Control: no-store`로 stale chunk 방지
 - 정책/소스 yaml 저장은 임시파일 → atomic rename + `.bak` 자동 생성
 
@@ -468,7 +511,7 @@ report_selection:
   max_sections: 10          # 최대 섹션 수
   target_sections: 10       # backfill 목표 섹션 수
   min_section_score: 35     # 최소 점수 커트라인
-  backfill_require_image: true
+  backfill_require_image: false  # 이미지 없는 후보도 유지, 생성형 SVG 카드로 대체
   backfill_relax_topic_quotas: true
 
 section_quotas:

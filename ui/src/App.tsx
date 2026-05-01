@@ -11,8 +11,10 @@ import { Sidebar, MobileSidebar } from "@/components/Sidebar";
 import { HeaderBar } from "@/components/HeaderBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette } from "@/components/CommandPalette";
+import { GlobalRunIndicator } from "@/components/GlobalRunIndicator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 
 // Lazy-load page bundles. All pages export `default` (verified Phase 5).
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -20,6 +22,7 @@ const Reports = lazy(() => import("@/pages/Reports"));
 const NewReport = lazy(() => import("@/pages/NewReport"));
 const ReviewReport = lazy(() => import("@/pages/ReviewReport"));
 const Sources = lazy(() => import("@/pages/Sources"));
+const Policy = lazy(() => import("@/pages/Policy"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -76,6 +79,8 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const reviewMatch = useMatch("/reports/:date");
+  const runOptions = useAppStore((s) => s.runOptions);
+  const setActiveRun = useAppStore((s) => s.setActiveRun);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -94,15 +99,22 @@ function App() {
       return;
     }
     try {
-      await apiFetch("/api/runs", {
+      const response = await apiFetch<{ run_id?: string }>("/api/runs", {
         method: "POST",
         body: JSON.stringify({ date, mode: "full" }),
       });
+      if (response.run_id) {
+        setActiveRun({
+          run_id: response.run_id,
+          started_at: new Date().toISOString(),
+          options: { ...runOptions, date, mode: "full" },
+        });
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("rerun-last failed", err);
     }
-  }, [navigate, reviewMatch]);
+  }, [navigate, reviewMatch, runOptions, setActiveRun]);
 
   // Publish current: only meaningful on ReviewReport. POST publish endpoint.
   const publishCurrent = useCallback(async () => {
@@ -180,6 +192,7 @@ function App() {
           <Route path="/reports/new" element={<NewReport />} />
           <Route path="/reports/:date" element={<ReviewReport />} />
           <Route path="/sources" element={<Sources />} />
+          <Route path="/policy" element={<Policy />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -196,6 +209,7 @@ function App() {
         onRerunLast={rerunLast}
         onPublishCurrent={publishCurrent}
       />
+      <GlobalRunIndicator />
     </>
   );
 }

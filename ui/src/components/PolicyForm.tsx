@@ -76,7 +76,7 @@ const DEFAULTS = {
     max_community_sections: 1,
     max_same_source_name: 2,
     prefer_mainstream_first: true,
-    backfill_require_image: true,
+    backfill_require_image: false,
   },
 } as const;
 
@@ -577,7 +577,7 @@ export function PolicyForm() {
           />
           <ToggleField
             id="sel-backfill-image"
-            label="Backfill: require image"
+            label="Backfill: require source image"
             checked={form.report_selection.backfill_require_image}
             defaultValue={DEFAULTS.report_selection.backfill_require_image}
             onChange={(v) => updateSelectionBool("backfill_require_image", v)}
@@ -698,9 +698,9 @@ function VolatileBanner() {
     >
       <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <p>
-        Runtime override — changes are kept in memory only and{" "}
-        <strong>volatile on backend restart</strong>. Persist to{" "}
-        <code>data/editorial_policy.yaml</code> manually if needed.
+        Runtime override — [Save policy] keeps changes in memory only and{" "}
+        <strong>volatile on backend restart</strong>. Use [Persist to yaml] to
+        write them to <code>data/editorial_policy.yaml</code>.
       </p>
     </div>
   );

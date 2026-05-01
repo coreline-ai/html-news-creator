@@ -1,41 +1,25 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Play, Save, Sparkles } from "lucide-react";
 import { RunOptionsPanel } from "@/components/RunOptionsPanel";
 import { LivePreview } from "@/components/LivePreview";
-import { RunProgressToast } from "@/components/RunProgressToast";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { usePreview } from "@/hooks/usePreview";
-import { useRunStream } from "@/hooks/useRunStream";
 import { apiFetch, ApiError } from "@/lib/api";
 
 export function NewReport() {
   const runOptions = useAppStore((s) => s.runOptions);
-  const navigate = useNavigate();
+  const activeRun = useAppStore((s) => s.activeRun);
+  const setActiveRun = useAppStore((s) => s.setActiveRun);
 
   const preview = usePreview(runOptions);
 
-  const [runId, setRunId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [toastDismissed, setToastDismissed] = useState(false);
-
-  const stream = useRunStream(runId);
-
-  // Once the stream signals done, navigate to the review page. On a failed
-  // run (`status === "error"`), keep the user on this page so the toast stays
-  // visible — the operator should see the error before any nav happens.
-  if (stream.status === "done" && runId) {
-    // Schedule navigation after current render commit.
-    queueMicrotask(() => {
-      navigate(`/reports/${runOptions.date}`);
-    });
-  }
+  const previewTheme = runOptions.output_theme;
 
   const handleRun = useCallback(async () => {
     setActionError(null);
-    setToastDismissed(false);
     setSubmitting(true);
     try {
       const res = await apiFetch<{ run_id: string }>("/api/runs", {
@@ -45,7 +29,11 @@ export function NewReport() {
       if (!res?.run_id) {
         throw new Error("No run_id returned by /api/runs.");
       }
-      setRunId(res.run_id);
+      setActiveRun({
+        run_id: res.run_id,
+        started_at: new Date().toISOString(),
+        options: { ...runOptions },
+      });
     } catch (err) {
       const msg =
         err instanceof ApiError
@@ -57,7 +45,7 @@ export function NewReport() {
     } finally {
       setSubmitting(false);
     }
-  }, [runOptions]);
+  }, [runOptions, setActiveRun]);
 
   const handleSaveDraft = useCallback(() => {
     // Local-only for now: store snapshot in localStorage so closing the tab
@@ -73,28 +61,63 @@ export function NewReport() {
     }
   }, [runOptions]);
 
-  const showToast =
-    !toastDismissed && (stream.status !== "idle" || Boolean(actionError));
-
-  const dismissToast = () => {
-    setToastDismissed(true);
-    if (stream.status !== "running") {
-      setRunId(null);
-    }
-  };
-
   return (
     <div
-      className="grid h-full min-h-0"
-      style={{ gridTemplateRows: "1fr auto" }}
+      className="grid h-full min-h-0 overflow-hidden"
+      style={{ gridTemplateRows: "auto minmax(0, 1fr)" }}
       data-testid="new-report-page"
     >
+      <header
+        className="border-border bg-card text-card-foreground sticky top-0 z-20 flex items-center justify-between gap-2 border-b px-4 py-3"
+        data-testid="new-report-actionbar"
+      >
+        <div className="flex flex-col gap-1 text-xs">
+          <div className="text-muted-foreground">
+            Target date{" "}
+            <span className="text-foreground font-mono">{runOptions.date}</span>
+            {" · "}
+            {runOptions.target_sections} sections{" · "}
+            {runOptions.dry_run ? "dry-run" : "live"}
+          </div>
+          {actionError ? (
+            <div
+              role="alert"
+              className="text-destructive max-w-[60vw] truncate"
+              title={actionError}
+            >
+              {actionError}
+            </div>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSaveDraft}>
+            <Save className="size-3.5" aria-hidden="true" />
+            Save draft
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              void handleRun();
+            }}
+            disabled={submitting || Boolean(activeRun)}
+            data-testid="run-button"
+          >
+            <Play className="size-3.5" aria-hidden="true" />
+            {submitting
+              ? "Starting…"
+              : activeRun
+                ? "Running…"
+                : "Run"}
+          </Button>
+        </div>
+      </header>
+
       <div
-        className="grid min-h-0"
+        className="grid min-h-0 overflow-hidden"
         style={{ gridTemplateColumns: "minmax(360px, 40%) 1fr" }}
       >
         <RunOptionsPanel />
-        <div className="relative flex min-w-0 flex-col">
+        <div className="relative flex min-h-0 min-w-0 flex-col overflow-hidden">
           {!preview.html && !preview.error ? (
             <div
               data-testid="new-report-preview-hint"
@@ -108,59 +131,16 @@ export function NewReport() {
               </span>
             </div>
           ) : null}
-          <div className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 overflow-hidden">
             <LivePreview
               html={preview.html}
               isLoading={preview.isLoading}
               error={preview.error}
+              theme={previewTheme}
             />
           </div>
         </div>
       </div>
-
-      <footer
-        className="border-border bg-card text-card-foreground sticky bottom-0 flex items-center justify-between gap-2 border-t px-4 py-3"
-        data-testid="new-report-actionbar"
-      >
-        <div className="text-muted-foreground text-xs">
-          Target date{" "}
-          <span className="text-foreground font-mono">{runOptions.date}</span>
-          {" · "}
-          {runOptions.target_sections} sections{" · "}
-          {runOptions.dry_run ? "dry-run" : "live"}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleSaveDraft}>
-            <Save className="size-3.5" aria-hidden="true" />
-            Save draft
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => {
-              void handleRun();
-            }}
-            disabled={submitting || stream.status === "running"}
-            data-testid="run-button"
-          >
-            <Play className="size-3.5" aria-hidden="true" />
-            {submitting
-              ? "Starting…"
-              : stream.status === "running"
-                ? "Running…"
-                : "Run"}
-          </Button>
-        </div>
-      </footer>
-
-      {showToast ? (
-        <RunProgressToast
-          status={actionError ? "error" : stream.status}
-          lastEvent={stream.lastEvent}
-          events={stream.events}
-          error={actionError ?? stream.error}
-          onDismiss={dismissToast}
-        />
-      ) : null}
     </div>
   );
 }

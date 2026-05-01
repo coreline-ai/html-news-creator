@@ -182,6 +182,26 @@ def test_select_editorial_clusters_limits_community_sections():
     assert [candidate["id"] for candidate in selected] == ["community_a", "mainstream"]
 
 
+def test_select_editorial_clusters_does_not_count_mainstream_corroborated_community():
+    candidates = [
+        _candidate("community_a", 95, tiers=["community"]),
+        _candidate("mixed_mainstream", 90, tiers=["community", "mainstream"]),
+        _candidate("mixed_developer", 88, tiers=["community", "developer_signal"]),
+        _candidate("community_b", 85, tiers=["community"]),
+    ]
+
+    selected = select_editorial_clusters(
+        candidates,
+        _policy(max_sections=4, max_community_sections=1),
+    )
+
+    assert [candidate["id"] for candidate in selected] == [
+        "community_a",
+        "mixed_mainstream",
+        "mixed_developer",
+    ]
+
+
 def test_select_editorial_clusters_limits_same_source_name_without_mutating_input():
     candidates = [
         {**_candidate("source_a", 95), "source_name": "Same Source"},
@@ -272,11 +292,34 @@ def test_select_editorial_clusters_backfills_image_candidates_after_topic_quota(
     ]
 
 
-def test_select_editorial_clusters_backfill_skips_no_image_candidates_by_default():
+def test_select_editorial_clusters_backfill_keeps_no_image_candidates_by_default():
     policy = _policy(
         max_sections=4,
         target_sections=3,
         backfill_relax_topic_quotas=True,
+    )
+    policy["section_quotas"]["industry"] = 1
+    candidates = [
+        _candidate("industry_top", 90, "industry", image=True),
+        _candidate("product", 80, "product", image=True),
+        _candidate("industry_no_image", 79, "industry", image=False),
+    ]
+
+    selected = select_editorial_clusters(candidates, policy)
+
+    assert [candidate["id"] for candidate in selected] == [
+        "industry_top",
+        "product",
+        "industry_no_image",
+    ]
+
+
+def test_select_editorial_clusters_backfill_can_require_source_image_explicitly():
+    policy = _policy(
+        max_sections=4,
+        target_sections=3,
+        backfill_relax_topic_quotas=True,
+        backfill_require_image=True,
     )
     policy["section_quotas"]["industry"] = 1
     candidates = [

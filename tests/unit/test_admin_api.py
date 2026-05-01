@@ -10,12 +10,15 @@ Phase 1 (TC-1.x):
 - GET /api/reports/{date_kst}            (404 on missing, 400 on bad date)
 - POST /api/preview                      (override → HTML)
 - POST /api/runs                         (mocks subprocess, returns run_id)
+- GET /api/runs, /api/runs/{run_id}      (in-memory run status)
 - GET /api/runs/{run_id}/stream          (rejects unknown run_id)
 - GET /api/policy + PUT /api/policy      (volatile override round-trip)
 - GET /api/sources + PUT /api/sources/{name} (yaml registry)
 """
 from __future__ import annotations
 
+import uuid
+from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import yaml
@@ -25,6 +28,7 @@ from app.admin import policy_admin, run_runner
 from app.admin import sources_admin
 from app.admin.api import app
 from app.db import get_db
+from app.models.db_models import JobRun
 
 
 # ---------------------------------------------------------------------------
@@ -211,12 +215,108 @@ def test_api_runs_returns_run_id(monkeypatch):
     assert body["options"].get("dry_run") is True
 
 
+def test_api_runs_status_endpoints_return_summary(monkeypatch):
+    run_runner.reset_for_tests()
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        proc = MagicMock()
+
+        async def _wait():
+            return 0
+
+        async def _readline_stdout():
+            return b""
+
+        async def _readline_stderr():
+            return b""
+
+        proc.stdout = MagicMock()
+        proc.stdout.readline = _readline_stdout
+        proc.stderr = MagicMock()
+        proc.stderr.readline = _readline_stderr
+        proc.wait = _wait
+        return proc
+
+    monkeypatch.setattr(
+        "app.admin.run_runner.asyncio.create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    started = client.post("/api/runs", json={"dry_run": True})
+    assert started.status_code == 200
+    run_id = started.json()["run_id"]
+
+    listed = client.get("/api/runs?limit=1")
+    assert listed.status_code == 200
+    runs = listed.json()["runs"]
+    assert len(runs) == 1
+    assert runs[0]["run_id"] == run_id
+    assert runs[0]["options"]["dry_run"] is True
+
+    fetched = client.get(f"/api/runs/{run_id}")
+    assert fetched.status_code == 200
+    body = fetched.json()
+    assert body["run"]["run_id"] == run_id
+    assert body["run"]["options"]["dry_run"] is True
+
+
+def test_api_runs_status_endpoints_fallback_to_jobrun_db():
+    run_runner.reset_for_tests()
+    run_uuid = uuid.uuid4()
+    job = JobRun(
+        id=run_uuid,
+        job_name="daily_report",
+        report_date=date(2026, 5, 1),
+        status="completed",
+        started_at=datetime(2026, 5, 1, 0, 0, tzinfo=timezone.utc),
+        completed_at=datetime(2026, 5, 1, 0, 2, tzinfo=timezone.utc),
+        metadata_json={
+            "run_id": run_uuid.hex,
+            "options": {"date": "2026-05-01", "mode": "full"},
+            "return_code": 0,
+        },
+    )
+
+    async def fake_db():
+        mock = AsyncMock()
+        scalars_mock = MagicMock()
+        scalars_mock.all.return_value = [job]
+        scalars_mock.first.return_value = job
+        execute_result = MagicMock()
+        execute_result.scalars.return_value = scalars_mock
+        mock.execute.return_value = execute_result
+        yield mock
+
+    app.dependency_overrides[get_db] = fake_db
+    try:
+        listed = client.get("/api/runs?limit=5")
+        assert listed.status_code == 200
+        runs = listed.json()["runs"]
+        assert runs[0]["run_id"] == run_uuid.hex
+        assert runs[0]["trackable"] is False
+        assert runs[0]["source"] == "db"
+
+        fetched = client.get(f"/api/runs/{run_uuid.hex}")
+        assert fetched.status_code == 200
+        body = fetched.json()["run"]
+        assert body["status"] == "completed"
+        assert body["return_code"] == 0
+        assert body["options"]["date"] == "2026-05-01"
+    finally:
+        app.dependency_overrides[get_db] = mock_db
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 — TC-1.5: SSE stream rejects unknown run_id
 # ---------------------------------------------------------------------------
 
 def test_api_runs_stream_unknown_id_returns_404():
     response = client.get("/api/runs/does-not-exist/stream")
+    assert response.status_code == 404
+
+
+def test_api_runs_get_unknown_id_returns_404():
+    response = client.get("/api/runs/does-not-exist")
     assert response.status_code == 404
 
 

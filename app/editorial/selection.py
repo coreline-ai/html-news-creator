@@ -30,6 +30,33 @@ def _is_arxiv_only(source_tiers: list[str]) -> bool:
     return bool(tiers) and (source_tiers == ["research"] or tiers <= {"research"})
 
 
+def _counts_against_community_cap(source_tiers: list[str]) -> bool:
+    """Return whether a cluster should consume the community-section cap.
+
+    The cap is meant to prevent Reddit/HN-style community-only items from
+    dominating the report. A cluster that is corroborated by mainstream,
+    official, or developer-signal sources should not be blocked merely because
+    one supporting item came from a community source.
+    """
+    tiers = {str(tier or "unknown") for tier in source_tiers}
+    if "community" not in tiers:
+        return False
+
+    corroborating_tiers = {
+        "mainstream",
+        "trusted_media",
+        "media",
+        "official",
+        "official_site",
+        "official_docs",
+        "official_github",
+        "developer_signal",
+        "developer",
+        "github",
+    }
+    return not bool(tiers & corroborating_tiers)
+
+
 def summarize_cluster_editorial(
     items: list[dict], policy: dict | None = None
 ) -> dict:
@@ -229,8 +256,11 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
     backfill_min_score = _float_cfg(
         selection_cfg, "backfill_min_section_score", min_score
     )
+    # Missing source images should not prevent a useful topic from reaching the
+    # report. The generation phase can attach a generated SVG card when no
+    # representative source image survives filtering.
     backfill_require_image = _bool_cfg(
-        selection_cfg, "backfill_require_image", True
+        selection_cfg, "backfill_require_image", False
     )
     backfill_relax_topic_quotas = _bool_cfg(
         selection_cfg, "backfill_relax_topic_quotas", False
@@ -298,7 +328,10 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
         source_tiers = _source_tiers(editorial)
         if editorial.get("arxiv_only") and arxiv_only_count >= max_arxiv_only:
             return False
-        if "community" in source_tiers and community_count >= community_limit:
+        if (
+            _counts_against_community_cap(source_tiers)
+            and community_count >= community_limit
+        ):
             return False
         source_keys = _candidate_source_keys(candidate)
         if source_keys and any(
@@ -322,7 +355,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
         topic_counts[topic] = topic_counts.get(topic, 0) + 1
         if editorial.get("arxiv_only"):
             arxiv_only_count += 1
-        if "community" in source_tiers:
+        if _counts_against_community_cap(source_tiers):
             community_count += 1
         for key in source_keys:
             source_counts[key] = source_counts.get(key, 0) + 1

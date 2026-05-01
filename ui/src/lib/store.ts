@@ -51,6 +51,12 @@ export interface RunOptions {
   publish_at: string | null; // ISO; null = on completion
 }
 
+export interface ActiveRun {
+  run_id: string;
+  started_at: string;
+  options: RunOptions;
+}
+
 export const DEFAULT_RUN_OPTIONS: RunOptions = {
   date: todayKstISO(),
   mode: "full",
@@ -88,6 +94,9 @@ interface AppState {
 
   previewMode: PreviewMode;
   setPreviewMode: (m: PreviewMode) => void;
+
+  activeRun: ActiveRun | null;
+  setActiveRun: (run: ActiveRun | null) => void;
 }
 
 // ThemeToggle path persists the preferred theme under this localStorage key.
@@ -111,7 +120,12 @@ function readInitialTheme(): Theme {
 
 function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle("dark", theme === "dark");
+  const root = document.documentElement;
+  // Keep the explicit light marker in sync with `.dark`. Design tokens use
+  // `:root:not(.light)` for OS-level dark fallback, so merely removing
+  // `.dark` is not enough on systems that prefer dark mode.
+  root.classList.toggle("dark", theme === "dark");
+  root.classList.toggle("light", theme === "light");
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {
@@ -129,6 +143,7 @@ function applyTheme(theme: Theme) {
  */
 interface PersistedAppState {
   runOptions: RunOptions;
+  activeRun: ActiveRun | null;
 }
 
 export const useAppStore = create<AppState>()(
@@ -159,6 +174,9 @@ export const useAppStore = create<AppState>()(
 
       previewMode: "live",
       setPreviewMode: (previewMode) => set({ previewMode }),
+
+      activeRun: null,
+      setActiveRun: (activeRun) => set({ activeRun }),
     }),
     {
       name: "news-studio-options",
@@ -168,6 +186,7 @@ export const useAppStore = create<AppState>()(
       // ephemeral (the Review screen has its own persisted store).
       partialize: (state): PersistedAppState => ({
         runOptions: state.runOptions,
+        activeRun: state.activeRun,
       }),
     },
   ),

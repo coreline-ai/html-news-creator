@@ -151,8 +151,8 @@ export function useRunStream(
           error:
             (typeof payload.error === "string" && payload.error) ||
             (typeof payload.return_code === "number"
-              ? `Run failed (exit ${payload.return_code})`
-              : "Run failed."),
+              ? `실행 실패 (exit ${payload.return_code})`
+              : "실행에 실패했습니다."),
         }));
       } else {
         setState((s) => ({ ...s, status: "done" }));

@@ -19,7 +19,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.admin.job_runs import persist_job_run_state
 from app.admin import policy_admin
+from app.config import settings
 from app.editorial.policy import POLICY_PATH_ENV
 from app.utils.logger import get_logger
 
@@ -73,11 +75,11 @@ _VALID_OUTPUT_THEMES: frozenset[str] = frozenset(
 # Per-line history retained per run (so a late SSE subscriber can replay)
 _MAX_LINES_PER_RUN = 2000
 
-# Hard wall-clock cap for a single run. A normal full run finishes in 1–3 min;
-# anything over 5 min is almost always a hung external call (LLM proxy in
-# CLOSE_WAIT, slow upstream RSS, etc.). Operator can override via the run
-# options (`max_runtime_sec`) when intentionally launching a long backfill.
-_DEFAULT_MAX_RUNTIME_SEC = 300
+# Hard wall-clock cap for a single run. A 10-section full run can spend several
+# minutes in classify/verify/generate, especially through the local GPT proxy.
+# Operator can still override via run options (`max_runtime_sec`) for ad-hoc
+# backfills or smoke tests.
+_DEFAULT_MAX_RUNTIME_SEC = settings.admin_run_default_max_runtime_sec
 # How long to wait between SIGTERM and the escalation to SIGKILL.
 _GRACE_PERIOD_SEC = 5
 
@@ -282,6 +284,7 @@ def _materialize_policy_override() -> Path | None:
 async def _supervise(state: RunState) -> None:
     state.status = "running"
     state.started_at = datetime.now(timezone.utc).isoformat()
+    await persist_job_run_state(state)
     argv = _build_argv(state.options)
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(PROJECT_ROOT))
@@ -301,6 +304,7 @@ async def _supervise(state: RunState) -> None:
         state.status = "failed"
         state.error = f"policy_override_materialize_failed: {exc}"
         state.completed_at = datetime.now(timezone.utc).isoformat()
+        await persist_job_run_state(state)
         await state.queue.put(
             {
                 "stream": "control",
@@ -365,6 +369,7 @@ async def _supervise(state: RunState) -> None:
                     error=str(exc),
                 )
         state.completed_at = datetime.now(timezone.utc).isoformat()
+        await persist_job_run_state(state)
         await state.queue.put(
             {
                 "stream": "control",

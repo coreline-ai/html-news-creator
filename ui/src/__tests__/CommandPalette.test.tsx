@@ -43,12 +43,13 @@ function renderPalette({
 }
 
 describe("CommandPalette (TC-6.1)", () => {
-  it("renders all 6 commands when open", () => {
+  it("renders all 7 commands when open", () => {
     renderPalette({ open: true });
     expect(screen.getByTestId("command-palette")).toBeInTheDocument();
     expect(screen.getByText("Go to Dashboard")).toBeInTheDocument();
     expect(screen.getByText("New report")).toBeInTheDocument();
     expect(screen.getByText("Sources")).toBeInTheDocument();
+    expect(screen.getByText("Editorial Policy")).toBeInTheDocument();
     expect(screen.getByText("Settings")).toBeInTheDocument();
     expect(screen.getByText("Re-run last")).toBeInTheDocument();
     expect(screen.getByText("Publish current")).toBeInTheDocument();
@@ -94,6 +95,16 @@ describe("CommandPalette (TC-6.1)", () => {
     fireEvent.click(screen.getByTestId("command-item-go-sources"));
     await waitFor(() =>
       expect(screen.getByTestId("probe-pathname")).toHaveTextContent("/sources"),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("navigates to /policy when Editorial Policy command is selected", async () => {
+    const onOpenChange = vi.fn();
+    renderPalette({ open: true, onOpenChange });
+    fireEvent.click(screen.getByTestId("command-item-go-policy"));
+    await waitFor(() =>
+      expect(screen.getByTestId("probe-pathname")).toHaveTextContent("/policy"),
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

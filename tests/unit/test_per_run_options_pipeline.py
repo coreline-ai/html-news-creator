@@ -69,6 +69,14 @@ def test_build_argv_image_required_maps_to_backfill_require_image():
     }
 
 
+def test_build_argv_image_not_required_maps_to_generated_fallback_path():
+    argv = _build_argv({"image_required": False})
+    payload = _override_payload(argv)
+    assert payload == {
+        "report_selection": {"backfill_require_image": False}
+    }
+
+
 def test_build_argv_combines_multiple_keys_into_single_blob():
     argv = _build_argv(
         {

@@ -103,11 +103,14 @@ export function ReviewReport() {
 
   if (reportQuery.isLoading) {
     return (
-      <div className="mx-auto max-w-[1400px] flex flex-col gap-4 px-6 py-6">
+      <div className="mx-auto grid h-full min-h-0 max-w-[1400px] grid-rows-[auto_minmax(0,1fr)] gap-4 px-6 py-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid gap-4" style={{ gridTemplateColumns: "40% 60%" }}>
-          <Skeleton className="h-[60vh]" />
-          <Skeleton className="h-[60vh]" />
+        <div
+          className="grid min-h-0 gap-4"
+          style={{ gridTemplateColumns: "40% 60%" }}
+        >
+          <Skeleton className="h-full min-h-0" />
+          <Skeleton className="h-full min-h-0" />
         </div>
       </div>
     );
@@ -248,7 +251,7 @@ export function ReviewReport() {
   ).length;
 
   return (
-    <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-6 py-6">
+    <div className="mx-auto grid h-full min-h-0 max-w-[1400px] grid-rows-[auto_minmax(0,1fr)] gap-4 px-6 py-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-foreground text-xl font-semibold tracking-tight">
@@ -304,10 +307,11 @@ export function ReviewReport() {
       </header>
 
       <div
-        className="grid gap-4"
+        className="grid min-h-0 gap-4"
         style={{ gridTemplateColumns: "minmax(0,40%) minmax(0,60%)" }}
       >
         <SectionList
+          className="min-h-0 overflow-y-auto pr-1"
           sections={orderedSections}
           selectedSectionId={selectedSectionId}
           disabledSectionIds={disabledSectionIds}
@@ -316,9 +320,9 @@ export function ReviewReport() {
           onReorder={handleReorder}
         />
 
-        <div data-testid="review-right-pane" className="min-h-[60vh]">
+        <div data-testid="review-right-pane" className="min-h-0">
           {previewMode === "live" ? (
-            <div className="border-border bg-card flex min-h-[60vh] flex-col overflow-hidden rounded-md border">
+            <div className="border-border bg-card flex h-full min-h-0 flex-col overflow-hidden rounded-md border">
               <div className="border-border text-muted-foreground flex items-center justify-between border-b px-3 py-2 text-xs">
                 <span>발행된 HTML — <span className="font-mono">{date}</span></span>
                 <a
@@ -334,8 +338,11 @@ export function ReviewReport() {
                 key={date}
                 title={`Published report ${date}`}
                 src={`/api/reports/${date}/html`}
-                className="flex-1 w-full border-0"
-                sandbox="allow-same-origin"
+                className="min-h-0 flex-1 w-full border-0"
+                // Generated report HTML owns the floating 3-theme switcher.
+                // Keep the iframe sandboxed, but allow that script to cycle
+                // dark/light/newsroom-white in live review.
+                sandbox="allow-scripts"
                 data-testid="review-live-iframe"
               />
             </div>
@@ -351,6 +358,7 @@ export function ReviewReport() {
                   ? perSectionError[selectedSection.id] ?? null
                   : null
               }
+              className="h-full min-h-0 overflow-y-auto"
             />
           )}
         </div>

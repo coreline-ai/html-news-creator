@@ -15,6 +15,7 @@ describe("Sidebar (TC-2.2)", () => {
     expect(screen.getByText("Reports")).toBeInTheDocument();
     expect(screen.getByText("Sources")).toBeInTheDocument();
     expect(screen.getByText("Policy")).toBeInTheDocument();
+    expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
   it("marks the current route with aria-current=page", () => {
@@ -42,5 +43,36 @@ describe("Sidebar (TC-2.2)", () => {
     expect(homeLink).not.toHaveAttribute("aria-current", "page");
     const reportsLink = screen.getByRole("link", { name: /^reports$/i });
     expect(reportsLink).toHaveAttribute("aria-current", "page");
+  });
+
+  it("keeps Policy and Settings active states independent", () => {
+    const first = render(
+      <AllProviders initialEntries={["/policy"]}>
+        <Sidebar />
+      </AllProviders>,
+    );
+
+    const policyLink = screen.getByRole("link", { name: /^policy$/i });
+    const settingsLink = screen.getByRole("link", { name: /^settings$/i });
+    expect(policyLink).toHaveAttribute("href", "/policy");
+    expect(settingsLink).toHaveAttribute("href", "/settings");
+    expect(policyLink).toHaveAttribute("aria-current", "page");
+    expect(settingsLink).not.toHaveAttribute("aria-current", "page");
+    first.unmount();
+
+    render(
+      <AllProviders initialEntries={["/settings"]}>
+        <Sidebar />
+      </AllProviders>,
+    );
+
+    expect(screen.getByRole("link", { name: /^settings$/i })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("link", { name: /^policy$/i })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

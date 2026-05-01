@@ -21,6 +21,7 @@ function buildCrumbs(pathname: string, params: Record<string, string | undefined
     let label = seg;
     if (seg === "reports") label = "Reports";
     else if (seg === "sources") label = "Sources";
+    else if (seg === "policy") label = "Policy";
     else if (seg === "settings") label = "Settings";
     else if (params.date && seg === params.date) label = params.date;
     const isLast = i === segs.length - 1;

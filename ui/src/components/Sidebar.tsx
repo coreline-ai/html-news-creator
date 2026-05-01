@@ -1,5 +1,4 @@
 import { NavLink } from "react-router-dom";
-import { Settings } from "lucide-react";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import {
@@ -18,12 +17,17 @@ interface NavEntry {
   end?: boolean;
 }
 
-const NAV: NavEntry[] = [
+const MAIN_NAV: NavEntry[] = [
   { to: "/", label: "Home", iconKey: "home", end: true },
   { to: "/reports", label: "Reports", iconKey: "reports" },
   { to: "/sources", label: "Sources", iconKey: "sources" },
-  { to: "/settings", label: "Policy", iconKey: "policy" },
 ];
+
+const OPERATIONS_NAV: NavEntry[] = [
+  { to: "/policy", label: "Policy", iconKey: "policy" },
+];
+
+const SettingsIcon = SIDEBAR_NAV_ICONS.settings;
 
 interface SidebarBodyProps {
   /** Optional callback fired when a nav entry is clicked — used to close
@@ -34,9 +38,10 @@ interface SidebarBodyProps {
 function SidebarBody({ onNavigate }: SidebarBodyProps) {
   return (
     <div className="flex h-full flex-col">
-      <div className="px-4 pt-4 pb-3">
-        <div className="text-sidebar-foreground text-sm font-semibold tracking-tight">
-          News Studio
+      <div className="px-4 pt-4 pb-4">
+        <div className="text-sidebar-foreground text-lg leading-tight font-semibold tracking-tight">
+          <span className="block">Coreline</span>
+          <span className="block">News Studio</span>
         </div>
         <div className="text-muted-foreground text-[11px]">
           AI Trend Report
@@ -46,7 +51,16 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
       <nav className="flex-1 overflow-y-auto px-2 pb-4">
         <SidebarSectionLabel>Main</SidebarSectionLabel>
         <ul className="flex flex-col gap-0.5">
-          {NAV.map((item) => (
+          {MAIN_NAV.map((item) => (
+            <li key={item.to}>
+              <SidebarNavItem entry={item} onNavigate={onNavigate} />
+            </li>
+          ))}
+        </ul>
+
+        <SidebarSectionLabel>Operations</SidebarSectionLabel>
+        <ul className="flex flex-col gap-0.5">
+          {OPERATIONS_NAV.map((item) => (
             <li key={item.to}>
               <SidebarNavItem entry={item} onNavigate={onNavigate} />
             </li>
@@ -68,7 +82,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           }
           aria-label="Settings"
         >
-          <Settings className="size-4 shrink-0" aria-hidden="true" />
+          <SettingsIcon className="size-4 shrink-0" aria-hidden="true" />
           <span>Settings</span>
         </NavLink>
       </div>

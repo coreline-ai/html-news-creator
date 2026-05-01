@@ -42,6 +42,7 @@ STEPS: list[str] = [
 ]
 _STEP_INDEX: dict[str, int] = {name: i for i, name in enumerate(STEPS)}
 _STEP_DENOM = max(len(STEPS) - 1, 1)
+_TERMINAL_STATUSES = {"completed", "failed"}
 
 
 def _normalise_progress(payload: dict[str, Any]) -> dict[str, Any]:
@@ -91,6 +92,24 @@ def _normalise_progress(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _terminal_done_payload(state: Any) -> dict[str, Any]:
+    """Build a stable `done` frame for terminal runs.
+
+    `run_runner` stores the final done event only in the live queue. Because
+    that queue is single-consumer, a late reconnect after completion may miss
+    the queued terminal frame. This synthetic payload makes completion replay
+    deterministic without changing the runner contract.
+    """
+    return {
+        "stream": "control",
+        "event": "done",
+        "status": getattr(state, "status", None),
+        "return_code": getattr(state, "return_code", None),
+        "error": getattr(state, "error", None),
+        "ts": getattr(state, "completed_at", None),
+    }
+
+
 async def _event_iter(run_id: str) -> AsyncIterator[dict[str, Any]]:
     state = get_run(run_id)
     if state is None:
@@ -104,6 +123,13 @@ async def _event_iter(run_id: str) -> AsyncIterator[dict[str, Any]]:
             "data": json.dumps(_normalise_progress(past), ensure_ascii=False),
         }
 
+    if state.status in _TERMINAL_STATUSES:
+        yield {
+            "event": "done",
+            "data": json.dumps(_terminal_done_payload(state), ensure_ascii=False),
+        }
+        return
+
     while True:
         try:
             payload = await asyncio.wait_for(
@@ -112,7 +138,13 @@ async def _event_iter(run_id: str) -> AsyncIterator[dict[str, Any]]:
         except asyncio.TimeoutError:
             # SSE comment line keeps proxies happy without polluting client data.
             yield {"event": "heartbeat", "data": "{}"}
-            if state.status in {"completed", "failed"}:
+            if state.status in _TERMINAL_STATUSES:
+                yield {
+                    "event": "done",
+                    "data": json.dumps(
+                        _terminal_done_payload(state), ensure_ascii=False
+                    ),
+                }
                 break
             continue
 

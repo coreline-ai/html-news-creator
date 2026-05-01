@@ -13,6 +13,7 @@ import {
   Database,
   SlidersHorizontal,
   Calendar,
+  Settings,
 } from "lucide-react";
 
 export const SIDEBAR_NAV_ICONS = {
@@ -21,6 +22,7 @@ export const SIDEBAR_NAV_ICONS = {
   sources: Database,
   policy: SlidersHorizontal,
   schedule: Calendar,
+  settings: Settings,
 } as const;
 
 export type SidebarNavIconKey = keyof typeof SIDEBAR_NAV_ICONS;

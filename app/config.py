@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     max_sources_per_run: int = 500
     max_images_per_run: int = 50
     generated_image_fallback_enabled: bool = True
+    # Full runs can spend several minutes in classify/verify/generate when the
+    # local GPT proxy is used. Keep this configurable, but default high enough
+    # that normal 10-section runs reach generate/render instead of leaving the
+    # previous report visible.
+    admin_run_default_max_runtime_sec: int = 900
 
     # News Studio web UI (Phase 1)
     ui_dist_path: str = "ui/dist"
