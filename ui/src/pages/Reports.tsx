@@ -1,5 +1,11 @@
 import { Link } from "react-router-dom";
-import { FileText, ExternalLink, RefreshCw, AlertCircle } from "lucide-react";
+import {
+  FileText,
+  ExternalLink,
+  FileDown,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
 import { useReports } from "@/hooks/useReports";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -114,7 +120,7 @@ export function Reports() {
                 <th className="px-3 py-2 text-left font-medium w-[180px] whitespace-nowrap">
                   발행 시각
                 </th>
-                <th className="px-3 py-2 text-right font-medium w-[80px]">
+                <th className="px-3 py-2 text-right font-medium w-[100px]">
                 </th>
               </tr>
             </thead>
@@ -150,18 +156,34 @@ export function Reports() {
                     </td>
                     <td className="px-3 py-2 text-right">
                       {dateStr ? (
-                        <a
-                          href={`/api/reports/${dateStr}/html`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
-                          aria-label="발행된 HTML 새 탭에서 열기"
-                        >
-                          <ExternalLink
-                            className="size-3.5"
-                            aria-hidden="true"
-                          />
-                        </a>
+                        <div className="inline-flex items-center gap-3">
+                          <a
+                            href={`/api/reports/${dateStr}/html`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                            title="발행 HTML 새 탭에서 열기"
+                            aria-label="발행된 HTML 새 탭에서 열기"
+                          >
+                            <ExternalLink
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                          </a>
+                          <a
+                            href={`/api/reports/${dateStr}/pdf`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                            title="PDF 보기/다운로드"
+                            aria-label="PDF 보기/다운로드"
+                          >
+                            <FileDown
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                          </a>
+                        </div>
                       ) : null}
                     </td>
                   </tr>
