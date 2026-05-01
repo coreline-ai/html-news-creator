@@ -158,6 +158,54 @@ make e2e
 | B | 1 | 4 | ~320 | 1일 |
 | C | 1 | 6 | ~360 | 1일 |
 | D | 1 | 6 | ~240 | 0.5일 |
-| **총계** | **4** | **20** | **~1,200** | **3일** |
+| E | 0 | 4 | ~120 | 0.5일 |
+| **총계** | **4** | **24** | **~1,320** | **3.5일** |
 
-병렬 4 에이전트로 ~6시간.
+병렬 4 에이전트로 A~D ~6시간, Phase E는 단독 추가.
+
+---
+
+## 10. Phase E — Policy Persistence 명시화
+> Source: `dev-plan/review-20260501-policy-persistence-deepdive.md`
+> Dependencies: Phase C 머지 후 (이미 main)
+> Phase A~D와 별개 후속 작업.
+
+### 10.1 Why
+Phase C로 runtime override가 subprocess까지 전달되지만, 운영자에게는:
+- "Settings 변경 = `data/editorial_policy.yaml`이 수정됐다"고 오해할 여지가 있고
+- 영구 보존하려면 ssh로 yaml 직접 수정해야 하는 운영 UX 결함이 있다.
+
+### 10.2 Tasks
+- [ ] **R1** [`ui/src/components/PolicyForm.tsx`](ui/src/components/PolicyForm.tsx) — dirty/saved 배너 카피 강화:
+  - dirty: "변경 중 — 저장 시 다음 Run부터 반영 (서버 재시작 시 유실)"
+  - saved: "다음 Run에 반영됩니다 · `data/editorial_policy.yaml`은 수정되지 않습니다"
+  - 상단에 작은 ⓘ 헬프: "정책 우선순위: yaml < runtime override < per-run options"
+- [ ] **R2-BE** [`app/admin/policy_admin.py`](app/admin/policy_admin.py) — `persist_runtime_override_to_yaml() -> Path` 헬퍼: 현재 `_RUNTIME_OVERRIDE`를 yaml과 머지해 atomic write (`tempfile + os.replace`), 기존 파일은 `*.yaml.bak`로 백업.
+- [ ] **R2-API** [`app/admin/api.py`](app/admin/api.py) — `POST /api/policy/persist` 라우트. 성공 시 `{persisted_to: "data/editorial_policy.yaml", backup: "data/editorial_policy.yaml.bak"}` 반환. override가 비어있으면 400.
+- [ ] **R2-FE** [`ui/src/components/PolicyForm.tsx`](ui/src/components/PolicyForm.tsx) — 푸터에 `[Persist to yaml]` 버튼 + 확인 다이얼로그 ("이 작업은 디스크의 yaml 파일을 덮어씁니다. 백업이 함께 생성됩니다.").
+- [ ] **R2-Hook** [`ui/src/hooks/usePolicy.ts`](ui/src/hooks/usePolicy.ts) — `usePersistPolicy` mutation 추가.
+- [ ] **R3** [`docs/news-studio-usage.md`](docs/news-studio-usage.md) — "Policy precedence" 섹션 신규: 우선순위 표 + 시나리오 3건 (Preview / Per-run / Permanent).
+- [ ] 단위 테스트: `tests/unit/test_policy_persist.py` (override → yaml dump + backup), `ui/src/__tests__/PolicyForm.persist.test.tsx`.
+
+### 10.3 Success Criteria
+- Settings에서 `target_sections=7` 변경 → `[Persist to yaml]` 클릭 → 확인 → `data/editorial_policy.yaml`의 해당 키가 7로 변경됨 + `*.yaml.bak`에 이전 값 보존.
+- 서버 재시작 후 `GET /api/policy` 응답이 7로 유지.
+- 운영자가 dirty 상태에서 "재시작 시 유실"이라는 안내를 명확히 본다.
+
+### 10.4 Test Cases
+- [ ] TC-E.1: `_RUNTIME_OVERRIDE = {"section_quotas": {"product": 6}}` → `persist_runtime_override_to_yaml()` → yaml 파일에 `section_quotas.product: 6` 반영, 백업 파일 생성.
+- [ ] TC-E.2: override가 빈 dict → `persist` API → 400 + "no override to persist".
+- [ ] TC-E.3: persist 도중 yaml dump 실패 → 원본 무손상 (atomic write 검증).
+- [ ] TC-E.4: PolicyForm dirty 배너 → "재시작 시 유실" 문자열 포함.
+- [ ] TC-E.5: persist 다이얼로그 확인 → API 호출 + 토스트 + 배너 → "all changes saved (persisted)".
+
+### 10.5 Testing Instructions
+```bash
+PYTHONPATH=. uv run pytest tests/unit/test_policy_persist.py tests/unit/test_admin_api.py -v --tb=short
+cd ui && npm run typecheck && npm run build && npm run test -- --run src/__tests__/PolicyForm.persist.test.tsx
+```
+
+**테스트 실패 시 워크플로우:**
+1. 에러 출력 분석 → 근본 원인 식별
+2. 원인 수정 → 재테스트
+3. 모든 테스트가 통과할 때까지 main push 보류
