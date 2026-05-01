@@ -15,7 +15,10 @@ Behaviour:
 """
 from __future__ import annotations
 
+import json
+import os
 from datetime import date as date_cls, datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from sqlalchemy import select
@@ -29,9 +32,33 @@ from app.utils.logger import get_logger
 
 logger = get_logger(step="admin")
 
+# Append-only audit trail for every publish attempt (incl. dry runs). Lets the
+# operator reconcile "did I just deploy something?" against Netlify history
+# without round-tripping the dashboard. One JSON record per line. Resolved
+# lazily so tests can redirect via NEWS_STUDIO_PUBLISH_HISTORY_PATH without
+# polluting the operator's real ``.logs/publish_history.jsonl``.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _publish_history_path() -> Path:
+    override = os.getenv("NEWS_STUDIO_PUBLISH_HISTORY_PATH")
+    if override:
+        return Path(override)
+    return _PROJECT_ROOT / ".logs" / "publish_history.jsonl"
+
 
 def _synthetic_url(date_kst: str) -> str:
     return f"https://ai-news-5min-kr.netlify.app/{date_kst}-trend.html"
+
+
+def _record_publish_history(entry: dict[str, Any]) -> None:
+    path = _publish_history_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception as exc:  # pragma: no cover — audit log must never fail the deploy
+        logger.warning("publish_history_write_failed", error=str(exc))
 
 
 async def publish_report(
@@ -73,7 +100,7 @@ async def publish_report(
         )
 
     if dry_run:
-        return {
+        response = {
             "status": "dry_run",
             "deployed_url": _synthetic_url(date_kst),
             "report_date": date_kst,
@@ -81,6 +108,18 @@ async def publish_report(
             "rendered_path": str(rendered_path),
             "disabled_count": len(disabled_list),
         }
+        _record_publish_history(
+            {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "report_date": date_kst,
+                "status": "dry_run",
+                "deploy_url": response["deployed_url"],
+                "theme": theme_value,
+                "disabled_count": len(disabled_list),
+                "rendered_path": str(rendered_path),
+            }
+        )
+        return response
 
     auth_token = getattr(settings, "netlify_auth_token", "") or ""
     site_id = getattr(settings, "netlify_site_id", "") or ""
@@ -113,7 +152,7 @@ async def publish_report(
                 disabled_count=len(disabled_list),
             )
 
-        return {
+        response = {
             "status": deploy_result.get("status", "unknown"),
             "deployed_url": deploy_url,
             "report_date": date_kst,
@@ -122,3 +161,15 @@ async def publish_report(
             "disabled_count": len(disabled_list),
             "details": deploy_result,
         }
+        _record_publish_history(
+            {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "report_date": date_kst,
+                "status": response["status"],
+                "deploy_url": deploy_url,
+                "theme": theme_value,
+                "disabled_count": len(disabled_list),
+                "rendered_path": str(rendered_path),
+            }
+        )
+        return response
