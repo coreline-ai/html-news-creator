@@ -25,8 +25,10 @@ function isoFromDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+// Cell is `h-9` (36px) so the dot sits ~2px below baseline of the date
+// number — gives breathing room between digit and indicator.
 const DOT_BASE =
-  "after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:size-1.5 after:rounded-full after:content-['']";
+  "after:absolute after:bottom-0.5 after:left-1/2 after:-translate-x-1/2 after:size-1.5 after:rounded-full after:content-['']";
 
 export function ReportCalendarMonthView({
   statusByDate,
