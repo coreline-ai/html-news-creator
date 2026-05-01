@@ -216,7 +216,7 @@ export function Reports() {
         onOpenChange={(open) => !open && setPdfPreview(null)}
       >
         <DialogContent
-          className="flex h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0"
+          className="flex h-[92vh] w-[95vw] max-w-[1600px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1600px]"
           data-testid="pdf-preview-dialog"
         >
           <DialogHeader className="border-border border-b px-6 py-3">
