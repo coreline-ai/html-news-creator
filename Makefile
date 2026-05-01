@@ -1,10 +1,21 @@
-.PHONY: dev migrate run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
+.PHONY: dev migrate backup run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
 
 dev:
 	docker compose up -d
 
 migrate:
 	psql "$(DATABASE_URL)" -f migrations/001_initial.sql
+
+# Personal-use database backup. Dumps the live ai-trend-postgres container to
+# a gzip'd timestamped file under $(BACKUP_DIR) (default: ~/Backups/html-news-creator).
+# Drops backups older than 30 days. Install via crontab for daily automation:
+#   0 23 * * * cd /Users/hwanchoi/projects/html-news-creator && make backup >> $$HOME/Backups/html-news-creator/cron.log 2>&1
+BACKUP_DIR ?= $(HOME)/Backups/html-news-creator
+backup:
+	@mkdir -p "$(BACKUP_DIR)"
+	@docker exec ai-trend-postgres pg_dump -U postgres ai_trend | gzip > "$(BACKUP_DIR)/$$(date +%Y%m%d_%H%M%S).sql.gz"
+	@find "$(BACKUP_DIR)" -name "*.sql.gz" -mtime +30 -delete
+	@echo "Backup written to $(BACKUP_DIR) (retention: 30 days)"
 
 run:
 	python scripts/run_daily.py --mode full
