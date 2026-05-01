@@ -453,6 +453,33 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 | 정책 | `/policy` | 점수·할당량·선정 정책 런타임 오버라이드 + `[Persist to yaml]` |
 | 설정 | `/settings` | 앱 테마 · 기본 출력 테마 · 브라우저별 Run 기본값 · 발행 기본값 |
 
+### 📸 화면 미리보기
+
+#### 대시보드 (`/`)
+오늘 카드 · Quick actions · Run history & Calendar 분할(월별 · 90일 추세 탭).
+
+![Dashboard](docs/screenshots/news-studio-01-dashboard.png)
+
+#### 리포트 목록 (`/reports`)
+모든 리포트 표 · 상태 pill · 발행 시각 · HTML/PDF 인라인 미리보기.
+
+![Reports list](docs/screenshots/news-studio-02-reports.png)
+
+#### 검토 (`/reports/:date`)
+섹션 reorder · 단일 섹션 편집 · regenerate · 발행 HTML iframe.
+
+![Review report](docs/screenshots/news-studio-03-review.png)
+
+#### 소스 (`/sources`)
+37개 소스 등급별 그룹화 · 토글 · Add Source 다이얼로그.
+
+![Sources](docs/screenshots/news-studio-04-sources.png)
+
+#### 정책 (`/policy`)
+런타임 오버라이드 폼 · 정책 우선순위 안내 · `[Persist to yaml]`.
+
+![Policy form](docs/screenshots/news-studio-05-policy.png)
+
 ### 주요 API 엔드포인트
 
 | 메서드 | 경로 | 용도 |
