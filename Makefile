@@ -1,4 +1,4 @@
-.PHONY: dev migrate run run-dry test test-all lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
+.PHONY: dev migrate run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
 
 dev:
 	docker compose up -d
@@ -17,6 +17,13 @@ test:
 
 test-all:
 	pytest tests/ -v --tb=short
+
+# Integration smoke tests — drive the FastAPI app through an in-memory ASGI
+# transport (no uvicorn, no Postgres, no LLM proxy). The pipeline subprocess
+# and Netlify deploy are mocked at the module boundary. CI's default unit
+# job uses `pytest -m "not integration"` so these are opt-in only.
+test-integration:
+	pytest tests/integration/ -v --tb=short -m integration
 
 lint:
 	ruff check app/ scripts/ tests/
