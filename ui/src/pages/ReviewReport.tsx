@@ -22,7 +22,7 @@ import {
 } from "@/hooks/useSections";
 import { useReviewStore } from "@/hooks/useReviewStore";
 import type { ReportSection } from "@/lib/api";
-import { AlertCircle, Eye, FileText, Pencil, Send } from "lucide-react";
+import { AlertCircle, Download, Eye, FileText, Pencil, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Toast {
@@ -292,6 +292,16 @@ export function ReviewReport() {
           >
             <FileText className="size-4" aria-hidden="true" />
             New report
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a
+              href={`/api/reports/${encodeURIComponent(date)}/pdf`}
+              download={`${date}-trend.pdf`}
+              data-testid="pdf-download-button"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              PDF
+            </a>
           </Button>
           <Button
             type="button"

@@ -1,5 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
+from typing import Literal
+
 from app.utils.logger import get_logger
 
 
@@ -40,8 +42,23 @@ class PlaywrightRenderer:
         self.logger.info("screenshot_done", path=str(output), size_bytes=output.stat().st_size)
         return output
 
-    async def export_pdf(self, html_path: str, output_path: str) -> Path:
-        """Export HTML to PDF using Playwright."""
+    async def export_pdf(
+        self,
+        html_path: str,
+        output_path: str,
+        *,
+        format: str = "A4",
+        media: Literal["screen", "print"] = "screen",
+        print_background: bool = True,
+        margin: dict[str, str] | None = None,
+    ) -> Path:
+        """Export HTML to PDF using Playwright/Chromium.
+
+        The generated report is designed as browser-first HTML, so PDF export
+        uses the same Chromium rendering path instead of a separate print-CSS
+        engine. ``media="screen"`` preserves the published report theme, and
+        ``print_background=True`` keeps section backgrounds/images visible.
+        """
         if self._playwright_module is None:
             raise PlaywrightUnavailableError("playwright not installed")
 
@@ -52,11 +69,31 @@ class PlaywrightRenderer:
             abs_path = Path(html_path).resolve()
             await page.goto(f"file://{abs_path}")
             await page.wait_for_load_state("networkidle")
+            await page.emulate_media(media=media)
+            await page.evaluate("() => document.fonts ? document.fonts.ready : true")
 
             output = Path(output_path)
             output.parent.mkdir(parents=True, exist_ok=True)
-            await page.pdf(path=str(output), format="A4")
+            await page.pdf(
+                path=str(output),
+                format=format,
+                print_background=print_background,
+                margin=margin
+                or {
+                    "top": "12mm",
+                    "right": "10mm",
+                    "bottom": "12mm",
+                    "left": "10mm",
+                },
+            )
             await browser.close()
 
-        self.logger.info("pdf_done", path=str(output), size_bytes=output.stat().st_size)
+        self.logger.info(
+            "pdf_done",
+            path=str(output),
+            size_bytes=output.stat().st_size,
+            format=format,
+            media=media,
+            print_background=print_background,
+        )
         return output

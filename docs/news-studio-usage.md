@@ -73,6 +73,7 @@ Vite dev 서버(5173)가 `/api/*` 요청을 8000으로 프록시합니다. `app/
 - **SectionEditor**: 제목 / 요약(`fact_summary`) / 시사점(`inference_summary`) / 이미지 URL 편집 — `PATCH /api/sections/:id`
 - **Regenerate**: 단일 섹션만 LLM 재생성 (`POST /api/sections/:id/regenerate`, 다른 섹션 영향 없음)
 - **미리보기 모드 토글**: `live` (iframe) ↔ `section` (편집 폼) — store의 `previewMode`로 제어
+- **PDF**: `[PDF]` 버튼 → `GET /api/reports/:date/pdf` → 현재 HTML을 A4 PDF로 다운로드 (`fresh=true`면 DB 재렌더)
 - **Publish**: 확인 다이얼로그 → `POST /api/reports/:date/publish` (Netlify) → 결과 URL 토스트로 복사 가능
 
 ### 3.4 소스 / 설정 (`/sources`, `/settings`)

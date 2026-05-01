@@ -335,6 +335,25 @@ Options:
 
 > CLI에는 `--source-types` 옵션이 없습니다. 소스 타입 제한은 현재 웹앱/API 실행 시 per-run 정책 오버라이드(`__source_filter`)로 전달됩니다. 순수 CLI에서 특정 소스만 돌릴 때는 별도 정책 파일 또는 코드 레벨 실행 래퍼를 사용하세요.
 
+PDF 변환은 생성된 HTML을 기준으로 별도 실행할 수 있습니다.
+
+```bash
+python scripts/export_pdf.py --date 2026-05-01
+# → public/news/2026-05-01-trend.pdf
+```
+
+브라우저 런타임이 없는 첫 환경에서는 한 번만 Chromium을 설치하세요.
+
+```bash
+python -m playwright install chromium
+```
+
+웹앱에서는 검토 화면(`/reports/YYYY-MM-DD`)의 **PDF** 버튼이
+`GET /api/reports/YYYY-MM-DD/pdf`를 호출합니다. 새로 추가한 PDF 라우트가
+404 또는 “사이트에서 사용할 수 없는 파일”로 보이면, 실행 중인 FastAPI 서버가
+이전 코드일 가능성이 높으므로 서버를 재시작한 뒤 `http://127.0.0.1:8000`에서
+다시 확인하세요.
+
 ---
 
 ## 🗄️ 데이터 모델
@@ -359,6 +378,7 @@ ClusterItem ◀───┘         └───▶ AnalysisResult
 생성되는 HTML 리포트 특징:
 
 - **파일명**: `public/news/YYYY-MM-DD-trend.html`
+- **PDF 내보내기**: `public/news/YYYY-MM-DD-trend.pdf` (Playwright/Chromium 기반 HTML 그대로 변환)
 - **의존성**: 외부 JS 없음 (테마 토글만 인라인)
 - **반응형**: 모바일 최적화, max-width 820px
 - **테마**: `light → dark → newsroom-white` 3단계 순환, `localStorage` 저장
@@ -428,7 +448,7 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 | 대시보드 | `/` | 오늘 카드 · Quick actions · 최근 실행/JobRun 테이블 |
 | 리포트 목록 | `/reports` | 생성된 날짜별 리포트 목록과 검토 진입 |
 | 신규 리포트 | `/reports/new` | 5그룹 옵션 + 라이브 미리보기 + Run 실행 |
-| 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · 재렌더 · Publish (Live 모드는 발행된 HTML iframe) |
+| 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · PDF 다운로드 · 재렌더 · Publish (Live 모드는 발행된 HTML iframe) |
 | 소스 | `/sources` | 37개 소스 토글 · 신규 소스 추가 · registry yaml 반영 |
 | 정책 | `/policy` | 점수·할당량·선정 정책 런타임 오버라이드 + `[Persist to yaml]` |
 | 설정 | `/settings` | 앱 테마 · 기본 출력 테마 · 브라우저별 Run 기본값 · 발행 기본값 |
@@ -447,6 +467,7 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 | POST | `/api/sections/{id}/regenerate` | 단일 섹션 LLM 재생성 |
 | POST | `/api/reports/{date}/render` | DB 기준 fresh 재렌더 (disabled 섹션 제외, 배포 없음) |
 | GET | `/api/reports/{date}/html` | 발행된 HTML 원본 (검토 Live 모드용) |
+| GET | `/api/reports/{date}/pdf` | 현재 HTML을 Playwright PDF로 다운로드 (`fresh=true`면 DB 재렌더) |
 | POST | `/api/reports/{date}/publish` | 재렌더 후 Netlify 배포 트리거 |
 | POST | `/api/sources` | 신규 소스 yaml registry에 atomic append |
 | PUT | `/api/sources/{name}` | 소스 활성화/메타데이터 업데이트 |
@@ -460,6 +481,7 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 - `⌘K` / `Ctrl+K` — 명령 팔레트, `R` — 마지막 옵션 재실행, `P` — 발행 (검토 화면 한정)
 - HeaderBar 토글 — 앱 크롬 다크 ↔ 라이트 (`localStorage` 영속)
 - 전역 Run 토스트 — 새로고침/탭 이동 후에도 `activeRun`을 복원해 SSE에 재연결, 완료 시 `결과 리포트 보기` CTA 제공
+- 검토 화면 PDF 버튼 — 현재 HTML을 Playwright/Chromium으로 A4 PDF 다운로드
 
 ### 운영 가드
 

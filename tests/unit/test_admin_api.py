@@ -147,6 +147,29 @@ def test_api_get_report_rejects_bad_date():
     assert response.status_code == 400
 
 
+def test_api_report_pdf_downloads_generated_pdf(monkeypatch, tmp_path):
+    pdf_path = tmp_path / "2026-05-01-trend.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4 fake")
+
+    async def fake_export_report_pdf(date_kst, db, **kwargs):
+        assert date_kst == "2026-05-01"
+        assert db is not None
+        assert kwargs["fresh"] is False
+        return pdf_path
+
+    monkeypatch.setattr(
+        "app.admin.pdf_export.export_report_pdf",
+        fake_export_report_pdf,
+    )
+
+    response = client.get("/api/reports/2026-05-01/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["cache-control"] == "no-store, must-revalidate"
+    assert response.content.startswith(b"%PDF")
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 — TC-1.3 / 1.E2: POST /api/preview
 # ---------------------------------------------------------------------------

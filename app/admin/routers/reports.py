@@ -4,6 +4,7 @@ Routes:
   - GET   /api/reports
   - GET   /api/reports/{date_kst}
   - GET   /api/reports/{date_kst}/html
+  - GET   /api/reports/{date_kst}/pdf
   - POST  /api/reports/{date_kst}/render
   - POST  /api/reports/{date_kst}/publish
   - POST  /api/reports/{date_kst}/reorder
@@ -114,6 +115,50 @@ async def api_get_report_html(
     return FileResponse(
         str(html_path),
         media_type="text/html",
+        headers={"Cache-Control": "no-store, must-revalidate"},
+    )
+
+
+# 2b) GET /api/reports/{date_kst}/pdf — export current HTML to PDF
+@router.get("/api/reports/{date_kst}/pdf", include_in_schema=False)
+async def api_get_report_pdf(
+    date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
+    fresh: bool = Query(
+        default=False,
+        description="Re-render from DB before exporting instead of using current HTML.",
+    ),
+    output_theme: str = Query(default="dark"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export the report HTML to PDF and return it as a download.
+
+    By default the exporter converts the existing published HTML as-is so the
+    PDF matches the live iframe. Pass ``fresh=true`` to re-render from DB first.
+    """
+    from app.admin.pdf_export import export_report_pdf
+    from app.rendering.playwright_renderer import PlaywrightUnavailableError
+
+    try:
+        pdf_path = await export_report_pdf(
+            date_kst,
+            db,
+            fresh=fresh,
+            output_theme=output_theme,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except PlaywrightUnavailableError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:  # pragma: no cover — defensive
+        logger.error("pdf_export_failed", date_kst=date_kst, error=str(exc))
+        raise HTTPException(status_code=500, detail=f"pdf export failed: {exc}")
+
+    return FileResponse(
+        str(pdf_path),
+        media_type="application/pdf",
+        filename=f"{date_kst}-trend.pdf",
         headers={"Cache-Control": "no-store, must-revalidate"},
     )
 
