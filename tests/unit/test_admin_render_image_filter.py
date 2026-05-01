@@ -15,8 +15,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.admin.render import _section_to_render_dict
 
 
