@@ -194,8 +194,25 @@ async def _supervise(state: RunState) -> None:
     policy_tmp_path: Path | None = None
     try:
         policy_tmp_path = _materialize_policy_override()
-    except Exception as exc:  # pragma: no cover — defensive
-        logger.warning("policy_override_materialize_failed", error=str(exc))
+    except Exception as exc:
+        # Policy override is an explicit operator intent (PUT /api/policy).
+        # Silent fallback to the default would silently regress that intent,
+        # so we fail the run loud and skip the subprocess entirely.
+        logger.error("policy_override_materialize_failed", error=str(exc))
+        state.status = "failed"
+        state.error = f"policy_override_materialize_failed: {exc}"
+        state.completed_at = datetime.now(timezone.utc).isoformat()
+        await state.queue.put(
+            {
+                "stream": "control",
+                "event": "done",
+                "status": "failed",
+                "return_code": None,
+                "error": state.error,
+                "ts": state.completed_at,
+            }
+        )
+        return
     if policy_tmp_path is not None:
         env[POLICY_PATH_ENV] = str(policy_tmp_path)
         logger.info(
