@@ -2,6 +2,9 @@
 
 > 한국어 본문 가독성을 최우선. 일반 system-stack 대신 **Pretendard**를 시스템 표준 폰트로 채택.
 
+> **범위 주의**
+> 이 타입 시스템은 추가 개발될 웹앱 UI의 기준입니다. 현재 정적 HTML 리포트는 기존 `report_newsstream.html.j2`의 타이포그래피를 유지합니다.
+
 ## 1. 폰트 스택
 
 ```css
@@ -13,8 +16,8 @@
 
 **근거:**
 - Pretendard는 한글·영문·숫자가 메트릭상 잘 어울리며 weight 9단계 + variable axis 제공
-- `templates/report_newsstream.html.j2`가 이미 Pretendard를 로드 중 — 호환성 유지
-- system-ui는 OS별 가독성 차이가 심해 일일 리포트에 부적합
+- 현재 리포트 템플릿도 Pretendard를 사용 중이므로 향후 웹앱과 브랜드 연속성이 좋음
+- system-ui는 OS별 한국어 가독성 차이가 커 웹앱 운영 화면에도 부적합
 
 ## 2. Type Scale
 
@@ -88,21 +91,11 @@ Pretendard → Apple SD Gothic Neo → Malgun Gothic → Noto Sans KR → sans-s
 - Android/Linux: Noto Sans KR
 - 기타: sans-serif
 
-## 7. 두 표면별 사용 패턴
+## 7. 사용 패턴
 
-### A. 일일 리포트 (현재 출력 HTML)
+### A. 운영 웹앱 (적용 대상)
 
-| 요소 | 클래스/스타일 | 비고 |
-|---|---|---|
-| 메인 타이틀 | `text-3xl font-bold leading-tight` | "AI 트렌드 핵심 요약" |
-| 섹션 제목 | `text-xl font-semibold leading-snug` | 클러스터 제목 |
-| 본문 | `text-base font-normal leading-relaxed` | 팩트 요약 |
-| 메타/소셜 | `text-sm text-muted-foreground` | 시그널, 시각, 출처 |
-| 캡션 | `text-xs text-muted-foreground tracking-wide uppercase` | 카테고리 라벨 |
-
-### B. 운영 웹앱 (향후)
-
-워크스페이스 SaaS 패턴 — 더 작고 조밀하게.
+워크스페이스 SaaS 패턴 — 작고 조밀하게.
 
 | 요소 | 클래스 |
 |---|---|
@@ -112,6 +105,18 @@ Pretendard → Apple SD Gothic Neo → Malgun Gothic → Noto Sans KR → sans-s
 | 표 셀 | `text-sm font-normal` |
 | 보조 정보 | `text-xs text-muted-foreground` |
 | 빈 상태 | `text-sm text-muted-foreground italic` |
+
+### B. 일일 리포트 (참고 전용)
+
+아래 값은 기존 HTML 리포트의 읽기 경험을 이해하기 위한 참고입니다. 이 타입 시스템을 HTML 리포트에 자동 적용하지 않습니다.
+
+| 요소 | 클래스/스타일 | 비고 |
+|---|---|---|
+| 메인 타이틀 | `text-3xl font-bold leading-tight` | "AI 트렌드 핵심 요약" |
+| 섹션 제목 | `text-xl font-semibold leading-snug` | 클러스터 제목 |
+| 본문 | `text-base font-normal leading-relaxed` | 팩트 요약 |
+| 메타/소셜 | `text-sm text-muted-foreground` | 시그널, 시각, 출처 |
+| 캡션 | `text-xs text-muted-foreground tracking-wide uppercase` | 카테고리 라벨 |
 
 ## 8. Code & Mono
 

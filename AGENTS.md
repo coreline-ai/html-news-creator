@@ -81,6 +81,13 @@ collect → extract → classify → cluster → verify → image_analyze → ge
 - YouTube play 버튼: `yt-play` 클래스 (CSS `::after` 삼각형)
 - 섹션 이미지는 `src.video_id` 필드가 있어야 재생 오버레이 표시
 
+### 디자인 시스템 적용 범위
+- `docs/design/**`는 **현재 HTML 리포트용 스타일 가이드가 아니라**, 추가 개발될 웹앱(운영/관리자/대시보드/구독자 UI)을 위한 디자인 시스템이다.
+- 현재 생성물인 `templates/report_newsstream.html.j2`와 `public/news/*.html`은 기존 리포트 템플릿 스타일을 유지한다.
+- `docs/design`의 토큰·컴포넌트·레이아웃 규칙을 HTML 리포트에 자동/강제 적용하지 말 것.
+- 사용자가 명시적으로 “HTML 리포트 디자인 마이그레이션/토큰화”를 요청한 경우에만 별도 개발 계획을 세우고 적용한다.
+- 웹앱 UI를 새로 만들 때는 `docs/design/06-automation-spec.md`, `docs/design/tokens.css`, `04-components.md`, `05-layout-patterns.md`를 기준으로 한다.
+
 ---
 
 ## 테스트
