@@ -15,7 +15,7 @@ Behaviour:
 """
 from __future__ import annotations
 
-from datetime import date as date_cls, datetime
+from datetime import date as date_cls, datetime, timezone
 from typing import Any, Iterable, Optional
 
 from sqlalchemy import select
@@ -96,7 +96,7 @@ async def publish_report(
         deploy_url = deploy_result.get("deploy_url") or _synthetic_url(date_kst)
         if deploy_result.get("status") == "success":
             db_report.status = "published"
-            db_report.published_at = datetime.utcnow()
+            db_report.published_at = datetime.now(timezone.utc)
             await session.commit()
             logger.info(
                 "publish_report_done",
