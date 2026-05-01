@@ -13,6 +13,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from app.collectors.base import BaseCollector, CollectedItem
+from app.utils.http_timeouts import COLLECTOR_TIMEOUT
 from app.utils.logger import get_logger
 from app.utils.source_images import extract_representative_image_from_feed_entry
 from app.utils.url_utils import canonicalize_url, url_hash
@@ -161,7 +162,10 @@ class RSSCollector(BaseCollector):
             # truly unavailable feeds still fail after retries.
             response = httpx.get(
                 url,
-                timeout=self.timeout,
+                timeout=httpx.Timeout(
+                    self.timeout,
+                    connect=min(self.timeout, COLLECTOR_TIMEOUT.connect or self.timeout),
+                ),
                 follow_redirects=True,
                 headers={"User-Agent": _USER_AGENT},
             )

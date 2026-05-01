@@ -222,7 +222,15 @@ async def test_rss_collector_uses_source_timeout_for_httpx_byte_fallback():
         items = await collector.collect(_DATE_FROM, _DATE_TO)
 
     assert [item.url for item in items] == ["https://example.com/timeout-feed"]
-    assert seen_timeouts == [7.0]
+    # The httpx.get fallback now wraps the per-source timeout in an
+    # ``httpx.Timeout`` so connect/read are bounded — preventing the 5/1
+    # indefinite-read hang sample. The overall budget still tracks the
+    # configured ``timeout: 7``.
+    assert len(seen_timeouts) == 1
+    forwarded = seen_timeouts[0]
+    assert isinstance(forwarded, httpx.Timeout)
+    assert forwarded.read == 7.0
+    assert forwarded.connect is not None and forwarded.connect <= 7.0
 
 
 @pytest.mark.asyncio

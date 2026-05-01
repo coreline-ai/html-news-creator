@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 import httpx
 
 from app.collectors.base import BaseCollector, CollectedItem
+from app.utils.http_timeouts import COLLECTOR_TIMEOUT
 from app.utils.logger import get_logger
 from app.utils.source_images import extract_representative_image_from_html
 from app.utils.url_utils import canonicalize_url, is_ssrf_blocked, url_hash
@@ -18,7 +19,6 @@ from app.utils.url_utils import canonicalize_url, is_ssrf_blocked, url_hash
 logger = get_logger(step="collect")
 
 _USER_AGENT = "html-news-creator/1.0"
-_DEFAULT_TIMEOUT = 20.0
 
 
 def _local_name(tag: str) -> str:
@@ -162,7 +162,7 @@ class WebsiteCollector(BaseCollector):
             return b""
         response = httpx.get(
             url,
-            timeout=_DEFAULT_TIMEOUT,
+            timeout=COLLECTOR_TIMEOUT,
             follow_redirects=True,
             headers={"User-Agent": _USER_AGENT},
         )

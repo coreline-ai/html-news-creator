@@ -10,13 +10,13 @@ import httpx
 
 from app.collectors.base import BaseCollector, CollectedItem
 from app.config import settings
+from app.utils.http_timeouts import COLLECTOR_TIMEOUT
 from app.utils.logger import get_logger
 from app.utils.url_utils import canonicalize_url, url_hash
 
 logger = get_logger(step="collect")
 
 _NAVER_NEWS_SEARCH_URL = "https://openapi.naver.com/v1/search/news.json"
-_DEFAULT_TIMEOUT = 15.0
 _DEFAULT_MAX_ITEMS = 20
 _MAX_DISPLAY = 100
 _ALLOWED_SORTS = {"date", "sim"}
@@ -78,7 +78,7 @@ class NaverNewsCollector(BaseCollector):
                 "X-Naver-Client-Id": self.client_id,
                 "X-Naver-Client-Secret": self.client_secret,
             },
-            timeout=_DEFAULT_TIMEOUT,
+            timeout=COLLECTOR_TIMEOUT,
         )
         response.raise_for_status()
         data = response.json()
