@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -9,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { ReportCalendar } from "@/components/ReportCalendar";
 import { useReports } from "@/hooks/useReports";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
 import { todayKstISO, formatKstDateTime } from "@/lib/kst";
@@ -22,10 +24,18 @@ function formatTime(iso?: string | null): string {
 export function Dashboard() {
   const today = todayKstISO();
   const { data: reports, isLoading, isError, error, refetch } = useReports({
-    limit: 10,
+    limit: 90,
   });
 
   const todayReport = reports?.find((r) => r.report_date === today);
+
+  const splitCardRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToToday = () => {
+    const node = splitCardRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-6 py-6">
@@ -73,12 +83,106 @@ export function Dashboard() {
         />
       </section>
 
-      {/* Recent runs */}
-      <section aria-label="Recent runs" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-foreground text-base font-semibold">
-            Recent runs
-          </h2>
+      {/* Run history & Calendar — single split card */}
+      <section
+        aria-label="Run history and calendar"
+        className="flex flex-col gap-3"
+      >
+        <div
+          ref={splitCardRef}
+          data-testid="run-history-calendar-card"
+          className="border-border bg-card text-card-foreground rounded-none border"
+        >
+          {/* Card header */}
+          <div className="border-border flex items-center justify-between border-b px-6 py-3">
+            <h2 className="text-foreground text-base font-semibold">
+              Run history & Calendar
+            </h2>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={scrollToToday}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              오늘
+            </Button>
+          </div>
+
+          {/* Split body: 1fr | 280px on md+, stacked on mobile. */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_280px]">
+            {/* Left — Run history */}
+            <div className="flex min-w-0 flex-col">
+              {isLoading ? (
+                <div className="flex flex-col gap-2 p-4">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : isError ? (
+                <EmptyState
+                  icon={AlertCircle}
+                  title="Could not load reports"
+                  description={
+                    error instanceof Error
+                      ? error.message
+                      : "API request failed. The backend may be offline."
+                  }
+                  action={
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        void refetch();
+                      }}
+                    >
+                      Retry
+                    </Button>
+                  }
+                />
+              ) : !reports || reports.length === 0 ? (
+                <EmptyState
+                  icon={FileText}
+                  title="아직 리포트가 없습니다"
+                  description={`오늘(${today})자 첫 리포트를 만들어보세요. 옵션을 조정하고 Run을 누르면 파이프라인이 실행됩니다.`}
+                  action={
+                    <div
+                      className="flex items-center gap-3"
+                      data-testid="dashboard-empty-actions"
+                    >
+                      <Button asChild size="sm">
+                        <Link to="/reports/new">오늘자 첫 리포트 생성</Link>
+                      </Button>
+                      <Link
+                        to="/settings"
+                        className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                      >
+                        도움말 / 정책 보기
+                      </Link>
+                    </div>
+                  }
+                />
+              ) : (
+                <RecentRunsTable reports={reports.slice(0, 10)} />
+              )}
+            </div>
+
+            {/* Right — Calendar / Heatmap (280px on md+) */}
+            <div
+              className="border-border border-t md:border-l md:border-t-0"
+              data-testid="run-history-calendar-pane"
+            >
+              <ReportCalendar
+                reports={reports}
+                loading={isLoading}
+                error={isError ? (error as Error) : null}
+                todayIso={today}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer link */}
+        <div className="flex items-center justify-end">
           <Link
             to="/reports"
             className="text-muted-foreground hover:text-foreground text-xs"
@@ -86,63 +190,6 @@ export function Dashboard() {
             View all
           </Link>
         </div>
-
-        <Card className="rounded-none gap-0 py-0 shadow-none">
-          <CardContent className="px-0">
-            {isLoading ? (
-              <div className="flex flex-col gap-2 p-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : isError ? (
-              <EmptyState
-                icon={AlertCircle}
-                title="Could not load reports"
-                description={
-                  error instanceof Error
-                    ? error.message
-                    : "API request failed. The backend may be offline."
-                }
-                action={
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void refetch();
-                    }}
-                  >
-                    Retry
-                  </Button>
-                }
-              />
-            ) : !reports || reports.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title="아직 리포트가 없습니다"
-                description={`오늘(${today})자 첫 리포트를 만들어보세요. 옵션을 조정하고 Run을 누르면 파이프라인이 실행됩니다.`}
-                action={
-                  <div
-                    className="flex items-center gap-3"
-                    data-testid="dashboard-empty-actions"
-                  >
-                    <Button asChild size="sm">
-                      <Link to="/reports/new">오늘자 첫 리포트 생성</Link>
-                    </Button>
-                    <Link
-                      to="/settings"
-                      className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
-                    >
-                      도움말 / 정책 보기
-                    </Link>
-                  </div>
-                }
-              />
-            ) : (
-              <RecentRunsTable reports={reports.slice(0, 10)} />
-            )}
-          </CardContent>
-        </Card>
       </section>
     </div>
   );

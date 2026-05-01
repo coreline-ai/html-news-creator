@@ -8,6 +8,7 @@ export type RunMode = "full" | "rss-only";
 export type OutputTheme = "dark" | "light" | "newsroom-white";
 export type SourceType = "rss" | "github" | "arxiv" | "website";
 export type DeployTarget = "netlify" | "local-only";
+export type CalendarTab = "month" | "heatmap";
 
 export interface SectionQuotas {
   product: number;
@@ -97,6 +98,9 @@ interface AppState {
 
   activeRun: ActiveRun | null;
   setActiveRun: (run: ActiveRun | null) => void;
+
+  calendarTab: CalendarTab;
+  setCalendarTab: (tab: CalendarTab) => void;
 }
 
 // ThemeToggle path persists the preferred theme under this localStorage key.
@@ -144,6 +148,7 @@ function applyTheme(theme: Theme) {
 interface PersistedAppState {
   runOptions: RunOptions;
   activeRun: ActiveRun | null;
+  calendarTab: CalendarTab;
 }
 
 export const useAppStore = create<AppState>()(
@@ -177,6 +182,9 @@ export const useAppStore = create<AppState>()(
 
       activeRun: null,
       setActiveRun: (activeRun) => set({ activeRun }),
+
+      calendarTab: "month",
+      setCalendarTab: (calendarTab) => set({ calendarTab }),
     }),
     {
       name: "news-studio-options",
@@ -187,6 +195,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state): PersistedAppState => ({
         runOptions: state.runOptions,
         activeRun: state.activeRun,
+        calendarTab: state.calendarTab,
       }),
     },
   ),
