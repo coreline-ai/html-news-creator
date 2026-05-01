@@ -202,8 +202,12 @@ def render_preview(
     report_data["stats"] = dict(report_data["stats"])
     report_data["stats"]["clusters"] = len(sections_data)
 
+    output_theme = (opts.get("output_theme") if isinstance(opts, dict) else None) or "dark"
+
     renderer = JinjaRenderer(templates_dir=TEMPLATES_DIR)
-    return renderer.render_report(report_data, sections_data)
+    return renderer.render_report(
+        report_data, sections_data, output_theme=output_theme
+    )
 
 
 __all__ = ["render_preview"]

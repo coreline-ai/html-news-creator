@@ -86,3 +86,24 @@ def test_render_preview_with_mock_date_kst_does_not_touch_db():
     )
     assert _section_count(html) == 2
     assert "2099-01-01" in html or "미리보기" in html
+
+
+_HTML_TAG_THEME = re.compile(r'<html\b[^>]*\bdata-theme="([^"]+)"', re.IGNORECASE)
+
+
+def test_render_preview_default_output_theme_is_dark():
+    """When no output_theme is supplied the rendered HTML stays on the dark theme."""
+    html = render_preview(options={"target_sections": 2})
+    match = _HTML_TAG_THEME.search(html)
+    assert match is not None
+    assert match.group(1) == "dark"
+
+
+def test_render_preview_propagates_output_theme_override():
+    """output_theme passed via options reaches the Jinja template."""
+    html = render_preview(
+        options={"target_sections": 2, "output_theme": "newsroom-white"}
+    )
+    match = _HTML_TAG_THEME.search(html)
+    assert match is not None
+    assert match.group(1) == "newsroom-white"

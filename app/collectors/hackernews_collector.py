@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from app.collectors.base import BaseCollector, CollectedItem
+from app.utils.http_timeouts import COLLECTOR_TIMEOUT
 from app.utils.logger import get_logger
 from app.utils.url_utils import canonicalize_url, url_hash
 
@@ -14,7 +15,6 @@ logger = get_logger(step="collect")
 
 _HN_API_BASE = "https://hacker-news.firebaseio.com/v0"
 _HN_ITEM_URL = "https://news.ycombinator.com/item?id={id}"
-_DEFAULT_TIMEOUT = 15.0
 _USER_AGENT = "html-news-creator/1.0"
 
 
@@ -44,7 +44,7 @@ class HackerNewsCollector(BaseCollector):
         try:
             response = httpx.get(
                 url,
-                timeout=_DEFAULT_TIMEOUT,
+                timeout=COLLECTOR_TIMEOUT,
                 follow_redirects=True,
                 headers={"User-Agent": _USER_AGENT},
             )
