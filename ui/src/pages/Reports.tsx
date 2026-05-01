@@ -111,7 +111,7 @@ export function Reports() {
                 <th className="px-3 py-2 text-left font-medium w-[100px]">
                   상태
                 </th>
-                <th className="px-3 py-2 text-left font-medium w-[160px]">
+                <th className="px-3 py-2 text-left font-medium w-[180px] whitespace-nowrap">
                   발행 시각
                 </th>
                 <th className="px-3 py-2 text-right font-medium w-[80px]">
@@ -145,7 +145,7 @@ export function Reports() {
                     <td className="px-3 py-2">
                       <StatusPill status={r.status} />
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                       {formatPublished(r.published_at ?? r.created_at)}
                     </td>
                     <td className="px-3 py-2 text-right">
