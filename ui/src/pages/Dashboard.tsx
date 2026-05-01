@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   Card,
@@ -14,8 +13,15 @@ import { ReportCalendar } from "@/components/ReportCalendar";
 import { useReports } from "@/hooks/useReports";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
 import { todayKstISO, formatKstDateTime } from "@/lib/kst";
+import { cn } from "@/lib/utils";
 import type { ReportSummary } from "@/lib/api";
-import { FileText, Plus, RefreshCw, AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarClock,
+  FileText,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 
 function formatTime(iso?: string | null): string {
   return formatKstDateTime(iso);
@@ -29,14 +35,6 @@ export function Dashboard() {
 
   const todayReport = reports?.find((r) => r.report_date === today);
 
-  const splitCardRef = useRef<HTMLDivElement | null>(null);
-
-  const scrollToToday = () => {
-    const node = splitCardRef.current;
-    if (!node) return;
-    node.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  };
-
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-8 px-6 py-6">
       <header className="flex items-end justify-between gap-4">
@@ -49,6 +47,12 @@ export function Dashboard() {
             <span className="text-foreground font-medium">{today}</span>
           </p>
         </div>
+        <Button asChild size="sm" data-testid="dashboard-header-new-report">
+          <Link to="/reports/new">
+            <FileText className="size-4" aria-hidden="true" />
+            New Report
+          </Link>
+        </Button>
       </header>
 
       {/* Today + Quick actions */}
@@ -63,6 +67,8 @@ export function Dashboard() {
           title="New report"
           description="Run the pipeline with custom options."
           icon={<Plus className="size-4" aria-hidden="true" />}
+          featured
+          testId="dashboard-new-report-card"
         />
         <QuickActionCard
           to="/reports"
@@ -89,23 +95,21 @@ export function Dashboard() {
         className="flex flex-col gap-3"
       >
         <div
-          ref={splitCardRef}
           data-testid="run-history-calendar-card"
           className="border-border bg-card text-card-foreground rounded-none border"
         >
           {/* Card header */}
           <div className="border-border flex items-center justify-between border-b px-6 py-3">
-            <h2 className="text-foreground text-base font-semibold">
+            <h2 className="text-foreground flex items-center gap-2 text-base font-semibold">
+              <CalendarClock
+                className="text-muted-foreground size-4"
+                aria-hidden="true"
+              />
               Run history & Calendar
             </h2>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={scrollToToday}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              오늘
-            </Button>
+            <span className="text-muted-foreground text-xs">
+              Today · {today}
+            </span>
           </div>
 
           {/* Split body: 1fr | 280px on md+, stacked on mobile. */}
@@ -162,7 +166,18 @@ export function Dashboard() {
                   }
                 />
               ) : (
-                <RecentRunsTable reports={reports.slice(0, 10)} />
+                <>
+                  <div className="border-border flex items-center justify-end border-b px-3 py-2">
+                    <Link
+                      to="/reports"
+                      className="text-muted-foreground hover:text-foreground text-xs font-medium"
+                      data-testid="dashboard-view-all-link"
+                    >
+                      View all
+                    </Link>
+                  </div>
+                  <RecentRunsTable reports={reports.slice(0, 10)} />
+                </>
               )}
             </div>
 
@@ -179,16 +194,6 @@ export function Dashboard() {
               />
             </div>
           </div>
-        </div>
-
-        {/* Footer link */}
-        <div className="flex items-center justify-end">
-          <Link
-            to="/reports"
-            className="text-muted-foreground hover:text-foreground text-xs"
-          >
-            View all
-          </Link>
         </div>
       </section>
     </div>
@@ -236,22 +241,51 @@ function QuickActionCard({
   title,
   description,
   icon,
+  featured = false,
+  testId,
 }: {
   to: string;
   title: string;
   description: string;
   icon: React.ReactNode;
+  featured?: boolean;
+  testId?: string;
 }) {
   return (
     <Link
       to={to}
-      className="border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground flex flex-col gap-2 border p-4 transition-colors"
+      data-testid={testId}
+      className={cn(
+        "text-card-foreground flex flex-col gap-2 border p-4 transition-colors",
+        featured
+          ? "border-primary/40 bg-primary/10 shadow-[inset_0_3px_0_0_var(--primary)] hover:bg-primary/15 dark:border-primary/35 dark:bg-primary/10 dark:hover:bg-primary/15"
+          : "border-border bg-card hover:bg-accent hover:text-accent-foreground",
+      )}
     >
-      <div className="text-muted-foreground flex items-center gap-2">
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          featured ? "text-primary" : "text-muted-foreground",
+        )}
+      >
         {icon}
-        <span className="text-foreground text-sm font-medium">{title}</span>
+        <span
+          className={cn(
+            "text-foreground text-sm font-medium",
+            featured && "font-semibold",
+          )}
+        >
+          {title}
+        </span>
       </div>
-      <p className="text-muted-foreground text-xs">{description}</p>
+      <p
+        className={cn(
+          "text-xs",
+          featured ? "text-foreground/75" : "text-muted-foreground",
+        )}
+      >
+        {description}
+      </p>
     </Link>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Sidebar } from "@/components/Sidebar";
+import { MobileSidebar, Sidebar } from "@/components/Sidebar";
 import { AllProviders } from "./test-utils";
 
 describe("Sidebar (TC-2.2)", () => {
@@ -74,5 +74,17 @@ describe("Sidebar (TC-2.2)", () => {
       "aria-current",
       "page",
     );
+  });
+
+  it("renders a clear X close button in the mobile drawer", () => {
+    render(
+      <AllProviders initialEntries={["/"]}>
+        <MobileSidebar open onOpenChange={() => undefined} />
+      </AllProviders>,
+    );
+
+    const close = screen.getByRole("button", { name: /close navigation/i });
+    expect(close).toBeInTheDocument();
+    expect(close).toHaveAttribute("data-testid", "mobile-sidebar-close");
   });
 });

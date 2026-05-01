@@ -862,6 +862,8 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
         # 본문 콘텐츠 이미지 수집 — UI 요소·로고·기자 초상 제외
         _CONTENT_IMG_SKIP = (
             "arxiv.org/html/",     # arXiv 논문 내부 figure: 섹션 주제와 맥락 없이 배치됨
+            "arxiv.org/static/",   # arXiv 로고·북마크·소셜 아이콘 등 UI 자산
+            "static.arxiv.org/icons/",
             "redditstatic.com",    # Reddit UI 자산
             "styles.redditmedia.com",
         )
