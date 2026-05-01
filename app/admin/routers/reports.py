@@ -155,11 +155,16 @@ async def api_get_report_pdf(
         logger.error("pdf_export_failed", date_kst=date_kst, error=str(exc))
         raise HTTPException(status_code=500, detail=f"pdf export failed: {exc}")
 
+    # Use ``inline`` so the PDF can render inside an in-page iframe (the
+    # Reports list dialog). FE's [다운로드] button uses an explicit
+    # ``download`` attribute which the browser still honors regardless.
     return FileResponse(
         str(pdf_path),
         media_type="application/pdf",
-        filename=f"{date_kst}-trend.pdf",
-        headers={"Cache-Control": "no-store, must-revalidate"},
+        headers={
+            "Cache-Control": "no-store, must-revalidate",
+            "Content-Disposition": f'inline; filename="{date_kst}-trend.pdf"',
+        },
     )
 
 
