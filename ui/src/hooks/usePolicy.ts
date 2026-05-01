@@ -54,3 +54,32 @@ export function useUpdatePolicy(): UseMutationResult<
     },
   });
 }
+
+export interface PersistPolicyResponse {
+  persisted_to: string;
+  backup: string | null;
+}
+
+/**
+ * POST /api/policy/persist — flush the runtime override into the on-disk
+ * `data/editorial_policy.yaml`. Returns the relative paths the backend wrote.
+ * The current `_RUNTIME_OVERRIDE` is read on the server side so no body is
+ * needed.
+ */
+export function usePersistPolicy(): UseMutationResult<
+  PersistPolicyResponse,
+  Error,
+  void
+> {
+  return useMutation<PersistPolicyResponse, Error, void>({
+    mutationFn: async () => {
+      const data = await apiFetch<PersistPolicyResponse>(
+        "/api/policy/persist",
+        { method: "POST" },
+      );
+      return (
+        data ?? { persisted_to: "data/editorial_policy.yaml", backup: null }
+      );
+    },
+  });
+}

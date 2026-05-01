@@ -7,6 +7,9 @@ preview alternative settings via the News Studio UI.
 """
 from __future__ import annotations
 
+import os
+import shutil
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 from threading import RLock
@@ -14,7 +17,7 @@ from typing import Any
 
 import yaml
 
-from app.editorial.policy import _deep_merge, load_policy
+from app.editorial.policy import DEFAULT_POLICY_PATH, _deep_merge, load_policy
 
 # Module-level runtime override (volatile — cleared on process restart)
 _OVERRIDE_LOCK = RLock()
@@ -95,3 +98,68 @@ def materialize_to(tmp_path: str | Path) -> Path:
     with target.open("w", encoding="utf-8") as f:
         yaml.safe_dump(payload, f, allow_unicode=True, sort_keys=False)
     return target
+
+
+def persist_runtime_override_to_yaml(
+    yaml_path: Path | str | None = None,
+) -> dict[str, Path | None]:
+    """Atomically write the current runtime override into the on-disk yaml.
+
+    Steps:
+      1. Refuse if there is no runtime override (``ValueError``) — the operator
+         must explicitly tune something via :func:`set_policy_override` first.
+      2. If the target yaml already exists, copy it to ``<yaml_path>.bak``
+         (overwriting any stale backup).
+      3. Load the existing yaml (or ``{}`` when missing), deep-merge the
+         override on top, and dump the result to a tempfile in the target
+         directory. ``os.replace`` then atomically swaps the tempfile in.
+
+    Returns a mapping ``{"persisted_to": Path, "backup": Path | None}``. The
+    backup key is ``None`` when the yaml didn't exist beforehand.
+    """
+    target = Path(yaml_path) if yaml_path is not None else Path(DEFAULT_POLICY_PATH)
+    target = target.resolve() if target.exists() else target
+
+    override = get_runtime_override()
+    if not override:
+        raise ValueError("no runtime override to persist")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    backup_path: Path | None = None
+    if target.exists():
+        backup_path = target.with_suffix(target.suffix + ".bak")
+        shutil.copy2(target, backup_path)
+        with target.open("r", encoding="utf-8") as fh:
+            existing = yaml.safe_load(fh) or {}
+        if not isinstance(existing, dict):
+            raise ValueError(f"existing policy yaml is not a mapping: {target}")
+    else:
+        existing = {}
+
+    merged = _deep_merge(existing, override)
+
+    # Atomic write: dump to a tempfile in the same directory, fsync, then
+    # os.replace so a partial write can never corrupt the target.
+    tmp_fd, tmp_name = tempfile.mkstemp(
+        prefix=target.name + ".",
+        suffix=".tmp",
+        dir=str(target.parent),
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as fh:
+            yaml.safe_dump(merged, fh, allow_unicode=True, sort_keys=False)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, target)
+    except Exception:
+        # Best-effort cleanup; original file (if any) is untouched because we
+        # never opened it for writing.
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+        raise
+
+    return {"persisted_to": target, "backup": backup_path}
