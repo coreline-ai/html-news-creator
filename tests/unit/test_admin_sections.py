@@ -354,8 +354,23 @@ def test_publish_dry_run_returns_deploy_url_without_calling_netlify():
     report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
     _override_db(_make_db(report=report))
 
+    # Phase B opens its own ``AsyncSessionLocal`` to re-render before deploy
+    # (even on dry_run). Without patching the factory CI would attempt a real
+    # Postgres connection. We also stub ``render_published`` so we don't have
+    # to drag in the Jinja stack.
+    fake_render = AsyncMock(
+        return_value=__import__("pathlib").Path(
+            "public/news/2026-04-30-trend.html"
+        )
+    )
     fake_deploy = AsyncMock()
-    with patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy):
+    with patch("app.admin.publish.render_published", fake_render), \
+         patch("app.admin.publish.AsyncSessionLocal") as mock_session_factory, \
+         patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy):
+        mock_session_factory.return_value.__aenter__ = AsyncMock(
+            return_value=AsyncMock()
+        )
+        mock_session_factory.return_value.__aexit__ = AsyncMock(return_value=None)
         try:
             resp = client.post(
                 "/api/reports/2026-04-30/publish", json={"dry_run": True}
