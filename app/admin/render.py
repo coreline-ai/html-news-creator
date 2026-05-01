@@ -105,6 +105,7 @@ async def render_published(
     date_kst: str,
     db: AsyncSession,
     disabled_section_ids: Optional[Iterable[str]] = None,
+    output_theme: str = "dark",
 ) -> Path:
     """Re-render the published HTML for ``date_kst`` from current DB state.
 
@@ -113,6 +114,10 @@ async def render_published(
         db: an open ``AsyncSession`` (the caller decides whether it commits).
         disabled_section_ids: section UUIDs (str) to skip. ``None`` or empty
             renders every section in ``section_order``.
+        output_theme: ``dark`` (default), ``light``, or ``newsroom-white``.
+            Forwarded to ``JinjaRenderer.render_to_file`` so the per-run theme
+            picked in the UI ends up in the deployed HTML instead of always
+            shipping dark.
 
     Returns:
         Path to the freshly written HTML file.
@@ -153,7 +158,10 @@ async def render_published(
 
     renderer = JinjaRenderer(templates_dir=str(_PROJECT_ROOT / "templates"))
     written_path = renderer.render_to_file(
-        report_data, sections_data, str(output_path)
+        report_data,
+        sections_data,
+        str(output_path),
+        output_theme=output_theme,
     )
 
     artifact = ReportArtifact(
@@ -170,6 +178,7 @@ async def render_published(
         sections_total=len(all_sections),
         sections_rendered=len(kept_sections),
         disabled_count=len(disabled_set),
+        output_theme=output_theme,
         path=str(output_rel),
     )
     return written_path

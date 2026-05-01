@@ -40,8 +40,14 @@ async def publish_report(
     dry_run: bool = False,
     publish_dir: Optional[str] = None,
     disabled_section_ids: Optional[Iterable[str]] = None,
+    output_theme: Optional[str] = None,
 ) -> dict[str, Any]:
     """Publish a report's static bundle to Netlify.
+
+    ``output_theme`` (``dark`` default, ``light``, ``newsroom-white``) is
+    forwarded to ``render_published`` so the deployed HTML reflects the
+    per-run theme the operator picked in News Studio. ``None`` falls back
+    to the dark default.
 
     Returns a dict mirroring the route response. Raises:
       - ValueError on bad date
@@ -54,6 +60,7 @@ async def publish_report(
         raise ValueError(f"invalid date_kst (expected YYYY-MM-DD): {exc}")
 
     disabled_list = list(disabled_section_ids or [])
+    theme_value = output_theme or "dark"
 
     # Step 1 — re-render from DB (always, including dry_run) so that the
     # served HTML matches the current Review state.
@@ -62,6 +69,7 @@ async def publish_report(
             date_kst,
             render_session,
             disabled_section_ids=disabled_list,
+            output_theme=theme_value,
         )
 
     if dry_run:

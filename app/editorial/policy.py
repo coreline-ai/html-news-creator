@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from copy import deepcopy
 from pathlib import Path
@@ -7,12 +8,22 @@ from typing import Any
 
 import yaml
 
+from app.utils.logger import get_logger
+
 DEFAULT_POLICY_PATH = Path(__file__).resolve().parents[2] / "data" / "editorial_policy.yaml"
 
 # Env var that lets the API hand a temporary policy file to a subprocess.
 # When set, ``load_policy()`` reads from this path instead of the repo-level
 # yaml — see ``app/admin/run_runner.py`` for the producer side.
 POLICY_PATH_ENV = "EDITORIAL_POLICY_PATH"
+
+# Env var carrying a JSON-encoded deep-merge override applied **after** the
+# YAML policy is loaded. Used by the run-runner to forward per-run editorial
+# knobs (target_sections, quotas, …) the operator picked in the UI for this
+# specific run without mutating the on-disk policy file.
+POLICY_OVERRIDE_JSON_ENV = "EDITORIAL_POLICY_OVERRIDE_JSON"
+
+_logger = get_logger(step="editorial.policy")
 
 
 DEFAULT_POLICY: dict[str, Any] = {
@@ -99,7 +110,16 @@ def load_policy(path: str | Path | None = None) -> dict[str, Any]:
       3. ``DEFAULT_POLICY_PATH`` (``data/editorial_policy.yaml``).
 
     Missing sections are filled from ``DEFAULT_POLICY`` so partial fixtures and
-    materialized override files remain valid. Returns a plain dict.
+    materialized override files remain valid.
+
+    After the YAML resolution, ``$EDITORIAL_POLICY_OVERRIDE_JSON`` (if set) is
+    parsed and deep-merged on top so per-run knobs (target_sections, quotas,
+    …) the operator picked in the UI for THIS run can override the persisted
+    policy without writing a tempfile. Bad JSON is logged as
+    ``policy_override_json_parse_failed`` and skipped — the run still gets a
+    valid policy dict from the YAML/default layer.
+
+    Returns a plain dict.
     """
     if path is not None:
         policy_path = Path(path)
@@ -111,10 +131,32 @@ def load_policy(path: str | Path | None = None) -> dict[str, Any]:
             policy_path = DEFAULT_POLICY_PATH
 
     if not policy_path.exists():
-        return deepcopy(DEFAULT_POLICY)
+        merged = deepcopy(DEFAULT_POLICY)
+    else:
+        with policy_path.open("r", encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        if not isinstance(loaded, dict):
+            raise ValueError(
+                f"Editorial policy must be a YAML mapping: {policy_path}"
+            )
+        merged = _deep_merge(DEFAULT_POLICY, loaded)
 
-    with policy_path.open("r", encoding="utf-8") as f:
-        loaded = yaml.safe_load(f) or {}
-    if not isinstance(loaded, dict):
-        raise ValueError(f"Editorial policy must be a YAML mapping: {policy_path}")
-    return _deep_merge(DEFAULT_POLICY, loaded)
+    # Per-run JSON override (deep-merged on top). Failing to parse should not
+    # poison the entire policy load — the run can still proceed against the
+    # YAML/default policy, just without the requested per-run knobs. The
+    # error is logged so the operator can spot it in run logs.
+    override_json = os.environ.get(POLICY_OVERRIDE_JSON_ENV)
+    if override_json:
+        try:
+            override_dict = json.loads(override_json)
+            if not isinstance(override_dict, dict):
+                raise ValueError("policy override must decode to a JSON object")
+            merged = _deep_merge(merged, override_dict)
+        except (json.JSONDecodeError, ValueError) as exc:
+            _logger.error(
+                "policy_override_json_parse_failed",
+                error=str(exc),
+                preview=override_json[:200],
+            )
+
+    return merged
