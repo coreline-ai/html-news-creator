@@ -284,15 +284,25 @@ async def api_reorder_sections(
     sections = sections_result.scalars().all()
     by_id = {str(s.id): s for s in sections}
 
-    # All ids in payload must belong to this report
-    unknown = [sid for sid in payload.section_ids if sid not in by_id]
-    if unknown:
+    # Exact-set check: payload must reference EVERY section of this report
+    # exactly once — neither dropping known ids nor introducing foreign ones.
+    # We normalise everything via ``str()`` so UUID vs str payloads compare
+    # cleanly.
+    payload_ids = [str(sid) for sid in payload.section_ids]
+    payload_set = set(payload_ids)
+    db_set = set(by_id.keys())
+    missing = sorted(db_set - payload_set)
+    unknown = sorted(payload_set - db_set)
+    if missing or unknown or len(payload_ids) != len(db_set):
         raise HTTPException(
             status_code=400,
-            detail=f"section_ids not part of report {date_kst}: {unknown}",
+            detail=(
+                "section_ids must exactly match the report's section set "
+                f"(missing: {missing}, unknown: {unknown})"
+            ),
         )
 
-    for new_pos, sid in enumerate(payload.section_ids):
+    for new_pos, sid in enumerate(payload_ids):
         by_id[sid].section_order = new_pos
 
     await db.commit()
