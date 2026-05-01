@@ -111,6 +111,11 @@ def _make_db(*, sections: list | None = None, report: _ReportRow | None = None):
     db.execute.side_effect = _execute
     db.commit = AsyncMock(return_value=None)
     db.refresh = AsyncMock(return_value=None)
+    # ``Session.add`` is a sync API on SQLAlchemy AsyncSession too — leaving it
+    # as the default AsyncMock attribute would emit a "coroutine was never
+    # awaited" RuntimeWarning whenever the render code-path calls
+    # ``db.add(artifact)`` against this stub.
+    db.add = MagicMock()
     state  # keep ref
     return db
 
@@ -292,6 +297,85 @@ def test_reorder_sections_persists_new_order():
         _clear_override()
 
 
+# ---------------------------------------------------------------------------
+# Reorder exact-set checks (Phase F bundle Y)
+# ---------------------------------------------------------------------------
+
+def test_reorder_rejects_partial_section_set():
+    """Dropping a real section id from the payload must 400 with `missing:`.
+
+    The endpoint is "rearrange every section", not "rearrange a subset" —
+    omitting a known id silently would turn reorder into a soft-delete.
+    """
+    report_id = str(uuid.uuid4())
+    s1 = _SectionRow(str(uuid.uuid4()), report_id, 0, title="A")
+    s2 = _SectionRow(str(uuid.uuid4()), report_id, 1, title="B")
+    s3 = _SectionRow(str(uuid.uuid4()), report_id, 2, title="C")
+    report = _ReportRow(report_id, date_cls.fromisoformat("2026-04-30"))
+    _override_db(_make_db(sections=[s1, s2, s3], report=report))
+    try:
+        resp = client.post(
+            "/api/reports/2026-04-30/reorder",
+            # s3.id missing on purpose
+            json={"section_ids": [s2.id, s1.id]},
+        )
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert "missing:" in detail
+        assert s3.id in detail
+        # Positions unchanged when the request is rejected.
+        assert s1.section_order == 0
+        assert s2.section_order == 1
+        assert s3.section_order == 2
+    finally:
+        _clear_override()
+
+
+def test_reorder_rejects_unknown_id():
+    """Adding an id that does not belong to the report must 400 with `unknown:`."""
+    report_id = str(uuid.uuid4())
+    s1 = _SectionRow(str(uuid.uuid4()), report_id, 0, title="A")
+    s2 = _SectionRow(str(uuid.uuid4()), report_id, 1, title="B")
+    report = _ReportRow(report_id, date_cls.fromisoformat("2026-04-30"))
+    _override_db(_make_db(sections=[s1, s2], report=report))
+    try:
+        foreign = str(uuid.uuid4())
+        resp = client.post(
+            "/api/reports/2026-04-30/reorder",
+            json={"section_ids": [s1.id, s2.id, foreign]},
+        )
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert "unknown:" in detail
+        assert foreign in detail
+    finally:
+        _clear_override()
+
+
+def test_reorder_accepts_full_set_in_new_order():
+    """A payload that lists every section exactly once (in any order) is accepted."""
+    report_id = str(uuid.uuid4())
+    s1 = _SectionRow(str(uuid.uuid4()), report_id, 0, title="A")
+    s2 = _SectionRow(str(uuid.uuid4()), report_id, 1, title="B")
+    s3 = _SectionRow(str(uuid.uuid4()), report_id, 2, title="C")
+    report = _ReportRow(report_id, date_cls.fromisoformat("2026-04-30"))
+    _override_db(_make_db(sections=[s1, s2, s3], report=report))
+    try:
+        # New order: s2, s3, s1 — every id present exactly once.
+        resp = client.post(
+            "/api/reports/2026-04-30/reorder",
+            json={"section_ids": [s2.id, s3.id, s1.id]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert [s["id"] for s in body["sections"]] == [s2.id, s3.id, s1.id]
+        assert s2.section_order == 0
+        assert s3.section_order == 1
+        assert s1.section_order == 2
+    finally:
+        _clear_override()
+
+
 def test_reorder_sections_rejects_empty_payload():
     report_id = str(uuid.uuid4())
     report = _ReportRow(report_id, date_cls.fromisoformat("2026-04-30"))
@@ -317,7 +401,12 @@ def test_reorder_sections_rejects_foreign_ids():
             json={"section_ids": [bad]},
         )
         assert resp.status_code == 400
-        assert "not part of report" in resp.json()["detail"]
+        # New exact-set wording: payload must reference EVERY known section.
+        detail = resp.json()["detail"]
+        assert "exactly match the report's section set" in detail
+        assert "missing:" in detail and "unknown:" in detail
+        assert bad in detail
+        assert s1.id in detail
     finally:
         _clear_override()
 
@@ -409,6 +498,7 @@ def test_publish_invokes_netlify_publisher():
     exec_result.scalars.return_value = scalars_mock
     fake_session.execute = AsyncMock(return_value=exec_result)
     fake_session.commit = AsyncMock(return_value=None)
+    fake_session.add = MagicMock()  # sync API — see _make_db() helper note
 
     with patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy), \
          patch("app.admin.publish.AsyncSessionLocal", return_value=fake_session), \

@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.db_models import Report, ReportArtifact, ReportSection
 from app.rendering.jinja_renderer import JinjaRenderer
 from app.utils.logger import get_logger
+from app.utils.source_images import is_usable_representative_image_url
 
 logger = get_logger(step="admin")
 
@@ -40,18 +41,29 @@ def _section_to_render_dict(s: ReportSection) -> dict[str, Any]:
     Mirrors ``scripts/run_daily.py::run_render`` so the published HTML stays
     visually identical between a fresh pipeline run and a re-render after
     operator edits.
+
+    Image evidence is filtered through ``is_usable_representative_image_url``
+    so journalist headshots, logos, tracking pixels, and decorative SVGs from
+    upstream collectors never reach the rendered HTML — even when an operator
+    accepted them at section-edit time.
     """
     image_evidence = s.image_evidence_json or []
     content_images = [
         e["url"]
         for e in image_evidence
-        if isinstance(e, dict) and e.get("url") and e.get("source") == "content"
+        if isinstance(e, dict)
+        and e.get("url")
+        and e.get("source") == "content"
+        and is_usable_representative_image_url(e["url"])
     ]
     fallback_image = next(
         (
             e["url"]
             for e in image_evidence
-            if isinstance(e, dict) and e.get("url") and e.get("source") != "content"
+            if isinstance(e, dict)
+            and e.get("url")
+            and e.get("source") != "content"
+            and is_usable_representative_image_url(e["url"])
         ),
         "",
     )
