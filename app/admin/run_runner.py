@@ -8,6 +8,7 @@ admin tool — the operator can always restart).
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import sys
 import tempfile
@@ -42,7 +43,31 @@ _SUPPORTED_OPTION_KEYS: frozenset[str] = frozenset(
         # Runtime knobs consumed by ``_supervise`` (not forwarded as CLI flags
         # but explicitly handled — kept here so they don't trigger warnings).
         "max_runtime_sec",
+        # Output-side knob — flows through ``--output-theme``.
+        "output_theme",
+        # Editorial policy knobs — folded into a single
+        # ``--policy-override-json`` payload for the subprocess.
+        "target_sections",
+        "min_section_score",
+        "quotas",
+        "section_quotas",
+        "image_required",
+        "arxiv_max",
+        "community_max",
+        "cluster_bonus",
+        # Collector-side knob — accepted but currently informational; the
+        # collector phase doesn't yet honour per-run source filters. We carry
+        # it through the policy override under ``__source_filter`` so a future
+        # phase can pick it up without breaking the contract.
+        "source_types",
     }
+)
+
+# Output theme values accepted by ``--output-theme``. Anything outside this
+# set is dropped with a warning so a typo in the FE store doesn't quietly
+# become the dark default.
+_VALID_OUTPUT_THEMES: frozenset[str] = frozenset(
+    {"light", "dark", "newsroom-white"}
 )
 
 # Per-line history retained per run (so a late SSE subscriber can replay)
@@ -87,13 +112,69 @@ _RUNS: dict[str, RunState] = {}
 _RUNS_LOCK = asyncio.Lock()
 
 
+def _build_policy_override(options: dict[str, Any]) -> dict[str, Any]:
+    """Project per-run options onto the editorial-policy schema.
+
+    The keys on the FE side use shorthand (``arxiv_max``); the policy file
+    uses fully qualified paths (``report_selection.max_arxiv_only_sections``).
+    This helper performs the mapping so ``_build_argv`` can hand a single
+    JSON blob to the child process via ``--policy-override-json``.
+
+    Returns an empty dict when the operator did not touch any of the
+    policy-shaped knobs — ``_build_argv`` then skips emitting the flag
+    entirely so a vanilla "click run" still produces a flag-free argv.
+    """
+    override: dict[str, Any] = {}
+    selection: dict[str, Any] = {}
+
+    if "target_sections" in options and options["target_sections"] is not None:
+        selection["target_sections"] = int(options["target_sections"])
+    if "min_section_score" in options and options["min_section_score"] is not None:
+        selection["min_section_score"] = int(options["min_section_score"])
+    if "arxiv_max" in options and options["arxiv_max"] is not None:
+        selection["max_arxiv_only_sections"] = int(options["arxiv_max"])
+    if "community_max" in options and options["community_max"] is not None:
+        selection["max_community_sections"] = int(options["community_max"])
+    if "image_required" in options and options["image_required"] is not None:
+        selection["backfill_require_image"] = bool(options["image_required"])
+
+    if selection:
+        override["report_selection"] = selection
+
+    quotas = options.get("section_quotas") or options.get("quotas")
+    if isinstance(quotas, dict) and quotas:
+        # Coerce numeric values defensively — the FE may hand us strings from
+        # an ``<input type=number>`` round-trip.
+        override["section_quotas"] = {
+            k: int(v) for k, v in quotas.items() if v is not None
+        }
+
+    if "cluster_bonus" in options and options["cluster_bonus"] is not None:
+        override.setdefault("scoring_weights", {})[
+            "cluster_size_boost_per_item"
+        ] = int(options["cluster_bonus"])
+
+    source_types = options.get("source_types")
+    if isinstance(source_types, list) and source_types:
+        override["__source_filter"] = list(source_types)
+
+    return override
+
+
 def _build_argv(options: dict[str, Any]) -> list[str]:
     """Translate UI options dict into ``run_daily.py`` CLI flags.
 
-    Only the options ``scripts/run_daily.py`` actually accepts are forwarded.
-    Any other keys (UI-only previews like ``output_theme``, ``slack_notify``,
-    ``deploy_target``, …) are logged via ``logger.warning("ignored_run_option")``
-    so the operator can see what isn't wired through yet.
+    The handful of execution flags map 1:1 to CLI options. Everything else
+    that's still policy-shaped (target_sections, quotas, score thresholds,
+    …) is folded into a single ``--policy-override-json`` blob the
+    subprocess deep-merges on top of the resolved YAML policy. Output theme
+    rides on its own ``--output-theme`` flag because it doesn't live in the
+    policy schema.
+
+    Keys outside ``_SUPPORTED_OPTION_KEYS`` are logged via
+    ``logger.warning("ignored_run_option")`` so the operator can see what
+    isn't wired through yet (publish-side knobs like ``deploy_target``,
+    ``slack_notify``, ``publish_at``, ``format`` are all in this bucket).
     """
     argv: list[str] = [sys.executable, str(RUN_DAILY_PATH)]
     date_value = options.get("date") or options.get("run_date")
@@ -110,6 +191,24 @@ def _build_argv(options: dict[str, Any]) -> list[str]:
         argv += ["--to-step", str(to_step)]
     if options.get("dry_run"):
         argv += ["--dry-run"]
+
+    output_theme = options.get("output_theme")
+    if output_theme:
+        if str(output_theme) in _VALID_OUTPUT_THEMES:
+            argv += ["--output-theme", str(output_theme)]
+        else:
+            logger.warning(
+                "invalid_output_theme",
+                value=str(output_theme),
+                allowed=sorted(_VALID_OUTPUT_THEMES),
+            )
+
+    policy_override = _build_policy_override(options)
+    if policy_override:
+        argv += [
+            "--policy-override-json",
+            json.dumps(policy_override, ensure_ascii=False, sort_keys=True),
+        ]
 
     for key in options:
         if key not in _SUPPORTED_OPTION_KEYS:

@@ -995,7 +995,12 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
     return {"sections": len(sections), "title": title}
 
 
-async def run_render(run_date: date, dry_run: bool, logger) -> dict:
+async def run_render(
+    run_date: date,
+    dry_run: bool,
+    logger,
+    output_theme: str | None = None,
+) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import Report, ReportSection, Verification, RawItem, AnalysisResult
     from app.rendering.jinja_renderer import JinjaRenderer
@@ -1005,6 +1010,7 @@ async def run_render(run_date: date, dry_run: bool, logger) -> dict:
     renderer = JinjaRenderer()
     report_data = None
     sections_data = []
+    theme_value = output_theme or "dark"
 
     def _is_allowed_render_image(evidence: dict) -> bool:
         image_url = evidence.get("url", "")
@@ -1099,12 +1105,16 @@ async def run_render(run_date: date, dry_run: bool, logger) -> dict:
 
     output_path = f"public/news/{run_date}-trend.html"
     if not dry_run:
-        renderer.render_to_file(report_data, sections_data, output_path)
+        renderer.render_to_file(
+            report_data, sections_data, output_path, output_theme=theme_value
+        )
     else:
-        html = renderer.render_report(report_data, sections_data)
+        html = renderer.render_report(
+            report_data, sections_data, output_theme=theme_value
+        )
         logger.info("render_dry_run", html_length=len(html))
 
-    return {"output_path": output_path}
+    return {"output_path": output_path, "output_theme": theme_value}
 
 
 async def run_publish(run_date: date, dry_run: bool, logger) -> dict:
@@ -1256,10 +1266,11 @@ async def run_pipeline(
     from_step: str,
     to_step: str,
     dry_run: bool,
+    output_theme: str | None = None,
 ) -> None:
     logger = get_logger(step="pipeline")
     logger.info("pipeline_start", date=str(run_date), mode=mode, from_step=from_step,
-                to_step=to_step, dry_run=dry_run)
+                to_step=to_step, dry_run=dry_run, output_theme=output_theme or "dark")
 
     from_idx = STEPS.index(from_step)
     to_idx = STEPS.index(to_step)
@@ -1278,6 +1289,8 @@ async def run_pipeline(
             kwargs: dict = {}
             if step == "collect" and mode == "rss-only":
                 kwargs["source_types"] = ["rss", "website", "arxiv"]
+            if step == "render":
+                kwargs["output_theme"] = output_theme
             result = await fn(run_date, dry_run, logger, **kwargs)
             results[step] = result
             logger.info("step_done", step=step, **{k: v for k, v in result.items()
@@ -1311,7 +1324,37 @@ async def run_pipeline(
         "tuned policy without touching data/editorial_policy.yaml."
     ),
 )
-def main(run_date_str, mode, from_step, to_step, dry_run, policy_path):
+@click.option(
+    "--policy-override-json",
+    default=None,
+    help=(
+        "JSON string with deep-merge policy overrides. Exported as "
+        "$EDITORIAL_POLICY_OVERRIDE_JSON so ``app.editorial.policy.load_policy`` "
+        "deep-merges it on top of the resolved YAML policy. Used by the API "
+        "subprocess flow to forward per-run editorial knobs without writing "
+        "a tempfile when the override is purely additive."
+    ),
+)
+@click.option(
+    "--output-theme",
+    type=click.Choice(["light", "dark", "newsroom-white"]),
+    default=None,
+    help=(
+        "Override the rendered HTML theme for this run only. Forwarded to "
+        "``JinjaRenderer.render_to_file`` so the published bundle reflects "
+        "the operator's per-run choice instead of the dark default."
+    ),
+)
+def main(
+    run_date_str,
+    mode,
+    from_step,
+    to_step,
+    dry_run,
+    policy_path,
+    policy_override_json,
+    output_theme,
+):
     """Run the daily AI trend report pipeline."""
     if run_date_str:
         run_date = date.fromisoformat(run_date_str)
@@ -1327,7 +1370,22 @@ def main(run_date_str, mode, from_step, to_step, dry_run, policy_path):
     if policy_path:
         os.environ[POLICY_PATH_ENV] = policy_path
 
-    asyncio.run(run_pipeline(run_date, mode, from_step, to_step, dry_run))
+    # Per-run policy override from the API → child process. Stored in env so
+    # downstream callers of ``load_policy()`` (in any subprocess of this run)
+    # can pick it up without threading the dict through every call site.
+    if policy_override_json:
+        os.environ["EDITORIAL_POLICY_OVERRIDE_JSON"] = policy_override_json
+
+    asyncio.run(
+        run_pipeline(
+            run_date,
+            mode,
+            from_step,
+            to_step,
+            dry_run,
+            output_theme=output_theme,
+        )
+    )
 
 
 if __name__ == "__main__":

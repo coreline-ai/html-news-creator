@@ -438,11 +438,7 @@ function OutputGroup({
   const themes: OutputTheme[] = ["dark", "light", "newsroom-white"];
   return (
     <>
-      <Field
-        id="opt-output-theme"
-        label="Output theme"
-        previewOnly
-      >
+      <Field id="opt-output-theme" label="Output theme">
         <div className="flex gap-2">
           {themes.map((t) => {
             const active = runOptions.output_theme === t;
