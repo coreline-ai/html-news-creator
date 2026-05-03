@@ -22,6 +22,8 @@ jobs:
   generate-report:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PYTHONPATH: .
 
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +36,17 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Check pipeline imports
+        run: |
+          python - <<'PY'
+          import importlib
+
+          importlib.import_module("app.utils.logger")
+          importlib.import_module("app.editorial.policy")
+          importlib.import_module("scripts.run_daily")
+          print("Pipeline imports OK")
+          PY
 
       - name: Install Playwright browsers
         run: playwright install chromium
@@ -60,9 +73,9 @@ jobs:
           DATE="${{ github.event.inputs.date }}"
           MODE="${{ github.event.inputs.mode || 'full' }}"
           if [ -n "$DATE" ]; then
-            python scripts/run_daily.py --date "$DATE" --mode "$MODE"
+            PYTHONPATH=. python scripts/run_daily.py --date "$DATE" --mode "$MODE"
           else
-            python scripts/run_daily.py --mode "$MODE"
+            PYTHONPATH=. python scripts/run_daily.py --mode "$MODE"
           fi
 
       - name: Deploy to Netlify
