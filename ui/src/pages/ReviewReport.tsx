@@ -295,6 +295,16 @@ export function ReviewReport() {
           </Button>
           <Button asChild size="sm" variant="outline">
             <a
+              href={`/api/reports/${encodeURIComponent(date)}/html/download`}
+              download={`${date}-trend.html`}
+              data-testid="html-download-button"
+            >
+              <FileText className="size-4" aria-hidden="true" />
+              HTML
+            </a>
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a
               href={`/api/reports/${encodeURIComponent(date)}/pdf`}
               download={`${date}-trend.pdf`}
               data-testid="pdf-download-button"

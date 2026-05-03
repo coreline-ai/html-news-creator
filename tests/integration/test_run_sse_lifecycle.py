@@ -32,6 +32,14 @@ pytestmark = pytest.mark.asyncio
 _LIFECYCLE_DEADLINE_SEC = 30.0
 
 
+async def _await_run_task(run_id: str, timeout_sec: float = 1.0) -> None:
+    """Wait for the background runner so tests don't leak pending tasks."""
+    state = run_runner.get_run(run_id)
+    assert state is not None
+    assert state.task is not None
+    await asyncio.wait_for(state.task, timeout=timeout_sec)
+
+
 # ---------------------------------------------------------------------------
 # Fake subprocess scaffolding
 # ---------------------------------------------------------------------------
@@ -140,6 +148,13 @@ async def _read_sse_until_done(
 # ---------------------------------------------------------------------------
 
 async def test_post_runs_returns_run_id(async_client, monkeypatch):
+    async def fake_ensure_can_start_run(_options):
+        return None
+
+    monkeypatch.setattr(
+        "app.admin.routers.runs.ensure_can_start_run",
+        fake_ensure_can_start_run,
+    )
     """POST /api/runs accepts the documented body and returns a run_id."""
     run_runner.reset_for_tests()
     monkeypatch.setattr(
@@ -154,6 +169,7 @@ async def test_post_runs_returns_run_id(async_client, monkeypatch):
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert "run_id" in body and body["run_id"]
+    await _await_run_task(body["run_id"])
     # The runner may already be finished by the time the response is built —
     # any of the four lifecycle states is acceptable here.
     assert body["status"] in {"queued", "running", "completed", "failed"}
@@ -167,6 +183,13 @@ async def test_post_runs_returns_run_id(async_client, monkeypatch):
 # ---------------------------------------------------------------------------
 
 async def test_run_sse_lifecycle_progress_then_done(async_client, monkeypatch):
+    async def fake_ensure_can_start_run(_options):
+        return None
+
+    monkeypatch.setattr(
+        "app.admin.routers.runs.ensure_can_start_run",
+        fake_ensure_can_start_run,
+    )
     """Spawn a fake subprocess, subscribe to /stream, assert lifecycle."""
     run_runner.reset_for_tests()
 

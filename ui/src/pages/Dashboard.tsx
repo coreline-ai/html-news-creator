@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ReportCalendar } from "@/components/ReportCalendar";
+import { SystemStatusBanner } from "@/components/SystemStatusBanner";
 import { useReports } from "@/hooks/useReports";
 import { SIDEBAR_NAV_ICONS } from "@/lib/icons";
 import { todayKstISO, formatKstDateTime } from "@/lib/kst";
@@ -54,6 +55,8 @@ export function Dashboard() {
           </Link>
         </Button>
       </header>
+
+      <SystemStatusBanner compactReady />
 
       {/* Today + Quick actions */}
       <section

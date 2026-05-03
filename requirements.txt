@@ -25,6 +25,8 @@ playwright==1.49.1
 openai==1.55.3
 tiktoken==0.7.0
 scikit-learn==1.5.1
+sentence-transformers==5.4.1
+hdbscan==0.8.40
 numpy==1.26.4
 
 # OCR / Vision

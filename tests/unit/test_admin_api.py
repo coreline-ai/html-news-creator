@@ -24,7 +24,7 @@ from unittest.mock import AsyncMock, MagicMock
 import yaml
 from fastapi.testclient import TestClient
 
-from app.admin import policy_admin, run_runner
+from app.admin import policy_admin, run_runner, runtime_status
 from app.admin import sources_admin
 from app.admin.api import app
 from app.db import get_db
@@ -170,6 +170,44 @@ def test_api_report_pdf_downloads_generated_pdf(monkeypatch, tmp_path):
     assert response.content.startswith(b"%PDF")
 
 
+def test_api_report_html_downloads_published_html(monkeypatch, tmp_path):
+    reports_dir = tmp_path / "public" / "news"
+    reports_dir.mkdir(parents=True)
+    html_path = reports_dir / "2026-05-01-trend.html"
+    html_path.write_text("<!DOCTYPE html><h1>report</h1>", encoding="utf-8")
+
+    import app.admin.routers.reports as reports_router
+
+    monkeypatch.setattr(reports_router, "REPORTS_DIR", reports_dir)
+
+    response = client.get("/api/reports/2026-05-01/html/download")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.headers["cache-control"] == "no-store, must-revalidate"
+    assert "attachment" in response.headers["content-disposition"]
+    assert "2026-05-01-trend.html" in response.headers["content-disposition"]
+    assert response.text.startswith("<!DOCTYPE html>")
+
+
+def test_api_report_asset_serves_generated_relative_assets(monkeypatch, tmp_path):
+    assets_dir = tmp_path / "public" / "assets"
+    generated_dir = assets_dir / "generated" / "2026-05-01"
+    generated_dir.mkdir(parents=True)
+    asset_path = generated_dir / "card.svg"
+    asset_path.write_text("<svg xmlns='http://www.w3.org/2000/svg'></svg>", encoding="utf-8")
+
+    import app.admin.routers.reports as reports_router
+
+    monkeypatch.setattr(reports_router, "REPORT_ASSETS_DIR", assets_dir)
+
+    response = client.get("/api/reports/assets/generated/2026-05-01/card.svg")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "public, max-age=3600"
+    assert response.text.startswith("<svg")
+
+
 # ---------------------------------------------------------------------------
 # Phase 1 — TC-1.3 / 1.E2: POST /api/preview
 # ---------------------------------------------------------------------------
@@ -206,6 +244,14 @@ def test_api_preview_default_renders_html():
 def test_api_runs_returns_run_id(monkeypatch):
     run_runner.reset_for_tests()
 
+    async def fake_ensure_can_start_run(_options):
+        return None
+
+    monkeypatch.setattr(
+        "app.admin.routers.runs.ensure_can_start_run",
+        fake_ensure_can_start_run,
+    )
+
     async def fake_create_subprocess_exec(*args, **kwargs):
         proc = MagicMock()
 
@@ -240,6 +286,14 @@ def test_api_runs_returns_run_id(monkeypatch):
 
 def test_api_runs_status_endpoints_return_summary(monkeypatch):
     run_runner.reset_for_tests()
+
+    async def fake_ensure_can_start_run(_options):
+        return None
+
+    monkeypatch.setattr(
+        "app.admin.routers.runs.ensure_can_start_run",
+        fake_ensure_can_start_run,
+    )
 
     async def fake_create_subprocess_exec(*args, **kwargs):
         proc = MagicMock()
@@ -327,6 +381,158 @@ def test_api_runs_status_endpoints_fallback_to_jobrun_db():
         assert body["options"]["date"] == "2026-05-01"
     finally:
         app.dependency_overrides[get_db] = mock_db
+
+
+# ---------------------------------------------------------------------------
+# Runtime status — LLM proxy guard
+# ---------------------------------------------------------------------------
+
+def test_api_system_status_reports_proxy_unavailable(monkeypatch):
+    async def fake_check_proxy_health(_health_url):
+        return False, None, "connect failed"
+
+    monkeypatch.setattr(
+        runtime_status.settings,
+        "openai_base_url",
+        "http://127.0.0.1:4317/openai/v1",
+    )
+    monkeypatch.setattr(
+        runtime_status,
+        "_check_proxy_health",
+        fake_check_proxy_health,
+    )
+
+    response = client.get("/api/system/status")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["can_generate"] is False
+    assert body["llm"]["status"] == "unavailable"
+    assert body["llm"]["start_command"] == "make proxy"
+    assert body["llm"]["recovery_supported"] is True
+    assert body["llm"]["recovery_endpoint"] == "/api/system/proxy/recover"
+    assert "LLM 프록시" in body["llm"]["message"]
+
+
+def test_api_proxy_recover_starts_command_when_unavailable(monkeypatch):
+    states = [
+        {
+            "can_generate": False,
+            "llm": {
+                "proxy_health_url": "http://127.0.0.1:4317/api/v1/health",
+                "start_command": "make proxy",
+            },
+        },
+        {
+            "can_generate": True,
+            "llm": {
+                "proxy_health_url": "http://127.0.0.1:4317/api/v1/health",
+                "start_command": "make proxy",
+            },
+        },
+    ]
+    launched: list[str] = []
+
+    async def fake_get_system_status():
+        if len(states) > 1:
+            return states.pop(0)
+        return states[0]
+
+    async def fake_launch(command):
+        launched.append(command)
+        return 12345
+
+    async def fake_sleep(_seconds):
+        return None
+
+    monkeypatch.setattr(
+        "app.admin.routers.runs.recover_local_proxy",
+        runtime_status.recover_local_proxy,
+    )
+    monkeypatch.setattr(runtime_status, "get_system_status", fake_get_system_status)
+    monkeypatch.setattr(runtime_status, "_launch_proxy_start_command", fake_launch)
+    monkeypatch.setattr(runtime_status.asyncio, "sleep", fake_sleep)
+
+    response = client.post("/api/system/proxy/recover")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ready"
+    assert body["started"] is True
+    assert body["pid"] == 12345
+    assert launched == ["make proxy"]
+
+
+def test_api_runs_blocks_llm_run_when_proxy_unavailable(monkeypatch):
+    run_runner.reset_for_tests()
+
+    async def fake_check_proxy_health(_health_url):
+        return False, None, "connect failed"
+
+    monkeypatch.setattr(
+        runtime_status.settings,
+        "openai_base_url",
+        "http://127.0.0.1:4317/openai/v1",
+    )
+    monkeypatch.setattr(
+        runtime_status,
+        "_check_proxy_health",
+        fake_check_proxy_health,
+    )
+
+    response = client.post("/api/runs", json={"mode": "full"})
+
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["code"] == "llm_proxy_unavailable"
+    assert detail["requires_action"] is True
+    assert detail["system_status"]["can_generate"] is False
+
+
+def test_api_runs_allows_rss_only_without_proxy(monkeypatch):
+    run_runner.reset_for_tests()
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        proc = MagicMock()
+
+        async def _wait():
+            return 0
+
+        async def _readline_stdout():
+            return b""
+
+        async def _readline_stderr():
+            return b""
+
+        proc.stdout = MagicMock()
+        proc.stdout.readline = _readline_stdout
+        proc.stderr = MagicMock()
+        proc.stderr.readline = _readline_stderr
+        proc.wait = _wait
+        return proc
+
+    async def fake_check_proxy_health(_health_url):
+        raise AssertionError("rss-only should not check LLM proxy")
+
+    monkeypatch.setattr(
+        runtime_status.settings,
+        "openai_base_url",
+        "http://127.0.0.1:4317/openai/v1",
+    )
+    monkeypatch.setattr(
+        runtime_status,
+        "_check_proxy_health",
+        fake_check_proxy_health,
+    )
+    monkeypatch.setattr(
+        "app.admin.run_runner.asyncio.create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    response = client.post("/api/runs", json={"mode": "rss-only"})
+
+    assert response.status_code == 200
+    assert "run_id" in response.json()
 
 
 # ---------------------------------------------------------------------------
