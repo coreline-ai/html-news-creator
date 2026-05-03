@@ -183,6 +183,18 @@ export function Reports() {
                               aria-hidden="true"
                             />
                           </a>
+                          <a
+                            href={`/api/reports/${dateStr}/html/download`}
+                            download={`${dateStr}-trend.html`}
+                            className="text-muted-foreground hover:text-foreground inline-flex items-center"
+                            title="HTML 다운로드"
+                            aria-label="발행된 HTML 다운로드"
+                          >
+                            <FileText
+                              className="size-3.5"
+                              aria-hidden="true"
+                            />
+                          </a>
                           <button
                             type="button"
                             onClick={() =>
@@ -245,11 +257,22 @@ export function Reports() {
               <>
                 <Button asChild variant="outline" size="sm">
                   <a
+                    href={`/api/reports/${pdfPreview.date}/html/download`}
+                    download={`${pdfPreview.date}-trend.html`}
+                    data-testid="html-download-button"
+                  >
+                    <FileText className="size-4" aria-hidden="true" />
+                    HTML 다운로드
+                  </a>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <a
                     href={`/api/reports/${pdfPreview.date}/pdf`}
                     download={`${pdfPreview.date}-trend.pdf`}
+                    data-testid="pdf-download-button"
                   >
                     <FileDown className="size-4" aria-hidden="true" />
-                    다운로드
+                    PDF 다운로드
                   </a>
                 </Button>
                 <Button asChild variant="outline" size="sm">

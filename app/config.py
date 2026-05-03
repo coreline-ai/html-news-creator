@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     openai_base_url: str = "http://127.0.0.1:4317/openai/v1"
     openai_model: str = "gpt-5.5"
     openai_embedding_model: str = "text-embedding-3-small"
+    news_studio_llm_proxy_start_command: str = "make proxy"
 
     firecrawl_api_key: str = ""
     crawl4ai_enabled: bool = True

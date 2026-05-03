@@ -1,4 +1,4 @@
-.PHONY: dev migrate backup run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
+.PHONY: dev migrate backup proxy run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
 
 dev:
 	docker compose up -d
@@ -16,6 +16,16 @@ backup:
 	@docker exec ai-trend-postgres pg_dump -U postgres ai_trend | gzip > "$(BACKUP_DIR)/$$(date +%Y%m%d_%H%M%S).sql.gz"
 	@find "$(BACKUP_DIR)" -name "*.sql.gz" -mtime +30 -delete
 	@echo "Backup written to $(BACKUP_DIR) (retention: 30 days)"
+
+# Start the local OpenAI-compatible LLM proxy used by News Studio.
+LLM_PROXY_DIR ?= $(HOME)/projects_202603/calude_proxy_agent/multi-model-tui
+proxy:
+	@if [ ! -d "$(LLM_PROXY_DIR)" ]; then \
+		echo "LLM proxy directory not found: $(LLM_PROXY_DIR)"; \
+		echo "Override with: LLM_PROXY_DIR=/path/to/multi-model-tui make proxy"; \
+		exit 1; \
+	fi
+	cd "$(LLM_PROXY_DIR)" && npm run dev:proxy
 
 run:
 	python scripts/run_daily.py --mode full

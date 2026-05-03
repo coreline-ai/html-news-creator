@@ -36,6 +36,9 @@ from app.utils.logger import get_logger
 logger = get_logger(step="admin")
 
 router = APIRouter()
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+REPORTS_DIR = PROJECT_ROOT / "public" / "news"
+REPORT_ASSETS_DIR = PROJECT_ROOT / "public" / "assets"
 
 
 def _serialize_section(s: ReportSection) -> dict[str, Any]:
@@ -54,6 +57,44 @@ def _serialize_section(s: ReportSection) -> dict[str, Any]:
         "importance_score": s.importance_score,
         "tags_json": s.tags_json,
     }
+
+
+def _published_html_path(date_kst: str) -> Path:
+    try:
+        date.fromisoformat(date_kst)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
+        ) from exc
+
+    reports_dir = REPORTS_DIR.resolve()
+    html_path = (reports_dir / f"{date_kst}-trend.html").resolve()
+    try:
+        html_path.relative_to(reports_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid path") from exc
+    if not html_path.is_file():
+        raise HTTPException(
+            status_code=404, detail=f"published HTML not found for {date_kst}"
+        )
+    return html_path
+
+
+@router.get("/api/reports/assets/{asset_path:path}", include_in_schema=False)
+async def api_get_report_asset(asset_path: str):
+    """Serve assets referenced relatively by API-served report HTML."""
+    assets_dir = REPORT_ASSETS_DIR.resolve()
+    file_path = (assets_dir / asset_path).resolve()
+    try:
+        file_path.relative_to(assets_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="invalid asset path") from exc
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="report asset not found")
+    return FileResponse(
+        str(file_path),
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 # 1) GET /api/reports — recent reports (lightweight summary)
@@ -96,25 +137,26 @@ async def api_get_report_html(
     Returns 404 if the report has not been published yet. Cache-Control
     no-store so a republish is reflected immediately.
     """
-    try:
-        date.fromisoformat(date_kst)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
-        )
-    project_root = Path(__file__).resolve().parents[3]
-    html_path = (project_root / "public" / "news" / f"{date_kst}-trend.html").resolve()
-    try:
-        html_path.relative_to((project_root / "public" / "news").resolve())
-    except ValueError:
-        raise HTTPException(status_code=400, detail="invalid path")
-    if not html_path.is_file():
-        raise HTTPException(
-            status_code=404, detail=f"published HTML not found for {date_kst}"
-        )
+    html_path = _published_html_path(date_kst)
     return FileResponse(
         str(html_path),
         media_type="text/html",
+        headers={"Cache-Control": "no-store, must-revalidate"},
+    )
+
+
+# 2a) GET /api/reports/{date_kst}/html/download — download published HTML
+@router.get("/api/reports/{date_kst}/html/download", include_in_schema=False)
+async def api_download_report_html(
+    date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
+):
+    """Return the published HTML as an attachment for operator download."""
+    html_path = _published_html_path(date_kst)
+    return FileResponse(
+        str(html_path),
+        media_type="text/html",
+        filename=f"{date_kst}-trend.html",
+        content_disposition_type="attachment",
         headers={"Cache-Control": "no-store, must-revalidate"},
     )
 

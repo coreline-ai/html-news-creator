@@ -22,6 +22,12 @@ from app.admin.job_runs import (
 from app.admin.preview import render_preview
 from app.admin.routers._models import PreviewRequest, RunRequest
 from app.admin.run_runner import get_run, list_runs, start_run
+from app.admin.runtime_status import (
+    RuntimeDependencyError,
+    ensure_can_start_run,
+    get_system_status,
+    recover_local_proxy,
+)
 from app.admin.sse import stream_run
 from app.db import get_db
 
@@ -39,9 +45,23 @@ async def api_preview(payload: PreviewRequest = Body(default_factory=PreviewRequ
     return {"html": html, "length": len(html)}
 
 
+@router.get("/api/system/status")
+async def api_system_status():
+    return await get_system_status()
+
+
+@router.post("/api/system/proxy/recover")
+async def api_recover_proxy():
+    return await recover_local_proxy()
+
+
 @router.post("/api/runs")
 async def api_start_run(payload: RunRequest = Body(default_factory=RunRequest)):
     options = payload.model_dump(exclude_none=True)
+    try:
+        await ensure_can_start_run(options)
+    except RuntimeDependencyError as exc:
+        raise HTTPException(status_code=409, detail=exc.payload) from exc
     run_id = await start_run(options)
     state = get_run(run_id)
     return {

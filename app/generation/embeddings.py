@@ -60,7 +60,17 @@ class EmbeddingClient:
                     all_embeddings.extend(local_embeddings)
                     self.logger.info("embeddings_local_done", batch_size=len(batch), offset=i)
                 except Exception as e2:
-                    self.logger.error("embeddings_local_failed", error=str(e2))
-                    all_embeddings.extend([[0.0] * 1536] * len(batch))
+                    message = (
+                        "Embedding generation failed: OpenAI embeddings endpoint "
+                        "is unavailable and local sentence-transformers fallback "
+                        "also failed. Install sentence-transformers or configure "
+                        "a working OPENAI_EMBEDDING_MODEL endpoint."
+                    )
+                    self.logger.error(
+                        "embeddings_local_failed",
+                        api_error=str(e),
+                        error=str(e2),
+                    )
+                    raise RuntimeError(message) from e2
 
         return all_embeddings

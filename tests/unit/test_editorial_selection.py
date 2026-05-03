@@ -182,6 +182,34 @@ def test_select_editorial_clusters_limits_community_sections():
     assert [candidate["id"] for candidate in selected] == ["community_a", "mainstream"]
 
 
+def test_select_editorial_clusters_backfill_can_relax_community_cap_to_target():
+    policy = _policy(
+        max_sections=5,
+        target_sections=5,
+        max_community_sections=1,
+        backfill_relax_topic_quotas=True,
+        backfill_max_community_sections=5,
+        backfill_max_same_source_tier_ratio=1.0,
+    )
+    candidates = [
+        _candidate("mainstream", 90, tiers=["mainstream"]),
+        _candidate("community_a", 85, tiers=["community"]),
+        _candidate("community_b", 80, tiers=["community"]),
+        _candidate("community_c", 75, tiers=["community"]),
+        _candidate("community_d", 70, tiers=["community"]),
+    ]
+
+    selected = select_editorial_clusters(candidates, policy)
+
+    assert [candidate["id"] for candidate in selected] == [
+        "mainstream",
+        "community_a",
+        "community_b",
+        "community_c",
+        "community_d",
+    ]
+
+
 def test_select_editorial_clusters_does_not_count_mainstream_corroborated_community():
     candidates = [
         _candidate("community_a", 95, tiers=["community"]),

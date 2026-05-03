@@ -44,9 +44,11 @@ report_selection:
   backfill_min_section_score: 35
   backfill_require_image: false
   backfill_relax_topic_quotas: true
-  backfill_max_community_sections: 2
+  backfill_max_community_sections: 10
   backfill_max_same_source_name: 5
-  backfill_max_same_source_tier_ratio: 0.9
+  backfill_max_same_source_tier_ratio: 1.0
+  noise_singleton_backfill_enabled: true
+  max_noise_singleton_backfill_clusters: 10
   prefer_mainstream_first: true
 
 scoring_weights:

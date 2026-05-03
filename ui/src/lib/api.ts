@@ -109,3 +109,37 @@ export interface ReportSection {
 export interface ReportsListResponse {
   reports: ReportSummary[];
 }
+
+
+export type LlmRuntimeState = "ready" | "unavailable" | "external" | string;
+
+export interface LlmRuntimeStatus {
+  openai_base_url: string;
+  openai_model: string;
+  proxy_required: boolean;
+  proxy_health_url: string | null;
+  proxy_reachable: boolean;
+  status: LlmRuntimeState;
+  message: string;
+  start_command: string | null;
+  recovery_supported?: boolean;
+  recovery_endpoint?: string | null;
+  recovery_scenarios?: Array<Record<string, string>>;
+  last_error?: string | null;
+  health_payload?: Record<string, unknown> | null;
+}
+
+export interface SystemStatusResponse {
+  can_generate: boolean;
+  llm: LlmRuntimeStatus;
+}
+
+export interface ProxyRecoveryResponse {
+  status: "ready" | "starting" | "failed" | "unsupported" | string;
+  action: "noop" | "started" | "none" | string;
+  started: boolean;
+  pid?: number;
+  message: string;
+  log_path?: string;
+  system_status?: SystemStatusResponse;
+}

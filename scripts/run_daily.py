@@ -21,6 +21,8 @@ STEPS = [
     "notify",
 ]
 
+DEFAULT_TARGET_SECTIONS = 6
+
 
 def _json_dict(value) -> dict:
     return value if isinstance(value, dict) else {}
@@ -176,6 +178,58 @@ def _raw_item_run_date_filter(RawItem, run_date: date):
             RawItem.collected_at.between(date_from, date_to),
         ),
     )
+
+
+def _selection_target_sections(policy: dict, default: int = DEFAULT_TARGET_SECTIONS) -> int:
+    selection_cfg = policy.get("report_selection", {}) if isinstance(policy, dict) else {}
+    if not isinstance(selection_cfg, dict):
+        selection_cfg = {}
+    try:
+        max_sections = int(selection_cfg.get("max_sections", default))
+    except (TypeError, ValueError):
+        max_sections = default
+    try:
+        target_sections = int(selection_cfg.get("target_sections", max_sections))
+    except (TypeError, ValueError):
+        target_sections = max_sections
+    return max(0, min(target_sections, max_sections))
+
+
+def _noise_singleton_backfill_count(
+    *,
+    hdbscan_clusters: int,
+    noise_count: int,
+    policy: dict,
+) -> int:
+    """Persist selected HDBSCAN noise points as singleton topic candidates.
+
+    HDBSCAN correctly marks isolated items as noise, but the report-selection
+    phase can only backfill from persisted Cluster rows. Without this bridge,
+    a 10-section target can be impossible even when enough distinct AI items
+    were collected for the day.
+    """
+    if noise_count <= 0:
+        return 0
+
+    selection_cfg = policy.get("report_selection", {}) if isinstance(policy, dict) else {}
+    if not isinstance(selection_cfg, dict):
+        selection_cfg = {}
+    if selection_cfg.get("noise_singleton_backfill_enabled", True) is False:
+        return 0
+
+    target_sections = _selection_target_sections(policy)
+    if hdbscan_clusters >= target_sections:
+        return 0
+
+    try:
+        configured_limit = int(
+            selection_cfg.get("max_noise_singleton_backfill_clusters", target_sections)
+        )
+    except (TypeError, ValueError):
+        configured_limit = target_sections
+
+    needed = target_sections - hdbscan_clusters
+    return min(noise_count, max(0, max(configured_limit, needed)))
 
 
 def _cluster_editorial_summary(items: list[dict]) -> dict:
@@ -557,6 +611,7 @@ async def run_classify(run_date: date, dry_run: bool, logger) -> dict:
 async def run_cluster(run_date: date, dry_run: bool, logger) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import RawItem, ExtractedContent, AnalysisResult, Cluster, ClusterItem
+    from app.editorial.policy import load_policy
     from app.generation.embeddings import EmbeddingClient
     from app.generation.clusterer import HDBSCANClusterer
     from sqlalchemy import delete, select, not_, exists
@@ -597,13 +652,24 @@ async def run_cluster(run_date: date, dry_run: bool, logger) -> dict:
 
     clusterer = HDBSCANClusterer(min_cluster_size=2)
     cluster_result = clusterer.cluster(vectors)
+    editorial_policy = load_policy()
+    noise_singleton_limit = _noise_singleton_backfill_count(
+        hdbscan_clusters=cluster_result.n_clusters,
+        noise_count=cluster_result.noise_count,
+        policy=editorial_policy,
+    )
+    noise_indices = [
+        idx for idx, label in enumerate(cluster_result.labels) if label < 0
+    ][:noise_singleton_limit]
+    noise_index_set = set(noise_indices)
+    persisted_cluster_count = cluster_result.n_clusters + len(noise_indices)
 
     if not dry_run:
         async with AsyncSessionLocal() as session:
             await session.execute(delete(Cluster).where(Cluster.report_date == run_date))
             await session.flush()
 
-            cluster_db_ids: dict = {}
+            cluster_db_ids: dict[int, object] = {}
             for label in sorted(set(cluster_label for cluster_label in cluster_result.labels if cluster_label >= 0)):
                 c = Cluster(
                     report_date=run_date,
@@ -615,11 +681,27 @@ async def run_cluster(run_date: date, dry_run: bool, logger) -> dict:
                 await session.flush()
                 cluster_db_ids[label] = c.id
 
+            noise_db_ids: dict[int, object] = {}
+            for singleton_order, idx in enumerate(noise_indices, start=1):
+                c = Cluster(
+                    report_date=run_date,
+                    title=f"Singleton {singleton_order}",
+                    importance_score=0.0,
+                    keywords_json=[],
+                )
+                session.add(c)
+                await session.flush()
+                noise_db_ids[idx] = c.id
+
             for idx, (label, (raw_item, _)) in enumerate(zip(cluster_result.labels, combined)):
-                if label < 0:
+                if label >= 0:
+                    cluster_id = cluster_db_ids[label]
+                elif idx in noise_index_set:
+                    cluster_id = noise_db_ids[idx]
+                else:
                     continue
                 ci = ClusterItem(
-                    cluster_id=cluster_db_ids[label],
+                    cluster_id=cluster_id,
                     raw_item_id=raw_item.id,
                     similarity_score=0.5,
                 )
@@ -627,9 +709,21 @@ async def run_cluster(run_date: date, dry_run: bool, logger) -> dict:
 
             await session.commit()
 
-    logger.info("cluster_done", clusters=cluster_result.n_clusters, items=len(combined),
-                noise=cluster_result.noise_count)
-    return {"clusters": cluster_result.n_clusters, "items": len(combined), "noise": cluster_result.noise_count}
+    logger.info(
+        "cluster_done",
+        clusters=persisted_cluster_count,
+        hdbscan_clusters=cluster_result.n_clusters,
+        items=len(combined),
+        noise=cluster_result.noise_count,
+        noise_singletons=len(noise_indices),
+    )
+    return {
+        "clusters": persisted_cluster_count,
+        "hdbscan_clusters": cluster_result.n_clusters,
+        "items": len(combined),
+        "noise": cluster_result.noise_count,
+        "noise_singletons": len(noise_indices),
+    }
 
 
 async def run_verify(run_date: date, dry_run: bool, logger) -> dict:

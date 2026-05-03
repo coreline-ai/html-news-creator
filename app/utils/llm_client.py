@@ -45,6 +45,20 @@ def _encoding_for(model: str) -> tiktoken.Encoding:
         return tiktoken.get_encoding("cl100k_base")
 
 
+def _message_content_to_text(content: object) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict):
+                parts.append(str(item.get("text") or item.get("content") or ""))
+            else:
+                parts.append(str(getattr(item, "text", "") or getattr(item, "content", "")))
+        return "".join(parts)
+    return "" if content is None else str(content)
+
+
 async def chat(messages: list[dict], model: str | None = None) -> str:
     """Stream a chat completion and return the full text. Uses streaming to work with local proxy.
 
@@ -57,7 +71,7 @@ async def chat(messages: list[dict], model: str | None = None) -> str:
     """
     model_name = model or settings.openai_model
 
-    async def _run() -> str:
+    async def _run_stream() -> str:
         client = _make_client()
         stream = await client.chat.completions.create(
             model=model_name,
@@ -70,7 +84,21 @@ async def chat(messages: list[dict], model: str | None = None) -> str:
                 chunks.append(chunk.choices[0].delta.content)
         return "".join(chunks)
 
-    output = await asyncio.wait_for(_run(), timeout=_LLM_TOTAL_TIMEOUT)
+    async def _run_non_stream() -> str:
+        client = _make_client()
+        response = await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            stream=False,
+        )
+        if not response.choices:
+            return ""
+        return _message_content_to_text(response.choices[0].message.content)
+
+    output = await asyncio.wait_for(_run_stream(), timeout=_LLM_TOTAL_TIMEOUT)
+    if not output.strip():
+        _logger.warning("llm_stream_empty_retrying_non_stream", model=model_name)
+        output = await asyncio.wait_for(_run_non_stream(), timeout=_LLM_TOTAL_TIMEOUT)
     try:
         enc = _encoding_for(model_name)
         input_tokens = sum(

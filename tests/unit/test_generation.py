@@ -1,6 +1,7 @@
 """Unit tests for Phase 4 generation components."""
 from __future__ import annotations
 
+import builtins
 import json
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock
@@ -82,6 +83,23 @@ async def test_tc4_2_embed_batch_empty():
     client.client.embeddings.create.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_embed_batch_raises_when_api_and_local_fallback_fail(monkeypatch):
+    """Embedding failures must fail loud instead of returning zero vectors."""
+    client = EmbeddingClient()
+    client.client = MagicMock()
+    client.client.embeddings = MagicMock()
+    client.client.embeddings.create = AsyncMock(side_effect=RuntimeError("api down"))
+
+    def fail_local(_texts):
+        raise ModuleNotFoundError("No module named 'sentence_transformers'")
+
+    monkeypatch.setattr("app.generation.embeddings._local_embed_batch", fail_local)
+
+    with pytest.raises(RuntimeError, match="Embedding generation failed"):
+        await client.embed_batch(["hello"])
+
+
 # ---------------------------------------------------------------------------
 # TC-4.3  HDBSCANClusterer.cluster([]) → n_clusters=0
 # ---------------------------------------------------------------------------
@@ -112,6 +130,22 @@ def test_tc4_4_cluster_two_embeddings():
 
     assert isinstance(result, ClusterResult)
     assert len(result.labels) == 2
+
+
+def test_clusterer_raises_when_hdbscan_missing(monkeypatch):
+    """Missing HDBSCAN must not silently collapse all items into one cluster."""
+    original_import = builtins.__import__
+
+    def guarded_import(name, *args, **kwargs):
+        if name == "hdbscan":
+            raise ImportError("missing hdbscan")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    clusterer = HDBSCANClusterer(min_cluster_size=2)
+
+    with pytest.raises(RuntimeError, match="requires the hdbscan package"):
+        clusterer.cluster([[1.0, 0.0], [0.0, 1.0]])
 
 
 # ---------------------------------------------------------------------------

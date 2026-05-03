@@ -47,9 +47,13 @@ class HDBSCANClusterer:
             )
             labels = clusterer.fit_predict(X_normalized).tolist()
         except ImportError:
-            # Fallback: simple single cluster if HDBSCAN not available
-            self.logger.warning("hdbscan_unavailable", note="Using single-cluster fallback")
-            labels = [0] * len(embeddings)
+            message = (
+                "HDBSCAN clustering requires the hdbscan package. Install hdbscan "
+                "or run the pipeline with requirements.txt so the report is not "
+                "silently collapsed into one cluster."
+            )
+            self.logger.error("hdbscan_unavailable", error=message)
+            raise RuntimeError(message)
 
         label_array = labels
         n_clusters = len(set(label for label in label_array if label >= 0))

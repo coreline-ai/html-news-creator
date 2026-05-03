@@ -2,10 +2,26 @@ import { useCallback, useState } from "react";
 import { Play, Save, Sparkles } from "lucide-react";
 import { RunOptionsPanel } from "@/components/RunOptionsPanel";
 import { LivePreview } from "@/components/LivePreview";
+import { SystemStatusBanner } from "@/components/SystemStatusBanner";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { usePreview } from "@/hooks/usePreview";
+import { useSystemStatus } from "@/hooks/useSystemStatus";
 import { apiFetch, ApiError } from "@/lib/api";
+
+function apiErrorMessage(err: ApiError): string {
+  const detail =
+    err.body && typeof err.body === "object" && "detail" in err.body
+      ? (err.body as { detail?: unknown }).detail
+      : null;
+
+  if (detail && typeof detail === "object" && "message" in detail) {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+  if (typeof detail === "string" && detail) return detail;
+  return `Run failed: ${err.status} ${err.message}`;
+}
 
 export function NewReport() {
   const runOptions = useAppStore((s) => s.runOptions);
@@ -13,13 +29,25 @@ export function NewReport() {
   const setActiveRun = useAppStore((s) => s.setActiveRun);
 
   const preview = usePreview(runOptions);
+  const systemStatus = useSystemStatus();
 
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const previewTheme = runOptions.output_theme;
+  const canStartRun =
+    !submitting && !activeRun && systemStatus.data?.can_generate === true;
+  const runBlockedMessage =
+    systemStatus.data?.llm?.message ??
+    (systemStatus.isLoading
+      ? "생성 가능 상태를 확인 중입니다."
+      : "시스템 상태를 확인할 수 없어 실행을 막았습니다.");
 
   const handleRun = useCallback(async () => {
     setActionError(null);
+    if (systemStatus.data?.can_generate !== true) {
+      setActionError(runBlockedMessage);
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await apiFetch<{ run_id: string }>("/api/runs", {
@@ -37,7 +65,7 @@ export function NewReport() {
     } catch (err) {
       const msg =
         err instanceof ApiError
-          ? `Run failed: ${err.status} ${err.message}`
+          ? apiErrorMessage(err)
           : err instanceof Error
             ? err.message
             : "Run failed.";
@@ -45,7 +73,12 @@ export function NewReport() {
     } finally {
       setSubmitting(false);
     }
-  }, [runOptions, setActiveRun]);
+  }, [
+    runBlockedMessage,
+    runOptions,
+    setActiveRun,
+    systemStatus.data?.can_generate,
+  ]);
 
   const handleSaveDraft = useCallback(() => {
     // Local-only for now: store snapshot in localStorage so closing the tab
@@ -64,7 +97,7 @@ export function NewReport() {
   return (
     <div
       className="grid h-full min-h-0 overflow-hidden"
-      style={{ gridTemplateRows: "auto minmax(0, 1fr)" }}
+      style={{ gridTemplateRows: "auto auto minmax(0, 1fr)" }}
       data-testid="new-report-page"
     >
       <header
@@ -99,7 +132,7 @@ export function NewReport() {
             onClick={() => {
               void handleRun();
             }}
-            disabled={submitting || Boolean(activeRun)}
+            disabled={!canStartRun}
             data-testid="run-button"
           >
             <Play className="size-3.5" aria-hidden="true" />
@@ -107,10 +140,16 @@ export function NewReport() {
               ? "Starting…"
               : activeRun
                 ? "Running…"
-                : "Run"}
+                : systemStatus.isLoading
+                  ? "Checking…"
+                  : systemStatus.data?.can_generate === false
+                    ? "Proxy required"
+                    : "Run"}
           </Button>
         </div>
       </header>
+
+      <SystemStatusBanner className="border-x-0 border-t-0" />
 
       <div
         className="grid min-h-0 overflow-hidden"
