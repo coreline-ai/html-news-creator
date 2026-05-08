@@ -1,4 +1,7 @@
-.PHONY: dev migrate backup proxy run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test serve e2e
+.PHONY: dev migrate backup proxy run run-dry test test-all test-integration lint lint-design build-tokens check-tokens ui-dev ui-build ui-test ensure-venv serve e2e
+
+PYTHON ?= .venv/bin/python
+UVICORN_PORT ?= 8000
 
 dev:
 	docker compose up -d
@@ -27,24 +30,24 @@ proxy:
 	fi
 	cd "$(LLM_PROXY_DIR)" && npm run dev:proxy
 
-run:
-	python scripts/run_daily.py --mode full
+run: ensure-venv
+	PYTHONPATH=. "$(PYTHON)" scripts/run_daily.py --mode full
 
-run-dry:
-	python scripts/run_daily.py --mode full --dry-run
+run-dry: ensure-venv
+	PYTHONPATH=. "$(PYTHON)" scripts/run_daily.py --mode full --dry-run
 
-test:
-	pytest tests/unit/ -v --tb=short
+test: ensure-venv
+	PYTHONPATH=. "$(PYTHON)" -m pytest tests/unit/ -v --tb=short
 
-test-all:
-	pytest tests/ -v --tb=short
+test-all: ensure-venv
+	PYTHONPATH=. "$(PYTHON)" -m pytest tests/ -v --tb=short
 
 # Integration smoke tests — drive the FastAPI app through an in-memory ASGI
 # transport (no uvicorn, no Postgres, no LLM proxy). The pipeline subprocess
 # and Netlify deploy are mocked at the module boundary. CI's default unit
 # job uses `pytest -m "not integration"` so these are opt-in only.
-test-integration:
-	pytest tests/integration/ -v --tb=short -m integration
+test-integration: ensure-venv
+	PYTHONPATH=. "$(PYTHON)" -m pytest tests/integration/ -v --tb=short -m integration
 
 lint:
 	ruff check app/ scripts/ tests/
@@ -71,9 +74,18 @@ ui-build:
 ui-test:
 	cd ui && npm run test
 
+ensure-venv:
+	@if [ ! -x "$(PYTHON)" ]; then \
+		echo "Project Python not found: $(PYTHON)"; \
+		echo "Create it with:"; \
+		echo "  uv venv --python 3.11"; \
+		echo "  uv pip install -r requirements.txt"; \
+		exit 1; \
+	fi
+
 # Build the SPA bundle, then serve it (and the API) from FastAPI on :8000.
-serve: ui-build
-	uvicorn app.admin.api:app --port 8000
+serve: ui-build ensure-venv
+	PYTHONPATH=. "$(PYTHON)" -m uvicorn app.admin.api:app --port $(UVICORN_PORT)
 
 # Run Playwright E2E tests against a freshly built SPA + the API. Tests
 # mock all `/api/*` calls, so the DB state doesn't matter — but a server

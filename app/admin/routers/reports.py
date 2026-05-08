@@ -13,7 +13,7 @@ Routes:
 """
 
 from __future__ import annotations
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -78,6 +78,46 @@ def _published_html_path(date_kst: str) -> Path:
             status_code=404, detail=f"published HTML not found for {date_kst}"
         )
     return html_path
+
+
+def _html_title(html: str, fallback: str) -> str:
+    start = html.lower().find("<title>")
+    end = html.lower().find("</title>")
+    if start < 0 or end <= start:
+        return fallback
+    return html[start + len("<title>"):end].strip() or fallback
+
+
+def _static_only_report_detail(date_kst: str, html_path: Path) -> dict[str, Any]:
+    """Build a read-only report payload when only published HTML exists.
+
+    This keeps the Review page usable for runs where render/publish produced
+    an HTML file but no DB Report row was created, while still surfacing the
+    missing structured sections via ``status=static_only`` and ``sections=[]``.
+    """
+    html = html_path.read_text(encoding="utf-8", errors="replace")
+    modified = datetime.fromtimestamp(html_path.stat().st_mtime, tz=timezone.utc)
+    try:
+        html_storage_path = str(html_path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        html_storage_path = str(html_path)
+    return {
+        "id": f"static-only-{date_kst}",
+        "report_date": date_kst,
+        "title": _html_title(html, f"AI 트렌드 리포트 {date_kst}"),
+        "status": "static_only",
+        "summary_ko": "DB Report row 없이 발행 HTML만 존재합니다.",
+        "stats_json": {
+            "static_only": True,
+            "html_path": html_storage_path,
+            "html_size_bytes": html_path.stat().st_size,
+        },
+        "method_json": {"source": "published_html_fallback"},
+        "created_at": modified.isoformat(),
+        "updated_at": modified.isoformat(),
+        "published_at": modified.isoformat(),
+        "sections": [],
+    }
 
 
 @router.get("/api/reports/assets/{asset_path:path}", include_in_schema=False)
@@ -226,6 +266,12 @@ async def api_get_report(
     result = await db.execute(select(Report).where(Report.report_date == run_date))
     db_report = result.scalars().first()
     if db_report is None:
+        try:
+            html_path = _published_html_path(date_kst)
+        except HTTPException:
+            html_path = None
+        if html_path is not None:
+            return _static_only_report_detail(date_kst, html_path)
         raise HTTPException(status_code=404, detail=f"report not found: {date_kst}")
 
     sections_result = await db.execute(

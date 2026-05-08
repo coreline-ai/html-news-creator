@@ -17,6 +17,7 @@ from app.utils.logger import get_logger
 _LLM_CONNECT_TIMEOUT = float(os.getenv("OPENAI_CONNECT_TIMEOUT", "10"))
 _LLM_READ_TIMEOUT = float(os.getenv("OPENAI_READ_TIMEOUT", "60"))
 _LLM_TOTAL_TIMEOUT = float(os.getenv("OPENAI_TOTAL_TIMEOUT", "120"))
+_FALSE_VALUES = {"0", "false", "no", "off"}
 
 _logger = get_logger(step="llm")
 
@@ -59,6 +60,11 @@ def _message_content_to_text(content: object) -> str:
     return "" if content is None else str(content)
 
 
+def _use_stream_first() -> bool:
+    """Return whether chat completions should try streaming before non-stream."""
+    return os.getenv("OPENAI_CHAT_STREAM", "true").strip().lower() not in _FALSE_VALUES
+
+
 async def chat(messages: list[dict], model: str | None = None) -> str:
     """Stream a chat completion and return the full text. Uses streaming to work with local proxy.
 
@@ -95,9 +101,12 @@ async def chat(messages: list[dict], model: str | None = None) -> str:
             return ""
         return _message_content_to_text(response.choices[0].message.content)
 
-    output = await asyncio.wait_for(_run_stream(), timeout=_LLM_TOTAL_TIMEOUT)
-    if not output.strip():
-        _logger.warning("llm_stream_empty_retrying_non_stream", model=model_name)
+    if _use_stream_first():
+        output = await asyncio.wait_for(_run_stream(), timeout=_LLM_TOTAL_TIMEOUT)
+        if not output.strip():
+            _logger.warning("llm_stream_empty_retrying_non_stream", model=model_name)
+            output = await asyncio.wait_for(_run_non_stream(), timeout=_LLM_TOTAL_TIMEOUT)
+    else:
         output = await asyncio.wait_for(_run_non_stream(), timeout=_LLM_TOTAL_TIMEOUT)
     try:
         enc = _encoding_for(model_name)

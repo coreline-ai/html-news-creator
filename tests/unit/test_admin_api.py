@@ -142,6 +142,32 @@ def test_api_get_report_returns_404_when_missing():
     assert response.status_code == 404
 
 
+def test_api_get_report_falls_back_to_static_html_when_db_row_missing(
+    monkeypatch, tmp_path
+):
+    reports_dir = tmp_path / "public" / "news"
+    reports_dir.mkdir(parents=True)
+    html_path = reports_dir / "2026-05-08-trend.html"
+    html_path.write_text(
+        "<!DOCTYPE html><html><head><title>Static report</title></head></html>",
+        encoding="utf-8",
+    )
+
+    import app.admin.routers.reports as reports_router
+
+    monkeypatch.setattr(reports_router, "REPORTS_DIR", reports_dir)
+
+    response = client.get("/api/reports/2026-05-08")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == "static-only-2026-05-08"
+    assert body["status"] == "static_only"
+    assert body["title"] == "Static report"
+    assert body["sections"] == []
+    assert body["stats_json"]["static_only"] is True
+
+
 def test_api_get_report_rejects_bad_date():
     response = client.get("/api/reports/not-a-date")
     assert response.status_code == 400

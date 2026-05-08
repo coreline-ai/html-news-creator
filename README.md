@@ -53,10 +53,10 @@
 │  RSS/GitHub     본문 추출      AI 관련성         임베딩 클러스터   │
 │  arXiv/HN                      점수화                              │
 │                                                                     │
-│  ⑤ verify   →  ⑥ generate  →  ⑦ render   →  ⑧ publish          │
-│     │               │              │               │               │
-│  교차 검증       LLM 섹션      Jinja2 HTML     Netlify/S3          │
-│  신뢰 점수       생성·요약     3테마 지원       + Slack 알림       │
+│  ⑤ verify → ⑥ image_analyze → ⑦ generate → ⑧ render → ⑨ publish │
+│     │             │                 │             │          │     │
+│  교차 검증     OCR/미디어 분석      LLM 섹션     Jinja2 HTML  Netlify│
+│  신뢰 점수     대표 이미지 보강     생성·요약    3테마 지원   ⑩ notify│
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,7 +72,7 @@ React SPA (ui/)
 
 FastAPI app/admin/*
   → scripts/run_daily.py
-  → collect/extract/classify/cluster/verify/generate/render/publish/notify
+  → collect/extract/classify/cluster/verify/image_analyze/generate/render/publish/notify
 ```
 
 > 웹앱은 파이프라인 내부 함수를 직접 import하지 않고, `scripts/run_daily.py`를 subprocess로 실행하는 운영 UI입니다. CLI 독립 실행 경계를 유지하기 위해 웹앱 옵션은 per-run override로 전달하며, 기본 yaml은 명시적 persist 전까지 자동 변경하지 않습니다.
@@ -84,11 +84,12 @@ collect   │ 소스별 컬렉터(RSS/GitHub/arXiv/HN) → DB 저장 (중복 스
 extract   │ Firecrawl·Crawl4AI·Trafilatura fallback으로 본문·OG 이미지 추출
 classify  │ LLM으로 AI 관련성 점수(0–1) 산출, 비관련 기사 필터
 cluster   │ text-embedding-3-small → HDBSCAN → 주제 클러스터 형성
-verify    │ 공식 도메인·GitHub·arXiv와 교차 검증, trust_score 산출
-generate  │ 클러스터별 LLM 섹션 생성 (제목·요약·시사점·소스 목록)
-render    │ Jinja2 템플릿 → 반응형 HTML 리포트
-publish   │ public/news/ 저장 + Netlify 배포
-notify    │ Slack Webhook 발송
+verify        │ 공식 도메인·GitHub·arXiv와 교차 검증, trust_score 산출
+image_analyze │ OCR/미디어 분석과 대표 이미지 보강
+generate      │ 클러스터별 LLM 섹션 생성 (제목·요약·시사점·소스 목록)
+render        │ Jinja2 템플릿 → 반응형 HTML 리포트
+publish       │ public/news/ 저장 + Netlify 배포
+notify        │ Slack Webhook 발송
 ```
 
 > OpenAI처럼 Cloudflare challenge로 본문 접근이 차단되는 공식 사이트는
@@ -151,7 +152,7 @@ html-news-creator/
 │   ├── additional-dev-docs.md     # 통합 개발 참고 문서
 │   └── prd-trd-research-notes.md  # PRD/TRD 기반 리서치 노트
 │
-├── tests/unit/              # 147개 단위 테스트
+├── tests/unit/              # DB 없이 실행 가능한 단위 테스트
 ├── scripts/
 │   └── run_daily.py         # 파이프라인 진입점 (CLI)
 ├── .github/workflows/
@@ -246,7 +247,7 @@ Backfill 단계에서 유지/완화되는 기준:
 | 최소 점수 | `backfill_min_section_score: 35` 유지 |
 | 이미지 | 대표 이미지 후보를 우선하되, 없으면 생성형 SVG 카드로 대체 |
 | 토픽 할당량 | 부족분 보강 시 완화 |
-| 커뮤니티 섹션 | 커뮤니티 단독/우세 후보만 cap 소비, backfill에서는 최대 2개까지 완화 |
+| 커뮤니티 섹션 | 커뮤니티 단독/우세 후보만 cap 소비, backfill에서는 `backfill_max_community_sections`(기본 10)까지 완화 |
 | 동일 소스 반복 | 최대 5개까지 완화 |
 | arXiv-only | 최대 1개 hard cap 유지 |
 
@@ -267,8 +268,9 @@ Backfill 단계에서 유지/완화되는 기준:
 git clone https://github.com/coreline-ai/html-news-creator.git
 cd html-news-creator
 
-# 의존성 설치
-pip install -r requirements.txt
+# 의존성 설치 (uv 사용 시)
+uv venv --python 3.11
+uv pip install -r requirements.txt
 ```
 
 ### 2. 환경 설정
@@ -302,16 +304,16 @@ psql "$DATABASE_URL" -f migrations/001_initial.sql
 
 ```bash
 # 오늘자 전체 파이프라인
-PYTHONPATH=. python scripts/run_daily.py --mode full
+PYTHONPATH=. uv run python scripts/run_daily.py --mode full
 
 # 특정 날짜
-PYTHONPATH=. python scripts/run_daily.py --date 2026-04-30 --mode full
+PYTHONPATH=. uv run python scripts/run_daily.py --date 2026-04-30 --mode full
 
 # 특정 단계만 (generate → render)
-PYTHONPATH=. python scripts/run_daily.py --date 2026-04-30 --from-step generate --to-step render
+PYTHONPATH=. uv run python scripts/run_daily.py --date 2026-04-30 --from-step generate --to-step render
 
 # 드라이런 (DB 쓰기 없음)
-PYTHONPATH=. python scripts/run_daily.py --mode full --dry-run
+PYTHONPATH=. uv run python scripts/run_daily.py --mode full --dry-run
 ```
 
 ---
@@ -338,14 +340,14 @@ Options:
 PDF 변환은 생성된 HTML을 기준으로 별도 실행할 수 있습니다.
 
 ```bash
-python scripts/export_pdf.py --date 2026-05-01
+uv run python scripts/export_pdf.py --date 2026-05-01
 # → public/news/2026-05-01-trend.pdf
 ```
 
 브라우저 런타임이 없는 첫 환경에서는 한 번만 Chromium을 설치하세요.
 
 ```bash
-python -m playwright install chromium
+uv run python -m playwright install chromium
 ```
 
 웹앱에서는 검토 화면(`/reports/YYYY-MM-DD`)의 **PDF** 버튼이

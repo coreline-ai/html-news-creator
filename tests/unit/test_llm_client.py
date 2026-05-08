@@ -34,3 +34,24 @@ async def test_chat_retries_non_stream_when_stream_is_empty():
     assert create.await_count == 2
     assert create.await_args_list[0].kwargs["stream"] is True
     assert create.await_args_list[1].kwargs["stream"] is False
+
+
+@pytest.mark.asyncio
+async def test_chat_can_skip_streaming_with_env(monkeypatch):
+    monkeypatch.setenv("OPENAI_CHAT_STREAM", "false")
+    response = MagicMock()
+    message = MagicMock()
+    message.content = '{"ok": true}'
+    choice = MagicMock()
+    choice.message = message
+    response.choices = [choice]
+
+    with patch("app.utils.llm_client.AsyncOpenAI") as mock_cls:
+        create = AsyncMock(return_value=response)
+        mock_cls.return_value.chat.completions.create = create
+
+        result = await chat([{"role": "user", "content": "ping"}], model="test-model")
+
+    assert result == '{"ok": true}'
+    assert create.await_count == 1
+    assert create.await_args.kwargs["stream"] is False

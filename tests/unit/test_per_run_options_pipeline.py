@@ -18,7 +18,7 @@ import json
 
 import pytest
 
-from app.admin.run_runner import _build_argv
+from app.admin.run_runner import RUNNER_PYTHON_ENV, _build_argv
 from app.editorial.policy import (
     POLICY_OVERRIDE_JSON_ENV,
     POLICY_PATH_ENV,
@@ -126,6 +126,14 @@ def test_build_argv_source_types_carried_via_source_filter():
     argv = _build_argv({"source_types": ["rss", "github"]})
     payload = _override_payload(argv)
     assert payload == {"__source_filter": ["rss", "github"]}
+
+
+def test_build_argv_respects_runner_python_override(monkeypatch):
+    """Pipeline subprocesses can be pinned to the project venv/interpreter."""
+    monkeypatch.setenv(RUNNER_PYTHON_ENV, "/tmp/project-python")
+    argv = _build_argv({"date": "2026-05-08"})
+
+    assert argv[0] == "/tmp/project-python"
 
 
 # ---------------------------------------------------------------------------

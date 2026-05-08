@@ -2,6 +2,8 @@
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
+Project-specific repository context lives in [`AGENTS.md`](AGENTS.md). Follow it for pipeline steps, key files, tests, and editing caveats.
+
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
 ## 1. Think Before Coding

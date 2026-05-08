@@ -27,6 +27,7 @@ from app.utils.logger import get_logger
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RUN_DAILY_PATH = PROJECT_ROOT / "scripts" / "run_daily.py"
+RUNNER_PYTHON_ENV = "NEWS_RUNNER_PYTHON"
 
 logger = get_logger(step="admin.run_runner")
 
@@ -82,6 +83,25 @@ _MAX_LINES_PER_RUN = 2000
 _DEFAULT_MAX_RUNTIME_SEC = settings.admin_run_default_max_runtime_sec
 # How long to wait between SIGTERM and the escalation to SIGKILL.
 _GRACE_PERIOD_SEC = 5
+
+
+def _runner_python() -> str:
+    """Return the Python interpreter used for pipeline subprocesses.
+
+    Prefer the project venv so a server accidentally started from a global
+    uvicorn does not leak its incomplete site-packages into ``run_daily.py``.
+    Operators can override the path for one-off debugging with
+    ``NEWS_RUNNER_PYTHON=/path/to/python``.
+    """
+    override = os.environ.get(RUNNER_PYTHON_ENV)
+    if override:
+        return override
+
+    venv_python = PROJECT_ROOT / ".venv" / "bin" / "python"
+    if venv_python.is_file():
+        return str(venv_python)
+
+    return sys.executable
 
 
 @dataclass
@@ -178,7 +198,7 @@ def _build_argv(options: dict[str, Any]) -> list[str]:
     isn't wired through yet (publish-side knobs like ``deploy_target``,
     ``slack_notify``, ``publish_at``, ``format`` are all in this bucket).
     """
-    argv: list[str] = [sys.executable, str(RUN_DAILY_PATH)]
+    argv: list[str] = [_runner_python(), str(RUN_DAILY_PATH)]
     date_value = options.get("date") or options.get("run_date")
     if date_value:
         argv += ["--date", str(date_value)]
@@ -288,6 +308,11 @@ async def _supervise(state: RunState) -> None:
     argv = _build_argv(state.options)
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(PROJECT_ROOT))
+    # The local OpenAI-compatible proxy currently returns empty streaming
+    # chunks for chat completions, causing every LLM call to spend one extra
+    # request before falling back to non-stream mode. Admin-triggered runs use
+    # non-stream first unless the operator explicitly opts back in.
+    env.setdefault("OPENAI_CHAT_STREAM", "false")
 
     # If the operator tweaked the policy via the UI (PUT /api/policy), the
     # override lives only in this process's memory — the subprocess wouldn't

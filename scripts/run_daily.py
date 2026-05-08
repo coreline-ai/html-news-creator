@@ -1338,6 +1338,7 @@ STEP_FUNCTIONS = {
 }
 
 LLM_REQUIRED_STEPS = {"classify", "verify", "generate"}
+HARD_FAIL_STEPS = {"collect", *LLM_REQUIRED_STEPS}
 
 
 def _local_proxy_health_url(openai_base_url: str) -> str | None:
@@ -1419,12 +1420,19 @@ async def run_pipeline(
             if step == "render":
                 kwargs["output_theme"] = output_theme
             result = await fn(run_date, dry_run, logger, **kwargs)
+            if step == "generate" and not dry_run:
+                sections = result.get("sections")
+                if isinstance(sections, (int, float)) and sections <= 0:
+                    raise RuntimeError(
+                        "generate produced zero sections; refusing to render/publish "
+                        "an empty report"
+                    )
             results[step] = result
             logger.info("step_done", step=step, **{k: v for k, v in result.items()
                                                     if isinstance(v, (int, float, str))})
         except Exception as e:
             logger.error("step_failed", step=step, error=str(e))
-            if step == "collect":
+            if step in HARD_FAIL_STEPS:
                 raise
             # other steps: log and continue
 
