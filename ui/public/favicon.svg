@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- News Studio favicon: monochrome news article + AI signal spark.
+       Three article-lines = a generated news section; the warm dot in the
+       upper-right corner = LLM-driven AI signal that fires the pipeline. -->
+  <rect width="32" height="32" rx="7" fill="#0a0a0a"/>
+  <rect x="7"  y="11" width="14" height="2.5" rx="1.25" fill="#fafafa"/>
+  <rect x="7"  y="16" width="18" height="2.5" rx="1.25" fill="#fafafa"/>
+  <rect x="7"  y="21" width="11" height="2.5" rx="1.25" fill="#fafafa"/>
+  <circle cx="25" cy="9" r="3" fill="#f59e0b"/>
+</svg>
