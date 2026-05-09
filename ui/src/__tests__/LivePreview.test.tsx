@@ -65,6 +65,22 @@ describe("LivePreview (TC-3.4)", () => {
     expect(screen.queryByTestId("vp-theme")).not.toBeInTheDocument();
   });
 
+  it("centers the generated report theme toggle inside preview chrome", () => {
+    render(
+      <LivePreview
+        html='<!doctype html><html><head><title>x</title></head><body><button class="theme-toggle">theme</button></body></html>'
+      />,
+    );
+
+    const iframe = screen.getByTestId("preview-iframe") as HTMLIFrameElement;
+    const srcdoc = iframe.getAttribute("srcdoc") ?? "";
+
+    expect(srcdoc).toContain("data-news-studio-preview-chrome");
+    expect(srcdoc).toContain("left: 50% !important");
+    expect(srcdoc).toContain("right: auto !important");
+    expect(srcdoc).toContain("translateX(-50%)");
+  });
+
   it("falls back to placeholder document when html is null", () => {
     render(<LivePreview html={null} theme="newsroom-white" />);
     const iframe = screen.getByTestId("preview-iframe") as HTMLIFrameElement;

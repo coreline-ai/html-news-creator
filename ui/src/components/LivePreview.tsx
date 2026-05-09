@@ -21,6 +21,35 @@ export interface LivePreviewProps {
   theme?: PreviewTheme;
 }
 
+const PREVIEW_THEME_TOGGLE_CSS = `
+<style data-news-studio-preview-chrome>
+.theme-toggle {
+  left: 50% !important;
+  right: auto !important;
+  bottom: 24px !important;
+  transform: translateX(-50%) !important;
+}
+.theme-toggle:hover {
+  transform: translateX(-50%) translateY(-2px) !important;
+}
+@media (max-width: 640px) {
+  .theme-toggle {
+    left: 50% !important;
+    right: auto !important;
+    bottom: 16px !important;
+  }
+}
+</style>`;
+
+function applyPreviewChrome(html: string): string {
+  if (!html.includes("theme-toggle")) return html;
+  if (html.includes("data-news-studio-preview-chrome")) return html;
+  if (/<\/head>/i.test(html)) {
+    return html.replace(/<\/head>/i, `${PREVIEW_THEME_TOGGLE_CSS}</head>`);
+  }
+  return `${PREVIEW_THEME_TOGGLE_CSS}${html}`;
+}
+
 const EMPTY_DOC: Record<PreviewTheme, string> = {
   dark: `<!doctype html><html data-theme="dark"><meta charset="utf-8" /><title>preview</title><style>html,body{margin:0;height:100%;font-family:ui-sans-serif,system-ui,sans-serif;background:#0a0a0a;color:#e5e5e5;display:flex;align-items:center;justify-content:center}p{opacity:.6;font-size:13px}</style><p>No preview yet — adjust options on the left.</p></html>`,
   light: `<!doctype html><html data-theme="light"><meta charset="utf-8" /><title>preview</title><style>html,body{margin:0;height:100%;font-family:ui-sans-serif,system-ui,sans-serif;background:#ffffff;color:#171717;display:flex;align-items:center;justify-content:center}p{opacity:.6;font-size:13px}</style><p>No preview yet — adjust options on the left.</p></html>`,
@@ -51,7 +80,10 @@ export function LivePreview({
 
   const width = VIEWPORT_WIDTH[viewport];
   const srcDoc = useMemo(
-    () => (html ? applyPreviewTheme(html, theme) : EMPTY_DOC[theme]),
+    () =>
+      html
+        ? applyPreviewChrome(applyPreviewTheme(html, theme))
+        : EMPTY_DOC[theme],
     [html, theme],
   );
 
