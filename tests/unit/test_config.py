@@ -8,6 +8,8 @@ def test_settings_defaults():
     assert s.openai_base_url == "http://127.0.0.1:4317/openai/v1"
     assert s.openai_model == "gpt-5.5"
     assert s.openai_embedding_model == "text-embedding-3-small"
+    assert s.admin_run_default_max_runtime_sec == 3600
+    assert s.admin_allow_llm_fallback_on_proxy_down is True
 
 
 def test_settings_database_url_has_value():

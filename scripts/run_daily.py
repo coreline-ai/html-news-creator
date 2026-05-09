@@ -806,14 +806,68 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
     )
     from sqlalchemy import delete, select, update
 
+    async def _write_fallback_report(reason: str) -> dict:
+        title = f"AI 트렌드 리포트 {run_date}: 수집 결과 부족"
+        summary = (
+            "해당 날짜에 리포트로 묶을 AI 뉴스 클러스터가 충분하지 않아 "
+            "폴백 리포트를 생성했습니다. 수집원·프록시·분류 로그를 확인하세요."
+        )
+        if not dry_run:
+            async with AsyncSessionLocal() as session:
+                db_report = await session.scalar(
+                    select(Report).where(Report.report_date == run_date)
+                )
+                if db_report:
+                    db_report.title = title
+                    db_report.status = "draft"
+                    db_report.summary_ko = summary
+                    db_report.stats_json = {"fallback": True, "reason": reason}
+                    db_report.method_json = {"fallback": reason}
+                    db_report.updated_at = datetime.now(timezone.utc)
+                    await session.execute(
+                        delete(ReportSection).where(
+                            ReportSection.report_id == db_report.id
+                        )
+                    )
+                else:
+                    db_report = Report(
+                        report_date=run_date,
+                        title=title,
+                        status="draft",
+                        summary_ko=summary,
+                        stats_json={"fallback": True, "reason": reason},
+                        method_json={"fallback": reason},
+                    )
+                    session.add(db_report)
+                await session.flush()
+                session.add(
+                    ReportSection(
+                        report_id=db_report.id,
+                        cluster_id=None,
+                        section_order=0,
+                        title="수집 결과 부족",
+                        fact_summary=summary,
+                        social_signal_summary=None,
+                        inference_summary=(
+                            "자동 생성 실패를 막기 위한 안전 폴백입니다."
+                        ),
+                        importance_score=0.1,
+                        sources_json=[],
+                        image_evidence_json=[],
+                        tags_json=[{"fallback": reason}],
+                    )
+                )
+                await session.commit()
+        logger.warning("generate_fallback_report", reason=reason, sections=1)
+        return {"sections": 1, "title": title, "fallback": reason}
+
     async with AsyncSessionLocal() as session:
         clusters = list(await session.scalars(
             select(Cluster).where(Cluster.report_date == run_date)
         ))
 
     if not clusters:
-        logger.info("generate_done", sections=0, note="no clusters for today")
-        return {"sections": 0}
+        return await _write_fallback_report("no_clusters")
 
     editorial_policy = load_policy()
     editorial_ranker = EditorialRanker(editorial_policy)
@@ -930,6 +984,23 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
         target_sections = max_sections
     generated_image_fallbacks = 0
     source_image_sections = 0
+
+    if not selected_candidates and cluster_candidates:
+        selected_candidates = sorted(
+            cluster_candidates,
+            key=lambda candidate: float(
+                candidate.get("editorial", {}).get("editorial_score", 0.0) or 0.0
+            ),
+            reverse=True,
+        )[: max(1, min(target_sections, len(cluster_candidates)))]
+        logger.warning(
+            "selection_empty_forced_backfill",
+            selected_clusters=len(selected_candidates),
+            candidate_clusters=len(cluster_candidates),
+        )
+
+    if not selected_candidates:
+        return await _write_fallback_report("no_selected_clusters")
 
     for candidate in selected_candidates:
         cluster = candidate["cluster"]
@@ -1370,6 +1441,7 @@ async def run_llm_preflight(steps_to_run: list[str], logger) -> None:
     )
 
     if not health_url:
+        os.environ.pop("NEWS_LLM_DISABLED", None)
         return
 
     try:
@@ -1380,11 +1452,15 @@ async def run_llm_preflight(steps_to_run: list[str], logger) -> None:
         if payload.get("ok") is not True:
             raise RuntimeError(f"unexpected health payload: {payload}")
     except Exception as e:
-        raise RuntimeError(
-            "GPT-5.5 local proxy is configured but unavailable. "
-            "Start the proxy at http://127.0.0.1:4317 or override OPENAI_BASE_URL."
-        ) from e
+        os.environ["NEWS_LLM_DISABLED"] = "true"
+        logger.warning(
+            "llm_proxy_unavailable_using_local_fallback",
+            health_url=health_url,
+            error=str(e),
+        )
+        return
 
+    os.environ.pop("NEWS_LLM_DISABLED", None)
     logger.info("llm_proxy_ready", health_url=health_url)
 
 
@@ -1423,9 +1499,9 @@ async def run_pipeline(
             if step == "generate" and not dry_run:
                 sections = result.get("sections")
                 if isinstance(sections, (int, float)) and sections <= 0:
-                    raise RuntimeError(
-                        "generate produced zero sections; refusing to render/publish "
-                        "an empty report"
+                    logger.warning(
+                        "generate_zero_sections_continuing_to_render_fallback",
+                        sections=sections,
                     )
             results[step] = result
             logger.info("step_done", step=step, **{k: v for k, v in result.items()

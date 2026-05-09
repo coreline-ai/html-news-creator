@@ -1,5 +1,7 @@
 from __future__ import annotations
 import asyncio
+import hashlib
+import math
 from openai import AsyncOpenAI
 from app.config import settings
 from app.utils.logger import get_logger
@@ -20,6 +22,22 @@ def _local_embed_batch(texts: list[str]) -> list[list[float]]:
             v_list = v_list[:1536]
         result.append(v_list)
     return result
+
+
+def _hash_embed_batch(texts: list[str], dimensions: int = 1536) -> list[list[float]]:
+    """Last-resort deterministic embeddings when API and local model fail."""
+    vectors: list[list[float]] = []
+    for text in texts:
+        vector = [0.0] * dimensions
+        tokens = str(text or "").lower().split() or ["empty"]
+        for token in tokens[:256]:
+            digest = hashlib.sha256(token.encode("utf-8")).digest()
+            idx = int.from_bytes(digest[:4], "big") % dimensions
+            sign = 1.0 if digest[4] % 2 == 0 else -1.0
+            vector[idx] += sign
+        norm = math.sqrt(sum(value * value for value in vector)) or 1.0
+        vectors.append([value / norm for value in vector])
+    return vectors
 
 
 class EmbeddingClient:
@@ -60,17 +78,23 @@ class EmbeddingClient:
                     all_embeddings.extend(local_embeddings)
                     self.logger.info("embeddings_local_done", batch_size=len(batch), offset=i)
                 except Exception as e2:
-                    message = (
-                        "Embedding generation failed: OpenAI embeddings endpoint "
-                        "is unavailable and local sentence-transformers fallback "
-                        "also failed. Install sentence-transformers or configure "
-                        "a working OPENAI_EMBEDDING_MODEL endpoint."
-                    )
                     self.logger.error(
                         "embeddings_local_failed",
                         api_error=str(e),
                         error=str(e2),
                     )
-                    raise RuntimeError(message) from e2
+                    fallback_dimensions = (
+                        len(all_embeddings[0]) if all_embeddings else 1536
+                    )
+                    hash_embeddings = _hash_embed_batch(
+                        batch,
+                        dimensions=fallback_dimensions,
+                    )
+                    all_embeddings.extend(hash_embeddings)
+                    self.logger.warning(
+                        "embeddings_hash_fallback_done",
+                        batch_size=len(batch),
+                        offset=i,
+                    )
 
         return all_embeddings

@@ -432,12 +432,12 @@ def test_api_system_status_reports_proxy_unavailable(monkeypatch):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["can_generate"] is False
-    assert body["llm"]["status"] == "unavailable"
+    assert body["can_generate"] is True
+    assert body["llm"]["status"] == "degraded"
     assert body["llm"]["start_command"] == "make proxy"
     assert body["llm"]["recovery_supported"] is True
     assert body["llm"]["recovery_endpoint"] == "/api/system/proxy/recover"
-    assert "LLM 프록시" in body["llm"]["message"]
+    assert "폴백" in body["llm"]["message"]
 
 
 def test_api_proxy_recover_starts_command_when_unavailable(monkeypatch):
@@ -504,6 +504,11 @@ def test_api_runs_blocks_llm_run_when_proxy_unavailable(monkeypatch):
         runtime_status,
         "_check_proxy_health",
         fake_check_proxy_health,
+    )
+    monkeypatch.setattr(
+        runtime_status.settings,
+        "admin_allow_llm_fallback_on_proxy_down",
+        False,
     )
 
     response = client.post("/api/runs", json={"mode": "full"})

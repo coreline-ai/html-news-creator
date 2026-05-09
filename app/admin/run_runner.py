@@ -277,6 +277,33 @@ async def _terminate(proc: asyncio.subprocess.Process) -> None:
         pass
 
 
+def _summarize_failed_history(
+    history: deque,
+    return_code: int | None,
+) -> str:
+    for event in reversed(history):
+        if event.get("stream") != "stderr":
+            continue
+        line = str(event.get("line") or "").strip()
+        if line:
+            return line[:1000]
+
+    for event in reversed(history):
+        line = str(event.get("line") or "").strip()
+        if not line:
+            continue
+        if line.startswith("{"):
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                payload = {}
+            if payload.get("event") == "step_failed" or payload.get("level") == "error":
+                step = payload.get("step") or "unknown"
+                error = payload.get("error") or payload.get("event")
+                return f"{step}: {error}"[:1000]
+    return f"process_exited_with_return_code: {return_code}"
+
+
 def _materialize_policy_override() -> Path | None:
     """If a runtime policy override exists, dump it to a tempfile and return path.
 
@@ -308,11 +335,10 @@ async def _supervise(state: RunState) -> None:
     argv = _build_argv(state.options)
     env = os.environ.copy()
     env.setdefault("PYTHONPATH", str(PROJECT_ROOT))
-    # The local OpenAI-compatible proxy currently returns empty streaming
-    # chunks for chat completions, causing every LLM call to spend one extra
-    # request before falling back to non-stream mode. Admin-triggered runs use
-    # non-stream first unless the operator explicitly opts back in.
-    env.setdefault("OPENAI_CHAT_STREAM", "false")
+    # Keep the LLM client's default stream-first behaviour. The local GPT/Codex
+    # proxy can return an empty non-stream `message.content` while streaming
+    # yields the actual text deltas; forcing non-stream here makes gpt-5.5 runs
+    # classify everything as failed/empty.
 
     # If the operator tweaked the policy via the UI (PUT /api/policy), the
     # override lives only in this process's memory — the subprocess wouldn't
@@ -368,6 +394,11 @@ async def _supervise(state: RunState) -> None:
             )
             state.return_code = await proc.wait()
             state.status = "completed" if state.return_code == 0 else "failed"
+            if state.status == "failed" and state.error is None:
+                state.error = _summarize_failed_history(
+                    state.history,
+                    state.return_code,
+                )
         except asyncio.TimeoutError:
             await _terminate(proc)
             state.return_code = proc.returncode

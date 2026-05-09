@@ -139,14 +139,21 @@ async def get_system_status() -> dict[str, Any]:
         return {"can_generate": True, "llm": llm}
 
     ok, payload, error = await _check_proxy_health(health_url)
+    allow_fallback = settings.admin_allow_llm_fallback_on_proxy_down
+    can_generate = ok or allow_fallback
     llm.update(
         {
             "proxy_reachable": ok,
-            "status": "ready" if ok else "unavailable",
+            "status": "ready" if ok else ("degraded" if allow_fallback else "unavailable"),
             "message": (
                 "LLM 프록시가 정상 응답 중입니다. 뉴스 생성 실행이 가능합니다."
                 if ok
-                else _llm_unavailable_message(health_url)
+                else (
+                    "LLM 프록시가 꺼져 있지만 로컬 키워드/템플릿 폴백으로 실행 가능합니다. "
+                    f"품질은 낮아질 수 있습니다. health={health_url}"
+                    if allow_fallback
+                    else _llm_unavailable_message(health_url)
+                )
             ),
             "start_command": settings.news_studio_llm_proxy_start_command,
             "recovery_supported": bool(settings.news_studio_llm_proxy_start_command),
@@ -160,7 +167,7 @@ async def get_system_status() -> dict[str, Any]:
             "last_error": error,
         }
     )
-    return {"can_generate": ok, "llm": llm}
+    return {"can_generate": can_generate, "llm": llm}
 
 
 async def _launch_proxy_start_command(command: str) -> int:

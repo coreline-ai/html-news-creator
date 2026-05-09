@@ -31,23 +31,22 @@ def test_run_pipeline_raises_on_critical_step_failure(monkeypatch):
         )
 
 
-def test_run_pipeline_raises_when_generate_produces_no_sections(monkeypatch):
+def test_run_pipeline_continues_when_generate_produces_no_sections(monkeypatch):
     async def _empty_generate(*args, **kwargs):
         return {"sections": 0}
 
     monkeypatch.setattr(run_daily, "run_llm_preflight", _noop_preflight)
     monkeypatch.setitem(run_daily.STEP_FUNCTIONS, "generate", _empty_generate)
 
-    with pytest.raises(RuntimeError, match="zero sections"):
-        asyncio.run(
-            run_daily.run_pipeline(
-                date(2026, 5, 8),
-                mode="full",
-                from_step="generate",
-                to_step="generate",
-                dry_run=False,
-            )
+    asyncio.run(
+        run_daily.run_pipeline(
+            date(2026, 5, 8),
+            mode="full",
+            from_step="generate",
+            to_step="generate",
+            dry_run=False,
         )
+    )
 
 
 def test_run_pipeline_allows_zero_section_dry_run(monkeypatch):

@@ -25,9 +25,13 @@ class TitleGenerator:
                 {"role": "user", "content": f"오늘의 주요 AI 트렌드:\n{sections_summary[:1000]}"},
             ])
             result = extract_json(text)
-            titles = result.get("titles", [])
+            titles = [
+                str(title).strip()
+                for title in result.get("titles", [])
+                if str(title or "").strip()
+            ]
             self.logger.info("titles_generated", count=len(titles))
-            return titles
+            return titles or ["오늘의 AI 트렌드 리포트"]
         except Exception as e:
             self.logger.error("title_generation_failed", error=str(e))
             return ["오늘의 AI 트렌드 리포트"]

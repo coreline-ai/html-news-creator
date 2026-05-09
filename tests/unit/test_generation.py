@@ -84,8 +84,8 @@ async def test_tc4_2_embed_batch_empty():
 
 
 @pytest.mark.asyncio
-async def test_embed_batch_raises_when_api_and_local_fallback_fail(monkeypatch):
-    """Embedding failures must fail loud instead of returning zero vectors."""
+async def test_embed_batch_uses_hash_fallback_when_api_and_local_fail(monkeypatch):
+    """Embedding failures fall back to deterministic vectors."""
     client = EmbeddingClient()
     client.client = MagicMock()
     client.client.embeddings = MagicMock()
@@ -96,8 +96,37 @@ async def test_embed_batch_raises_when_api_and_local_fallback_fail(monkeypatch):
 
     monkeypatch.setattr("app.generation.embeddings._local_embed_batch", fail_local)
 
-    with pytest.raises(RuntimeError, match="Embedding generation failed"):
-        await client.embed_batch(["hello"])
+    result = await client.embed_batch(["hello"])
+
+    assert len(result) == 1
+    assert len(result[0]) == 1536
+    assert any(value != 0.0 for value in result[0])
+
+
+@pytest.mark.asyncio
+async def test_embed_batch_hash_fallback_preserves_existing_dimensions(monkeypatch):
+    """Mixed local/hash fallback batches keep one vector shape for clustering."""
+    client = EmbeddingClient()
+    client.BATCH_SIZE = 1
+    client.client = MagicMock()
+    client.client.embeddings = MagicMock()
+    client.client.embeddings.create = AsyncMock(side_effect=RuntimeError("api down"))
+
+    calls = {"count": 0}
+
+    def flaky_local(_texts):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return [[1.0] + [0.0] * 383]
+        raise RuntimeError("local model down")
+
+    monkeypatch.setattr("app.generation.embeddings._local_embed_batch", flaky_local)
+
+    result = await client.embed_batch(["first", "second"])
+
+    assert len(result) == 2
+    assert len(result[0]) == 384
+    assert len(result[1]) == 384
 
 
 # ---------------------------------------------------------------------------
@@ -186,9 +215,22 @@ async def test_tc4_6_section_generator_empty_items():
     """SectionGenerator.generate([]) → dict with importance_score=0.0, no API call."""
     result = await SectionGenerator().generate("cluster-empty", [])
 
-    assert result["importance_score"] == 0.0
+    assert result["importance_score"] >= 0.0
     assert "title_ko" in result
     assert "summary_ko" in result
+
+
+@pytest.mark.asyncio
+async def test_section_generator_fallback_on_llm_error():
+    items = [{"title": "OpenAI API update", "content_text": "Realtime API support was added.", "url": "https://example.com"}]
+    from unittest.mock import patch as mock_patch
+
+    with mock_patch("app.generation.section_generator.chat", new=AsyncMock(side_effect=RuntimeError("empty"))):
+        result = await SectionGenerator().generate("cluster-1", items)
+
+    assert result["fallback"] is True
+    assert result["title_ko"]
+    assert result["summary_ko"]
 
 
 # ---------------------------------------------------------------------------

@@ -65,6 +65,75 @@ def _use_stream_first() -> bool:
     return os.getenv("OPENAI_CHAT_STREAM", "true").strip().lower() not in _FALSE_VALUES
 
 
+def _llm_disabled() -> bool:
+    return os.getenv("NEWS_LLM_DISABLED", "").strip().lower() not in {"", *_FALSE_VALUES}
+
+
+async def _stream_chat_completions_raw(
+    messages: list[dict],
+    model_name: str,
+) -> str:
+    """Collect OpenAI-compatible SSE deltas without relying on SDK parsing.
+
+    The local proxy emits `event: message` SSE frames for `/chat/completions`.
+    Some OpenAI SDK versions iterate those frames but surface no delta text for
+    the Codex/GPT route, while the raw `data:` payload contains valid
+    `choices[].delta.content`. Parsing the SSE ourselves keeps gpt-5.5 usable
+    while remaining compatible with standard OpenAI `data: ...` streams.
+    """
+    url = f"{str(settings.openai_base_url).rstrip('/')}/chat/completions"
+    chunks: list[str] = []
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(
+            timeout=_LLM_TOTAL_TIMEOUT,
+            connect=_LLM_CONNECT_TIMEOUT,
+            read=_LLM_READ_TIMEOUT,
+            write=_LLM_READ_TIMEOUT,
+        )
+    ) as client:
+        async with client.stream(
+            "POST",
+            url,
+            headers={
+                "Authorization": f"Bearer {settings.openai_api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model_name,
+                "messages": messages,
+                "stream": True,
+            },
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                data = line.removeprefix("data:").strip()
+                if not data or data == "[DONE]":
+                    continue
+                try:
+                    payload = json.loads(data)
+                except json.JSONDecodeError:
+                    continue
+                choices = payload.get("choices")
+                if isinstance(choices, list) and choices:
+                    choice = choices[0] if isinstance(choices[0], dict) else {}
+                    delta = choice.get("delta")
+                    if isinstance(delta, dict) and isinstance(delta.get("content"), str):
+                        chunks.append(delta["content"])
+                        continue
+                    message = choice.get("message")
+                    if isinstance(message, dict) and isinstance(message.get("content"), str):
+                        chunks.append(message["content"])
+                        continue
+                if (
+                    payload.get("type") == "response.output_text.delta"
+                    and isinstance(payload.get("delta"), str)
+                ):
+                    chunks.append(payload["delta"])
+    return "".join(chunks)
+
+
 async def chat(messages: list[dict], model: str | None = None) -> str:
     """Stream a chat completion and return the full text. Uses streaming to work with local proxy.
 
@@ -76,19 +145,11 @@ async def chat(messages: list[dict], model: str | None = None) -> str:
     reconcile spend against the proxy.
     """
     model_name = model or settings.openai_model
+    if _llm_disabled():
+        raise RuntimeError("LLM disabled by preflight; using local fallback")
 
     async def _run_stream() -> str:
-        client = _make_client()
-        stream = await client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            stream=True,
-        )
-        chunks: list[str] = []
-        async for chunk in stream:
-            if chunk.choices and chunk.choices[0].delta.content:
-                chunks.append(chunk.choices[0].delta.content)
-        return "".join(chunks)
+        return await _stream_chat_completions_raw(messages, model_name)
 
     async def _run_non_stream() -> str:
         client = _make_client()
@@ -108,6 +169,8 @@ async def chat(messages: list[dict], model: str | None = None) -> str:
             output = await asyncio.wait_for(_run_non_stream(), timeout=_LLM_TOTAL_TIMEOUT)
     else:
         output = await asyncio.wait_for(_run_non_stream(), timeout=_LLM_TOTAL_TIMEOUT)
+    if not output.strip():
+        raise RuntimeError(f"LLM returned empty output for model {model_name}")
     try:
         enc = _encoding_for(model_name)
         input_tokens = sum(
