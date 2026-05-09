@@ -54,6 +54,7 @@ public/news/*.png
 public/assets/generated/
 
 # Demo-generated export artifacts
+demo/**/refero-design-md/.cache/
 demo/**/*.pdf
 
 # UI build artifacts
