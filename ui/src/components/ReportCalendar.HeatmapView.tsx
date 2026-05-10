@@ -57,6 +57,10 @@ export function ReportCalendarHeatmapView({
   todayIso,
 }: ReportCalendarHeatmapViewProps) {
   const navigate = useNavigate();
+  const destinationFor = (iso: string) =>
+    statusByDate.has(iso)
+      ? `/reports/${iso}`
+      : `/reports/new?date=${encodeURIComponent(iso)}`;
 
   /**
    * Build 7 × WEEKS grid where the *last* column ends on todayIso, and the
@@ -132,16 +136,17 @@ export function ReportCalendarHeatmapView({
                     />
                   );
                 }
+                const iso = cell.iso;
                 return (
                   <button
                     key={`${rowIdx}-${colIdx}`}
                     type="button"
                     role="gridcell"
-                    data-date={cell.iso}
+                    data-date={iso}
                     data-status={cell.status ?? "none"}
-                    title={`${cell.iso} · ${statusToLabel(cell.status)}`}
-                    aria-label={`${cell.iso} ${statusToLabel(cell.status)}`}
-                    onClick={() => navigate(`/reports/${cell.iso}`)}
+                    title={`${iso} · ${statusToLabel(cell.status)}`}
+                    aria-label={`${iso} ${statusToLabel(cell.status)}`}
+                    onClick={() => navigate(destinationFor(iso))}
                     className={`size-4 cursor-pointer rounded-sm transition-colors hover:ring-1 hover:ring-ring focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${statusToClass(
                       cell.status,
                     )} ${cell.isToday ? "ring-1 ring-ring" : ""}`}

@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 from app.admin import policy_admin, run_runner, runtime_status
 from app.admin import sources_admin
 from app.admin.api import app
+from app.admin.routers.reports import _published_html_needs_db_rerender
 from app.db import get_db
 from app.models.db_models import JobRun
 
@@ -166,6 +167,19 @@ def test_api_get_report_falls_back_to_static_html_when_db_row_missing(
     assert body["title"] == "Static report"
     assert body["sections"] == []
     assert body["stats_json"]["static_only"] is True
+    assert body["stats_json"]["content_quality"] == "static_html"
+
+
+def test_published_html_needs_rerender_when_empty_but_db_has_sections():
+    html = "<h1>리포트</h1><p>오늘 수집된 AI 트렌드 뉴스가 없습니다.</p>"
+
+    assert _published_html_needs_db_rerender(html, expected_sections=10) is True
+
+
+def test_published_html_does_not_rerender_when_section_headings_exist():
+    html = "<h1>리포트</h1><h2>1. AI 수익화</h2>"
+
+    assert _published_html_needs_db_rerender(html, expected_sections=10) is False
 
 
 def test_api_get_report_rejects_bad_date():

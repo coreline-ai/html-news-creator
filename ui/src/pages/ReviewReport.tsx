@@ -21,7 +21,7 @@ import {
   useReorderSections,
 } from "@/hooks/useSections";
 import { useReviewStore } from "@/hooks/useReviewStore";
-import type { ReportSection } from "@/lib/api";
+import { ApiError, type ReportSection } from "@/lib/api";
 import { AlertCircle, Download, Eye, FileText, Pencil, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,10 @@ interface Toast {
   message: string;
   url?: string;
   tone?: "success" | "error" | "info";
+}
+
+function isMissingReportError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
 }
 
 export function ReviewReport() {
@@ -116,6 +120,30 @@ export function ReviewReport() {
     );
   }
 
+  if (reportQuery.isError && isMissingReportError(reportQuery.error)) {
+    return (
+      <div className="mx-auto max-w-[1200px] px-6 py-6">
+        <EmptyState
+          icon={FileText}
+          title="아직 생성되지 않은 리포트입니다"
+          description={`${date} 리포트가 아직 없습니다. 이 날짜로 뉴스 생성을 시작할 수 있습니다.`}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button asChild size="sm">
+                <Link to={`/reports/new?date=${encodeURIComponent(date)}`}>
+                  이 날짜로 뉴스 생성하기
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/">대시보드로 돌아가기</Link>
+              </Button>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+
   if (reportQuery.isError) {
     return (
       <div className="mx-auto max-w-[1200px] px-6 py-6">
@@ -135,6 +163,39 @@ export function ReviewReport() {
             >
               Retry
             </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (
+    reportQuery.data?.status === "static_only" &&
+    orderedSections.length === 0
+  ) {
+    return (
+      <div className="mx-auto max-w-[1200px] px-6 py-6">
+        <EmptyState
+          icon={FileText}
+          title="구조화된 리포트 데이터가 없습니다"
+          description="발행 HTML 파일만 남아 있어 섹션 검토와 재발행을 할 수 없습니다. 기존 HTML을 확인하거나 같은 날짜로 다시 생성하세요."
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button asChild size="sm" variant="outline">
+                <a
+                  href={`/api/reports/${encodeURIComponent(date)}/html`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  기존 HTML 보기
+                </a>
+              </Button>
+              <Button asChild size="sm">
+                <Link to={`/reports/new?date=${encodeURIComponent(date)}`}>
+                  이 날짜로 다시 생성하기
+                </Link>
+              </Button>
+            </div>
           }
         />
       </div>

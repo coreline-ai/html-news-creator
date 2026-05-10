@@ -76,6 +76,16 @@ describe("Sidebar (TC-2.2)", () => {
     );
   });
 
+  it("adds extra separation before the Operations section", () => {
+    render(
+      <AllProviders initialEntries={["/"]}>
+        <Sidebar />
+      </AllProviders>,
+    );
+
+    expect(screen.getByText("Operations")).toHaveClass("mt-5");
+  });
+
   it("renders a clear X close button in the mobile drawer", () => {
     render(
       <AllProviders initialEntries={["/"]}>

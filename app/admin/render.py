@@ -35,6 +35,36 @@ logger = get_logger(step="admin")
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _unique_source_count(sections: list[ReportSection]) -> int:
+    seen: set[str] = set()
+    for section in sections:
+        sources = section.sources_json or []
+        if not isinstance(sources, list):
+            continue
+        for src in sources:
+            if not isinstance(src, dict):
+                continue
+            key = str(src.get("url") or src.get("name") or "").strip()
+            if key:
+                seen.add(key)
+    return len(seen)
+
+
+def _stats_with_section_fallbacks(
+    raw_stats: dict[str, Any],
+    sections: list[ReportSection],
+) -> dict[str, Any]:
+    stats = dict(raw_stats or {})
+    section_count = len(sections)
+    if section_count <= 0:
+        return stats
+    source_count = _unique_source_count(sections) or section_count
+    stats["clusters"] = stats.get("clusters") or section_count
+    stats["total_sources"] = stats.get("total_sources") or source_count
+    stats["ai_relevant"] = stats.get("ai_relevant") or source_count
+    return stats
+
+
 def _section_to_render_dict(s: ReportSection) -> dict[str, Any]:
     """Convert an ORM ``ReportSection`` into the dict shape the template expects.
 
@@ -83,6 +113,12 @@ def _section_to_render_dict(s: ReportSection) -> dict[str, Any]:
 
 def _report_to_render_dict(report: Report, section_count: int) -> dict[str, Any]:
     stats = report.stats_json or {}
+    total_sources = stats.get("total_sources", 0) or 0
+    ai_relevant = stats.get("ai_relevant", 0) or 0
+    clusters = stats.get("clusters", 0) or section_count
+    if section_count > 0:
+        total_sources = total_sources or section_count
+        ai_relevant = ai_relevant or section_count
     return {
         "title": report.title,
         "report_date": str(report.report_date),
@@ -93,9 +129,9 @@ def _report_to_render_dict(report: Report, section_count: int) -> dict[str, Any]
             else ""
         ),
         "stats": {
-            "total_sources": stats.get("total_sources", 0),
-            "ai_relevant": stats.get("ai_relevant", 0),
-            "clusters": stats.get("clusters", section_count),
+            "total_sources": total_sources,
+            "ai_relevant": ai_relevant,
+            "clusters": clusters,
             "verified": stats.get("verified", 0),
         },
     }
@@ -152,6 +188,13 @@ async def render_published(
 
     report_data = _report_to_render_dict(db_report, len(kept_sections))
     sections_data = [_section_to_render_dict(s) for s in kept_sections]
+    normalized_stats = _stats_with_section_fallbacks(
+        db_report.stats_json or {},
+        kept_sections,
+    )
+    if normalized_stats != (db_report.stats_json or {}):
+        db_report.stats_json = normalized_stats
+        report_data = _report_to_render_dict(db_report, len(kept_sections))
 
     output_rel = Path("public") / "news" / f"{date_kst}-trend.html"
     output_path = _PROJECT_ROOT / output_rel

@@ -63,7 +63,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           ))}
         </ul>
 
-        <SidebarSectionLabel>Operations</SidebarSectionLabel>
+        <SidebarSectionLabel className="mt-5">Operations</SidebarSectionLabel>
         <ul className="flex flex-col gap-0.5">
           {OPERATIONS_NAV.map((item) => (
             <li key={item.to}>
@@ -153,9 +153,20 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   );
 }
 
-function SidebarSectionLabel({ children }: { children: React.ReactNode }) {
+function SidebarSectionLabel({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="text-muted-foreground px-2 pt-3 pb-1 text-[11px] font-medium tracking-wider uppercase">
+    <div
+      className={cn(
+        "text-muted-foreground px-2 pt-3 pb-1 text-[11px] font-medium tracking-wider uppercase",
+        className,
+      )}
+    >
       {children}
     </div>
   );

@@ -97,6 +97,47 @@ export function SystemStatusBanner({
     );
   }
 
+  if (ready) {
+    return (
+      <div
+        role="status"
+        data-testid="system-status-banner"
+        className={cn(
+          "border-border bg-card text-card-foreground flex items-center justify-between gap-3 border px-4 py-2 text-sm",
+          className,
+        )}
+      >
+        <div
+          className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap"
+          data-testid="system-status-ready-line"
+        >
+          {icon}
+          <span className="shrink-0 font-medium">
+            생성 가능: LLM 프록시 정상
+          </span>
+          <Badge variant="outline" className="shrink-0">
+            {statusText}
+          </Badge>
+          <span className="text-muted-foreground truncate">{message}</span>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            void handleRefresh();
+          }}
+          disabled={manualChecking}
+          data-testid="system-status-refresh-button"
+          className="shrink-0"
+        >
+          <RefreshCw className={cn("size-3.5", spinning && "animate-spin")} />
+          {checking ? "확인 중" : "다시 확인"}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div
       role={blocked || isError ? "alert" : "status"}

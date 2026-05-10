@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Play, Save, Sparkles } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { RunOptionsPanel } from "@/components/RunOptionsPanel";
 import { LivePreview } from "@/components/LivePreview";
 import { SystemStatusBanner } from "@/components/SystemStatusBanner";
@@ -8,6 +9,8 @@ import { useAppStore } from "@/lib/store";
 import { usePreview } from "@/hooks/usePreview";
 import { useSystemStatus } from "@/hooks/useSystemStatus";
 import { apiFetch, ApiError } from "@/lib/api";
+
+const DATE_QUERY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function apiErrorMessage(err: ApiError): string {
   const detail =
@@ -24,7 +27,9 @@ function apiErrorMessage(err: ApiError): string {
 }
 
 export function NewReport() {
+  const [searchParams] = useSearchParams();
   const runOptions = useAppStore((s) => s.runOptions);
+  const setOption = useAppStore((s) => s.setOption);
   const activeRun = useAppStore((s) => s.activeRun);
   const setActiveRun = useAppStore((s) => s.setActiveRun);
 
@@ -41,6 +46,13 @@ export function NewReport() {
     (systemStatus.isLoading
       ? "생성 가능 상태를 확인 중입니다."
       : "시스템 상태를 확인할 수 없어 실행을 막았습니다.");
+
+  useEffect(() => {
+    const queryDate = searchParams.get("date");
+    if (!queryDate || !DATE_QUERY_RE.test(queryDate)) return;
+    if (runOptions.date === queryDate) return;
+    setOption("date", queryDate);
+  }, [runOptions.date, searchParams, setOption]);
 
   const handleRun = useCallback(async () => {
     setActionError(null);

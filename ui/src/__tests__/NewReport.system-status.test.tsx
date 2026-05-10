@@ -66,6 +66,112 @@ afterEach(() => {
 });
 
 describe("NewReport — runtime status guard", () => {
+  it("prefills the run date from the date query parameter", async () => {
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      const path = typeof url === "string" ? url : url.toString();
+      if (path === "/api/system/status") return jsonResponse(readyStatus());
+      if (path === "/api/preview") return jsonResponse({ html: "" });
+      return new Response("unexpected", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AllProviders initialEntries={["/reports/new?date=2026-04-29"]}>
+        <NewReport />
+      </AllProviders>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Date (KST)")).toHaveValue("2026-04-29");
+    });
+  });
+
+  it("uses the query date in the run request payload", async () => {
+    let runPayload: unknown = null;
+    globalThis.fetch = vi.fn(
+      async (url: RequestInfo | URL, init?: RequestInit) => {
+        const path = typeof url === "string" ? url : url.toString();
+        if (path === "/api/system/status") return jsonResponse(readyStatus());
+        if (path === "/api/preview") return jsonResponse({ html: "" });
+        if (path === "/api/runs") {
+          runPayload =
+            typeof init?.body === "string" ? JSON.parse(init.body) : init?.body;
+          return jsonResponse({ run_id: "run-query-date" });
+        }
+        return new Response("unexpected", { status: 404 });
+      },
+    ) as unknown as typeof fetch;
+
+    render(
+      <AllProviders initialEntries={["/reports/new?date=2026-04-30"]}>
+        <NewReport />
+      </AllProviders>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("run-button")).toBeEnabled());
+    fireEvent.click(screen.getByTestId("run-button"));
+
+    await waitFor(() => {
+      expect(runPayload).toMatchObject({ date: "2026-04-30" });
+    });
+  });
+
+  it("ignores an invalid date query parameter", async () => {
+    useAppStore.setState({
+      runOptions: { ...DEFAULT_RUN_OPTIONS, date: "2026-05-08" },
+      activeRun: null,
+    });
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      const path = typeof url === "string" ? url : url.toString();
+      if (path === "/api/system/status") return jsonResponse(readyStatus());
+      if (path === "/api/preview") return jsonResponse({ html: "" });
+      return new Response("unexpected", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AllProviders initialEntries={["/reports/new?date=not-a-date"]}>
+        <NewReport />
+      </AllProviders>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Date (KST)")).toHaveValue("2026-05-08");
+    });
+  });
+
+  it("shows the ready runtime status as a single compact line", async () => {
+    globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      const path = typeof url === "string" ? url : url.toString();
+      if (path === "/api/system/status") {
+        return jsonResponse({
+          ...readyStatus(),
+          llm: {
+            ...readyStatus().llm,
+            message:
+              "LLM 프록시가 정상 응답 중입니다. 뉴스 생성 실행이 가능합니다.",
+          },
+        });
+      }
+      if (path === "/api/preview") return jsonResponse({ html: "" });
+      return new Response("unexpected", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AllProviders>
+        <NewReport />
+      </AllProviders>,
+    );
+
+    const readyLine = await screen.findByTestId("system-status-ready-line");
+    expect(readyLine).toHaveTextContent("생성 가능: LLM 프록시 정상");
+    expect(readyLine).toHaveTextContent("ready");
+    expect(readyLine).toHaveTextContent(
+      "LLM 프록시가 정상 응답 중입니다. 뉴스 생성 실행이 가능합니다.",
+    );
+    expect(screen.getByTestId("system-status-refresh-button")).toHaveTextContent(
+      "다시 확인",
+    );
+  });
+
   it("shows proxy outage and disables Run before starting a pipeline", async () => {
     const calls: string[] = [];
     globalThis.fetch = vi.fn(async (url: RequestInfo | URL) => {

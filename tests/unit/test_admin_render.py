@@ -171,6 +171,42 @@ async def test_render_published_empty_disabled_list_keeps_all(tmp_path):
     assert len(sections_arg) == 1
 
 
+@pytest.mark.asyncio
+async def test_render_published_falls_back_stats_from_sections(tmp_path):
+    report_id = str(uuid.uuid4())
+    sections = [
+        _FakeSection(str(uuid.uuid4()), 0, "first"),
+        _FakeSection(str(uuid.uuid4()), 1, "second"),
+    ]
+    sections[0].sources_json = [
+        {"name": "OpenAI", "url": "https://openai.com/news/a"},
+        {"name": "GitHub", "url": "https://github.blog/b"},
+    ]
+    sections[1].sources_json = [
+        {"name": "OpenAI", "url": "https://openai.com/news/a"},
+        {"name": "Anthropic", "url": "https://anthropic.com/news/c"},
+    ]
+    report = _FakeReport(report_id, date_cls.fromisoformat("2026-04-30"))
+    report.stats_json = {
+        "total_sources": 0,
+        "ai_relevant": 0,
+        "clusters": 0,
+        "verified": 0,
+    }
+    db = _make_db(report, sections)
+
+    fake_render = MagicMock(return_value=tmp_path / "out.html")
+    with patch("app.admin.render.JinjaRenderer") as MockRenderer:
+        MockRenderer.return_value.render_to_file = fake_render
+        await render_published("2026-04-30", db, disabled_section_ids=None)
+
+    report_arg, _sections_arg, _output_arg = fake_render.call_args.args
+    assert report_arg["stats"]["clusters"] == 2
+    assert report_arg["stats"]["total_sources"] == 3
+    assert report_arg["stats"]["ai_relevant"] == 3
+    assert report.stats_json["total_sources"] == 3
+
+
 # ---------------------------------------------------------------------------
 # Error paths
 # ---------------------------------------------------------------------------

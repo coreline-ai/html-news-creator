@@ -65,7 +65,7 @@ describe("LivePreview (TC-3.4)", () => {
     expect(screen.queryByTestId("vp-theme")).not.toBeInTheDocument();
   });
 
-  it("centers the generated report theme toggle inside preview chrome", () => {
+  it("moves the generated report theme toggle to the left inside preview chrome", () => {
     render(
       <LivePreview
         html='<!doctype html><html><head><title>x</title></head><body><button class="theme-toggle">theme</button></body></html>'
@@ -76,9 +76,10 @@ describe("LivePreview (TC-3.4)", () => {
     const srcdoc = iframe.getAttribute("srcdoc") ?? "";
 
     expect(srcdoc).toContain("data-news-studio-preview-chrome");
-    expect(srcdoc).toContain("left: 50% !important");
+    expect(srcdoc).toContain("left: 24px !important");
     expect(srcdoc).toContain("right: auto !important");
-    expect(srcdoc).toContain("translateX(-50%)");
+    expect(srcdoc).toContain("transform: none !important");
+    expect(srcdoc).toContain("left: 16px !important");
   });
 
   it("falls back to placeholder document when html is null", () => {

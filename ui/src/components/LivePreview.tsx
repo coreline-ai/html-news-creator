@@ -24,17 +24,17 @@ export interface LivePreviewProps {
 const PREVIEW_THEME_TOGGLE_CSS = `
 <style data-news-studio-preview-chrome>
 .theme-toggle {
-  left: 50% !important;
+  left: 24px !important;
   right: auto !important;
   bottom: 24px !important;
-  transform: translateX(-50%) !important;
+  transform: none !important;
 }
 .theme-toggle:hover {
-  transform: translateX(-50%) translateY(-2px) !important;
+  transform: translateY(-2px) !important;
 }
 @media (max-width: 640px) {
   .theme-toggle {
-    left: 50% !important;
+    left: 16px !important;
     right: auto !important;
     bottom: 16px !important;
   }

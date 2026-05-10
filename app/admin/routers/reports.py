@@ -15,6 +15,7 @@ Routes:
 from __future__ import annotations
 from datetime import date, datetime, timezone
 from pathlib import Path
+import re
 from typing import Any
 from urllib.parse import urlparse
 
@@ -39,6 +40,11 @@ router = APIRouter()
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 REPORTS_DIR = PROJECT_ROOT / "public" / "news"
 REPORT_ASSETS_DIR = PROJECT_ROOT / "public" / "assets"
+_EMPTY_REPORT_MARKERS = (
+    "오늘 수집된 AI 트렌드 뉴스가 없습니다.",
+    "오늘의 AI 트렌드 요약",
+)
+_SECTION_HEADING_RE = re.compile(r"<h2\b[^>]*>\s*\d+\.", re.IGNORECASE)
 
 
 def _serialize_section(s: ReportSection) -> dict[str, Any]:
@@ -88,6 +94,28 @@ def _html_title(html: str, fallback: str) -> str:
     return html[start + len("<title>"):end].strip() or fallback
 
 
+def _published_html_needs_db_rerender(
+    html: str,
+    expected_sections: int,
+) -> bool:
+    """Return whether published HTML is clearly empty while DB has sections."""
+    if expected_sections <= 0:
+        return False
+    section_heading_count = len(_SECTION_HEADING_RE.findall(html))
+    if section_heading_count > 0:
+        return False
+    return any(marker in html for marker in _EMPTY_REPORT_MARKERS)
+
+
+def _static_html_quality(html: str) -> str:
+    """Coarse quality bucket for static-only fallbacks without DB sections."""
+    if any(marker in html for marker in _EMPTY_REPORT_MARKERS):
+        return "empty_placeholder"
+    if _SECTION_HEADING_RE.search(html):
+        return "sectioned_html"
+    return "static_html"
+
+
 def _static_only_report_detail(date_kst: str, html_path: Path) -> dict[str, Any]:
     """Build a read-only report payload when only published HTML exists.
 
@@ -109,6 +137,7 @@ def _static_only_report_detail(date_kst: str, html_path: Path) -> dict[str, Any]
         "summary_ko": "DB Report row 없이 발행 HTML만 존재합니다.",
         "stats_json": {
             "static_only": True,
+            "content_quality": _static_html_quality(html),
             "html_path": html_storage_path,
             "html_size_bytes": html_path.stat().st_size,
         },
@@ -118,6 +147,60 @@ def _static_only_report_detail(date_kst: str, html_path: Path) -> dict[str, Any]
         "published_at": modified.isoformat(),
         "sections": [],
     }
+
+
+async def _db_report_section_count(
+    date_kst: str,
+    db: AsyncSession,
+) -> tuple[Report | None, int]:
+    run_date = date.fromisoformat(date_kst)
+    result = await db.execute(select(Report).where(Report.report_date == run_date))
+    db_report = result.scalars().first()
+    if db_report is None:
+        return None, 0
+
+    sections_result = await db.execute(
+        select(ReportSection).where(ReportSection.report_id == db_report.id)
+    )
+    sections = sections_result.scalars().all()
+    return db_report, len(sections)
+
+
+async def _published_html_path_for_serving(
+    date_kst: str,
+    db: AsyncSession,
+) -> Path:
+    """Return published HTML, repairing obviously empty files from DB if possible."""
+    try:
+        db_report, section_count = await _db_report_section_count(date_kst, db)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"invalid date_kst (expected YYYY-MM-DD): {exc}"
+        ) from exc
+
+    try:
+        html_path = _published_html_path(date_kst)
+    except HTTPException as exc:
+        if exc.status_code == 404 and db_report is not None and section_count > 0:
+            from app.admin.render import render_published
+
+            return await render_published(date_kst, db)
+        raise
+
+    if db_report is not None and section_count > 0:
+        html = html_path.read_text(encoding="utf-8", errors="replace")
+        if _published_html_needs_db_rerender(html, section_count):
+            from app.admin.render import render_published
+
+            logger.warning(
+                "published_html_empty_repairing_from_db",
+                date_kst=date_kst,
+                sections=section_count,
+                html_path=str(html_path),
+            )
+            return await render_published(date_kst, db)
+
+    return html_path
 
 
 @router.get("/api/reports/assets/{asset_path:path}", include_in_schema=False)
@@ -169,6 +252,7 @@ async def api_list_reports(
 @router.get("/api/reports/{date_kst}/html", include_in_schema=False)
 async def api_get_report_html(
     date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db),
 ):
     """Serve the published HTML file produced by the static publisher.
 
@@ -177,7 +261,7 @@ async def api_get_report_html(
     Returns 404 if the report has not been published yet. Cache-Control
     no-store so a republish is reflected immediately.
     """
-    html_path = _published_html_path(date_kst)
+    html_path = await _published_html_path_for_serving(date_kst, db)
     return FileResponse(
         str(html_path),
         media_type="text/html",
@@ -189,9 +273,10 @@ async def api_get_report_html(
 @router.get("/api/reports/{date_kst}/html/download", include_in_schema=False)
 async def api_download_report_html(
     date_kst: str = PathParam(..., description="KST date YYYY-MM-DD"),
+    db: AsyncSession = Depends(get_db),
 ):
     """Return the published HTML as an attachment for operator download."""
-    html_path = _published_html_path(date_kst)
+    html_path = await _published_html_path_for_serving(date_kst, db)
     return FileResponse(
         str(html_path),
         media_type="text/html",

@@ -108,6 +108,40 @@ describe("ReportCalendar — month view (TC-1)", () => {
     const dayCell = inMonth[0].parentElement!;
     expect(dayCell.className).toMatch(/after:bg-\[var\(--status-success\)\]/);
   });
+
+  it("opens an existing report date from the month view", () => {
+    render(
+      <AllProviders>
+        <ReportCalendar reports={reports} todayIso={TODAY} />
+      </AllProviders>,
+    );
+
+    const monthView = screen.getByTestId("report-calendar-month-view");
+    const dayButtons = within(monthView).getAllByRole("button", { name: /30/ });
+    const inMonth = dayButtons.filter(
+      (b) => !b.parentElement?.className.includes("day-outside"),
+    );
+    fireEvent.click(inMonth[0]);
+
+    expect(navigateMock).toHaveBeenCalledWith(`/reports/${TODAY}`);
+  });
+
+  it("starts a new report for an empty date from the month view", () => {
+    render(
+      <AllProviders>
+        <ReportCalendar reports={reports} todayIso={TODAY} />
+      </AllProviders>,
+    );
+
+    const monthView = screen.getByTestId("report-calendar-month-view");
+    const dayButtons = within(monthView).getAllByRole("button", { name: /29/ });
+    const inMonth = dayButtons.filter(
+      (b) => !b.parentElement?.className.includes("day-outside"),
+    );
+    fireEvent.click(inMonth[0]);
+
+    expect(navigateMock).toHaveBeenCalledWith("/reports/new?date=2026-04-29");
+  });
 });
 
 describe("ReportCalendar — heatmap view (TC-2)", () => {
@@ -144,6 +178,22 @@ describe("ReportCalendar — heatmap view (TC-2)", () => {
     fireEvent.click(cell);
 
     expect(navigateMock).toHaveBeenCalledWith(`/reports/${TODAY}`);
+  });
+
+  it("starts a new report when an empty heatmap cell is clicked", () => {
+    render(
+      <AllProviders>
+        <ReportCalendar reports={reports} todayIso={TODAY} />
+      </AllProviders>,
+    );
+
+    const heatmap = screen.getByTestId("report-calendar-heatmap-view");
+    const cell = within(heatmap).getByRole("gridcell", {
+      name: /2026-04-29 없음/,
+    });
+    fireEvent.click(cell);
+
+    expect(navigateMock).toHaveBeenCalledWith("/reports/new?date=2026-04-29");
   });
 });
 

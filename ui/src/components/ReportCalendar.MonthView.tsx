@@ -36,6 +36,11 @@ export function ReportCalendarMonthView({
 }: ReportCalendarMonthViewProps) {
   const navigate = useNavigate();
 
+  const destinationFor = (iso: string) =>
+    statusByDate.has(iso)
+      ? `/reports/${iso}`
+      : `/reports/new?date=${encodeURIComponent(iso)}`;
+
   const modifiers = useMemo(
     () => ({
       published: (d: Date) => statusByDate.get(isoFromDate(d)) === "published",
@@ -74,7 +79,7 @@ export function ReportCalendarMonthView({
           failed: `${DOT_BASE} after:bg-[var(--status-error)]`,
         }}
         onDayClick={(d) => {
-          navigate(`/reports/${isoFromDate(d)}`);
+          navigate(destinationFor(isoFromDate(d)));
         }}
       />
 
