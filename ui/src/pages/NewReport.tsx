@@ -12,6 +12,11 @@ import { apiFetch, ApiError } from "@/lib/api";
 
 const DATE_QUERY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const OUTPUT_STYLE_LABELS = {
+  newsstream: "뉴스스트림형",
+  signal_briefing: "시그널 브리핑형",
+} as const;
+
 function apiErrorMessage(err: ApiError): string {
   const detail =
     err.body && typeof err.body === "object" && "detail" in err.body
@@ -122,6 +127,7 @@ export function NewReport() {
             <span className="text-foreground font-mono">{runOptions.date}</span>
             {" · "}
             {runOptions.target_sections} sections{" · "}
+            {OUTPUT_STYLE_LABELS[runOptions.output_style]}{" · "}
             {runOptions.dry_run ? "dry-run" : "live"}
           </div>
           {actionError ? (

@@ -233,6 +233,46 @@ async def test_section_generator_fallback_on_llm_error():
     assert result["summary_ko"]
 
 
+@pytest.mark.asyncio
+async def test_section_generator_signal_briefing_adds_structured_fields():
+    payload = {
+        "title_ko": "Claude Code 신호가 개발자 도구 시장으로 확산",
+        "fact_summary": "공식 업데이트와 커뮤니티 논의가 함께 확인됐다.",
+        "social_signal_summary": "Reddit과 HN에서 사용 사례 공유가 늘었다.",
+        "inference_summary": "도구 체인 선택 기준이 성능에서 워크플로 통합으로 이동한다.",
+        "summary_ko": "Claude Code를 중심으로 개발자 도구 신호가 확대됐다.",
+        "key_updates": ["CLI 자동화 사례 증가", "에이전트형 코딩 논의 확산"],
+        "image_detail_hint": "제품 UI 캡처가 있으면 워크플로 단계를 확인한다.",
+        "tags": ["claude", "tooling"],
+        "importance_score": 0.86,
+        "category": "product",
+    }
+    import json
+    from unittest.mock import patch as mock_patch, AsyncMock
+
+    items = [
+        {
+            "title": "Claude Code gains traction",
+            "content_text": "Developers are sharing workflows.",
+            "url": "https://example.com/claude-code",
+        }
+    ]
+    with mock_patch(
+        "app.generation.section_generator.chat",
+        new=AsyncMock(return_value=json.dumps(payload)),
+    ) as mock_chat:
+        result = await SectionGenerator(output_style="signal_briefing").generate(
+            "cluster-1",
+            items,
+        )
+
+    system_prompt = mock_chat.call_args.args[0][0]["content"]
+    assert "시그널 브리핑" in system_prompt
+    assert result["key_updates"] == payload["key_updates"]
+    assert result["tags"] == payload["tags"]
+    assert result["image_detail_hint"] == payload["image_detail_hint"]
+
+
 # ---------------------------------------------------------------------------
 # TC-4.7  ReportAssembler.assemble() — 3 sections sorted by importance_score
 # ---------------------------------------------------------------------------
@@ -259,6 +299,37 @@ def test_tc4_7_report_assembler_sorts_sections():
     assert report.sections[0]["title_ko"] == "섹션B"
     assert report.report_date == "2026-04-27"
     assert report.title == "오늘의 AI 트렌드"
+
+
+def test_report_assembler_signal_briefing_stats():
+    assembler = ReportAssembler()
+    report = assembler.assemble(
+        run_date=date(2026, 5, 10),
+        title="AI 시그널 브리핑 2026-05-10",
+        output_style="signal_briefing",
+        sections=[
+            {
+                "title_ko": "Claude Code 도구 신호 확대",
+                "summary_ko": "개발자 도구 신호가 확대됐다.",
+                "importance_score": 0.9,
+                "social_signal_summary": "커뮤니티 반응이 활발하다.",
+                "tags": ["claude", "tooling"],
+            },
+            {
+                "title_ko": "OpenAI API 업데이트",
+                "summary_ko": "API 업데이트가 관찰됐다.",
+                "importance_score": 0.7,
+                "tags": ["api"],
+            },
+        ],
+    )
+
+    assert report.metadata["output_style"] == "signal_briefing"
+    assert report.stats["output_style"] == "signal_briefing"
+    assert "top_keywords" in report.stats
+    assert report.stats["signal_axes"]
+    assert report.stats["today_temperature"]
+    assert report.stats["action_items"]
 
 
 # ---------------------------------------------------------------------------

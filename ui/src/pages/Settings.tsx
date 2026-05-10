@@ -22,12 +22,14 @@ import { cn } from "@/lib/utils";
 import {
   useAppStore,
   type DeployTarget,
+  type OutputStyle,
   type OutputTheme,
   type RunOptions,
   type Theme,
 } from "@/lib/store";
 
 const APP_THEMES: Theme[] = ["dark", "light"];
+const OUTPUT_STYLES: OutputStyle[] = ["newsstream", "signal_briefing"];
 const OUTPUT_THEMES: OutputTheme[] = ["dark", "light", "newsroom-white"];
 const DEPLOY_TARGETS: DeployTarget[] = ["netlify", "local-only"];
 
@@ -93,6 +95,14 @@ export function Settings() {
                 value={theme}
                 onChange={setTheme}
                 testIdPrefix="settings-theme"
+              />
+            </SettingField>
+            <SettingField label="Output style" hint="Default selected on the New Report screen.">
+              <ButtonGroup
+                options={OUTPUT_STYLES}
+                value={runOptions.output_style}
+                onChange={(value) => setOption("output_style", value)}
+                testIdPrefix="settings-output-style"
               />
             </SettingField>
             <SettingField label="Report output theme" hint="Default selected on the New Report screen.">

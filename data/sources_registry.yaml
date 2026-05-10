@@ -368,6 +368,10 @@ sources:
       - agent
       - openai
       - anthropic
+      - claude
+      - claude code
+      - coding agent
+      - mcp
       - gemini
 
   - name: Reddit MachineLearning
@@ -422,6 +426,63 @@ sources:
       - GPT
       - API
       - Codex
+
+  - name: Reddit ClaudeCode
+    source_type: rss
+    url: https://www.reddit.com/r/ClaudeCode/.rss
+    trust_level: community
+    source_tier: developer_signal
+    category: community
+    content_category: developer_signal
+    priority: 44
+    max_items: 12
+    required: false
+    purpose: Track high-signal Claude Code usage, workflows, commands, MCP, and coding-agent adoption from the developer community.
+    keywords:
+      - claude code
+      - coding agent
+      - agentic coding
+      - MCP
+      - command
+      - workflow
+      - developer tools
+
+  - name: Reddit ClaudeAI
+    source_type: rss
+    url: https://www.reddit.com/r/ClaudeAI/.rss
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: product
+    priority: 36
+    max_items: 10
+    required: false
+    purpose: Track Claude product reactions, usage limits, model quality shifts, and community workflow discussions.
+    keywords:
+      - Claude
+      - Anthropic
+      - Opus
+      - Sonnet
+      - Claude Code
+      - artifacts
+
+  - name: Reddit Anthropic
+    source_type: rss
+    url: https://www.reddit.com/r/Anthropic/.rss
+    trust_level: community
+    source_tier: community
+    category: community
+    content_category: product
+    priority: 34
+    max_items: 10
+    required: false
+    purpose: Track Anthropic and Claude community reactions while keeping broad community content capped.
+    keywords:
+      - Anthropic
+      - Claude
+      - Claude Code
+      - MCP
+      - constitutional AI
 
   - name: Reddit LocalLLaMA
     source_type: rss

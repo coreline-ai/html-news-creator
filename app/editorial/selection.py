@@ -185,6 +185,65 @@ def _candidate_source_keys(candidate: dict[str, Any]) -> set[str]:
     }
 
 
+def _append_entity_text(parts: list[str], value: Any) -> None:
+    if value is None:
+        return
+    if isinstance(value, str):
+        parts.append(value.lower())
+        return
+    if isinstance(value, (int, float, bool)):
+        parts.append(str(value).lower())
+        return
+    if isinstance(value, dict):
+        for nested in value.values():
+            _append_entity_text(parts, nested)
+        return
+    if isinstance(value, (list, tuple, set)):
+        for nested in value:
+            _append_entity_text(parts, nested)
+
+
+def _candidate_entity_keys(
+    candidate: dict[str, Any],
+    policy: dict[str, Any],
+) -> set[str]:
+    """Return normalized company/model-family keys inferred from candidate text.
+
+    Source caps only protect against repeated rows from one feed. This broader
+    entity cap keeps one vendor ecosystem from filling the report via many
+    distinct feeds, e.g. official blog + YouTube + GitHub + Reddit + media.
+    """
+    aliases = policy.get("entity_aliases", {}) or {}
+    if not isinstance(aliases, dict) or not aliases:
+        return set()
+
+    parts: list[str] = []
+    _append_entity_text(parts, candidate)
+    blob = " ".join(parts)
+    if not blob:
+        return set()
+
+    entity_keys: set[str] = set()
+    for entity, entity_aliases in aliases.items():
+        alias_values = _iter_values(entity_aliases)
+        if any(
+            (alias_text := str(alias or "").lower().strip()) and alias_text in blob
+            for alias in alias_values
+        ):
+            entity_keys.add(f"entity:{entity}")
+    return entity_keys
+
+
+def _optional_int_cfg(mapping: dict[str, Any], key: str) -> int | None:
+    if key not in mapping:
+        return None
+    try:
+        value = int(mapping.get(key))
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 def _ratio_cap(mapping: dict[str, Any], key: str, max_sections: int) -> int | None:
     if key not in mapping:
         return None
@@ -249,6 +308,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
     max_same_tier = _ratio_cap(
         selection_cfg, "max_same_source_tier_ratio", max_sections
     )
+    max_same_entity = _optional_int_cfg(selection_cfg, "max_same_entity_sections")
     target_sections = min(
         _int_cfg(selection_cfg, "target_sections", max_sections),
         max_sections,
@@ -270,6 +330,11 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
     )
     backfill_max_same_source = _int_cfg(
         selection_cfg, "backfill_max_same_source_name", max_same_source
+    )
+    backfill_max_same_entity = _int_cfg(
+        selection_cfg,
+        "backfill_max_same_entity_sections",
+        max_same_entity or max_sections,
     )
     backfill_max_same_tier = _ratio_cap(
         selection_cfg, "backfill_max_same_source_tier_ratio", max_sections
@@ -298,6 +363,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
     community_count = 0
     source_counts: dict[str, int] = {}
     tier_counts: dict[str, int] = {}
+    entity_counts: dict[str, int] = {}
 
     def can_select(
         candidate: dict[str, Any],
@@ -307,6 +373,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
         community_limit: int,
         same_source_limit: int,
         same_tier_limit: int | None,
+        same_entity_limit: int | None,
         require_image: bool,
     ) -> bool:
         if id(candidate) in selected_ids:
@@ -338,6 +405,11 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
             source_counts.get(key, 0) >= same_source_limit for key in source_keys
         ):
             return False
+        entity_keys = _candidate_entity_keys(candidate, policy)
+        if same_entity_limit is not None and entity_keys and any(
+            entity_counts.get(key, 0) >= same_entity_limit for key in entity_keys
+        ):
+            return False
         if same_tier_limit is not None and any(
             tier_counts.get(tier, 0) >= same_tier_limit for tier in set(source_tiers)
         ):
@@ -350,6 +422,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
         topic = str(editorial.get("topic_type", "industry") or "industry")
         source_tiers = _source_tiers(editorial)
         source_keys = _candidate_source_keys(candidate)
+        entity_keys = _candidate_entity_keys(candidate, policy)
         selected.append(candidate)
         selected_ids.add(id(candidate))
         topic_counts[topic] = topic_counts.get(topic, 0) + 1
@@ -359,6 +432,8 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
             community_count += 1
         for key in source_keys:
             source_counts[key] = source_counts.get(key, 0) + 1
+        for key in entity_keys:
+            entity_counts[key] = entity_counts.get(key, 0) + 1
         for tier in set(source_tiers):
             tier_counts[tier] = tier_counts.get(tier, 0) + 1
 
@@ -372,6 +447,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
             community_limit=max_community,
             same_source_limit=max_same_source,
             same_tier_limit=max_same_tier,
+            same_entity_limit=max_same_entity,
             require_image=False,
         ):
             continue
@@ -399,6 +475,7 @@ def select_editorial_clusters(candidates: list[dict], policy: dict) -> list[dict
                 community_limit=backfill_max_community,
                 same_source_limit=backfill_max_same_source,
                 same_tier_limit=backfill_max_same_tier,
+                same_entity_limit=backfill_max_same_entity,
                 require_image=backfill_require_image,
             ):
                 continue

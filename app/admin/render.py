@@ -9,9 +9,9 @@ itself has no ``enabled`` column), and rewrites
 ``JinjaRenderer.render_to_file``. A ``ReportArtifact`` row is recorded
 so operators can see exactly which HTML was deployed.
 
-The Jinja template (`templates/report_newsstream.html.j2`) and the
-``JinjaRenderer`` signature are intentionally untouched — this helper
-only changes which section rows feed the renderer.
+The renderer defaults to the existing newsstream template, but honours
+``Report.method_json.output_style`` so a report generated as a signal briefing
+keeps that structure when operators re-render or publish it.
 """
 from __future__ import annotations
 
@@ -33,6 +33,16 @@ logger = get_logger(step="admin")
 # Project root — keep storage_path stable as ``public/news/<date>-trend.html``
 # regardless of where the API process was launched from.
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_DEFAULT_OUTPUT_STYLE = "newsstream"
+_SIGNAL_BRIEFING_OUTPUT_STYLE = "signal_briefing"
+
+
+def _normalize_output_style(value: str | None) -> str:
+    return (
+        _SIGNAL_BRIEFING_OUTPUT_STYLE
+        if value == _SIGNAL_BRIEFING_OUTPUT_STYLE
+        else _DEFAULT_OUTPUT_STYLE
+    )
 
 
 def _unique_source_count(sections: list[ReportSection]) -> int:
@@ -97,6 +107,7 @@ def _section_to_render_dict(s: ReportSection) -> dict[str, Any]:
         ),
         "",
     )
+    output_meta = _extract_section_output_meta(s.tags_json)
     return {
         "title": s.title or "",
         "summary_ko": s.fact_summary or "",
@@ -107,11 +118,38 @@ def _section_to_render_dict(s: ReportSection) -> dict[str, Any]:
         "sources_json": s.sources_json or [],
         "content_image_urls": content_images,
         "og_image_url": fallback_image,
+        "key_updates": output_meta["key_updates"],
+        "image_detail_hint": output_meta["image_detail_hint"],
+        "tags": output_meta["tags"],
         "category": "other",
     }
 
 
-def _report_to_render_dict(report: Report, section_count: int) -> dict[str, Any]:
+def _extract_section_output_meta(tags_json: Any) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "key_updates": [],
+        "image_detail_hint": None,
+        "tags": [],
+    }
+    if not isinstance(tags_json, list):
+        return result
+    for entry in tags_json:
+        if not isinstance(entry, dict):
+            continue
+        if "key_updates" in entry and isinstance(entry["key_updates"], list):
+            result["key_updates"] = entry["key_updates"]
+        if "image_detail_hint" in entry:
+            result["image_detail_hint"] = entry["image_detail_hint"]
+        if "tags" in entry and isinstance(entry["tags"], list):
+            result["tags"] = entry["tags"]
+    return result
+
+
+def _report_to_render_dict(
+    report: Report,
+    section_count: int,
+    output_style: str,
+) -> dict[str, Any]:
     stats = report.stats_json or {}
     total_sources = stats.get("total_sources", 0) or 0
     ai_relevant = stats.get("ai_relevant", 0) or 0
@@ -129,10 +167,12 @@ def _report_to_render_dict(report: Report, section_count: int) -> dict[str, Any]
             else ""
         ),
         "stats": {
+            **stats,
             "total_sources": total_sources,
             "ai_relevant": ai_relevant,
             "clusters": clusters,
             "verified": stats.get("verified", 0),
+            "output_style": output_style,
         },
     }
 
@@ -142,6 +182,7 @@ async def render_published(
     db: AsyncSession,
     disabled_section_ids: Optional[Iterable[str]] = None,
     output_theme: str = "dark",
+    output_style: str | None = None,
 ) -> Path:
     """Re-render the published HTML for ``date_kst`` from current DB state.
 
@@ -154,6 +195,8 @@ async def render_published(
             Forwarded to ``JinjaRenderer.render_to_file`` so the per-run theme
             picked in the UI ends up in the deployed HTML instead of always
             shipping dark.
+        output_style: ``newsstream`` or ``signal_briefing``. When omitted, the
+            value persisted in ``Report.method_json.output_style`` is used.
 
     Returns:
         Path to the freshly written HTML file.
@@ -177,6 +220,14 @@ async def render_published(
     db_report = result.scalars().first()
     if db_report is None:
         raise LookupError(f"report not found: {date_kst}")
+    stored_output_style = (
+        (db_report.method_json or {}).get("output_style")
+        if isinstance(db_report.method_json, dict)
+        else None
+    )
+    resolved_output_style = _normalize_output_style(
+        output_style or stored_output_style
+    )
 
     sections_result = await db.execute(
         select(ReportSection)
@@ -186,7 +237,11 @@ async def render_published(
     all_sections = list(sections_result.scalars().all())
     kept_sections = [s for s in all_sections if str(s.id) not in disabled_set]
 
-    report_data = _report_to_render_dict(db_report, len(kept_sections))
+    report_data = _report_to_render_dict(
+        db_report,
+        len(kept_sections),
+        resolved_output_style,
+    )
     sections_data = [_section_to_render_dict(s) for s in kept_sections]
     normalized_stats = _stats_with_section_fallbacks(
         db_report.stats_json or {},
@@ -194,7 +249,11 @@ async def render_published(
     )
     if normalized_stats != (db_report.stats_json or {}):
         db_report.stats_json = normalized_stats
-        report_data = _report_to_render_dict(db_report, len(kept_sections))
+        report_data = _report_to_render_dict(
+            db_report,
+            len(kept_sections),
+            resolved_output_style,
+        )
 
     output_rel = Path("public") / "news" / f"{date_kst}-trend.html"
     output_path = _PROJECT_ROOT / output_rel
@@ -205,6 +264,7 @@ async def render_published(
         sections_data,
         str(output_path),
         output_theme=output_theme,
+        output_style=resolved_output_style,
     )
 
     artifact = ReportArtifact(
@@ -222,6 +282,7 @@ async def render_published(
         sections_rendered=len(kept_sections),
         disabled_count=len(disabled_set),
         output_theme=output_theme,
+        output_style=resolved_output_style,
         path=str(output_rel),
     )
     return written_path

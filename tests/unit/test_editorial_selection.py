@@ -293,6 +293,51 @@ def test_select_editorial_clusters_limits_same_source_id_from_cluster_items():
     ]
 
 
+def test_select_editorial_clusters_limits_same_entity_brand():
+    policy = _policy(max_sections=4, max_same_entity_sections=2)
+    policy["entity_aliases"] = {
+        "openai": ["openai", "chatgpt", "gpt-", "codex"],
+        "anthropic": ["anthropic", "claude", "claude code"],
+        "google": ["google", "gemini"],
+    }
+    candidates = [
+        {
+            **_candidate("openai_codex", 99),
+            "title": "OpenAI Codex Chrome integration",
+            "source_name": "OpenAI Blog",
+        },
+        {
+            **_candidate("openai_gpt", 98),
+            "title": "GPT-5.5 Instant reaches more developers",
+            "source_name": "The Verge AI",
+        },
+        {
+            **_candidate("openai_chatgpt", 97),
+            "title": "ChatGPT ads and API rollout",
+            "source_name": "TechCrunch AI",
+        },
+        {
+            **_candidate("claude_code", 90, topic="tooling"),
+            "title": "Claude Code commands developers are adopting",
+            "source_name": "Reddit ClaudeCode",
+        },
+        {
+            **_candidate("gemini", 80),
+            "title": "Google Gemini workspace automation",
+            "source_name": "Google AI Blog",
+        },
+    ]
+
+    selected = select_editorial_clusters(candidates, policy)
+
+    assert [candidate["id"] for candidate in selected] == [
+        "openai_codex",
+        "openai_gpt",
+        "claude_code",
+        "gemini",
+    ]
+
+
 def test_select_editorial_clusters_backfills_image_candidates_after_topic_quota():
     policy = _policy(
         max_sections=5,

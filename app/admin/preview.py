@@ -19,6 +19,7 @@ from app.admin.policy_admin import merge_with_options
 from app.rendering.jinja_renderer import JinjaRenderer
 
 TEMPLATES_DIR = str(Path(__file__).resolve().parents[2] / "templates")
+_VALID_OUTPUT_STYLES = {"newsstream", "signal_briefing"}
 
 # Mock fixtures used when no DB report exists / DB unreachable
 _MOCK_TITLES = [
@@ -60,6 +61,12 @@ def _mock_section(idx: int) -> dict[str, Any]:
         "fact_summary": "이 섹션은 미리보기 모드에서 합성된 데이터입니다.",
         "social_signal_summary": "",
         "inference_summary": "",
+        "key_updates": [
+            f"{title} 관련 첫 번째 흐름을 확인합니다.",
+            "실제 실행 시 수집 기사 단위로 주요 소식이 분해됩니다.",
+        ],
+        "image_detail_hint": "실제 기사 이미지가 있으면 확인 포인트가 표시됩니다.",
+        "tags": ["preview", "signal"],
         "importance_score": 80.0 - idx * 2,
         "verification_status": "official_confirmed" if idx == 0 else "trusted_media_only",
         "sources_json": [
@@ -83,6 +90,16 @@ def _mock_report(date_kst: str | None) -> tuple[dict[str, Any], list[dict[str, A
             "ai_relevant": 0,
             "clusters": 0,
             "verified": 0,
+            "main_event": "미리보기 데이터로 출력 형식만 확인 중입니다.",
+            "top_keywords": ["preview", "output", "signal"],
+            "signal_axes": ["제품", "개발자 도구"],
+            "today_temperature": [
+                "미리보기에서는 실제 수집 온도를 계산하지 않습니다.",
+                "실행 후에는 섹션 중요도와 소셜 신호를 기반으로 표시됩니다.",
+            ],
+            "action_items": [
+                "원하는 출력 형식을 선택한 뒤 Run으로 실제 생성을 시작하세요.",
+            ],
         },
     }
     return report, []
@@ -142,6 +159,9 @@ async def _hydrate_from_db(
                 "fact_summary": rs.fact_summary,
                 "social_signal_summary": rs.social_signal_summary,
                 "inference_summary": rs.inference_summary,
+                "key_updates": [],
+                "image_detail_hint": None,
+                "tags": [],
                 "importance_score": rs.importance_score or 0.0,
                 "verification_status": "unverified",
                 "sources_json": rs.sources_json or [],
@@ -203,10 +223,16 @@ def render_preview(
     report_data["stats"]["clusters"] = len(sections_data)
 
     output_theme = (opts.get("output_theme") if isinstance(opts, dict) else None) or "dark"
+    output_style = (opts.get("output_style") if isinstance(opts, dict) else None) or "newsstream"
+    if str(output_style) not in _VALID_OUTPUT_STYLES:
+        raise ValueError(f"output_style must be one of {sorted(_VALID_OUTPUT_STYLES)}")
 
     renderer = JinjaRenderer(templates_dir=TEMPLATES_DIR)
     return renderer.render_report(
-        report_data, sections_data, output_theme=output_theme
+        report_data,
+        sections_data,
+        output_theme=output_theme,
+        output_style=str(output_style),
     )
 
 

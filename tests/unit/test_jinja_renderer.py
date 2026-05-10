@@ -117,3 +117,37 @@ def test_newsroom_white_theme_is_available_without_replacing_existing_themes():
     assert "var themes = ['light', 'dark', 'newsroom-white'];" in html
     assert "뉴스룸 화이트로 전환" in html
     assert "기본 라이트 모드로 전환" in html
+
+
+def test_signal_briefing_output_style_uses_briefing_template():
+    renderer = make_renderer()
+    html = renderer.render_report(
+        make_report(
+            stats={
+                "total_sources": 3,
+                "ai_relevant": 3,
+                "clusters": 1,
+                "verified": 1,
+                "top_keywords": ["Claude", "tooling"],
+                "main_event": "개발자 도구 신호 확대",
+                "today_temperature": ["개발자 도구 섹션이 강했습니다."],
+                "action_items": ["원문 릴리스 노트를 확인하세요."],
+            }
+        ),
+        sections=[
+            {
+                "title": "Claude Code와 개발자 도구 신호가 확대",
+                "fact_summary": "공식 릴리스와 커뮤니티 반응이 함께 관찰됐습니다.",
+                "importance_score": 0.8,
+                "key_updates": ["CLI 사용 사례 증가", "커뮤니티 논의 확산"],
+                "tags": ["tooling"],
+                "sources_json": [],
+            }
+        ],
+        output_style="signal_briefing",
+    )
+
+    assert "<!DOCTYPE html>" in html
+    assert "Signal Briefing" in html
+    assert "오늘의 온도" in html
+    assert "행동으로 옮길 것" in html

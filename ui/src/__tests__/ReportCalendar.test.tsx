@@ -221,7 +221,7 @@ describe("ReportCalendar — tab persistence (TC-4)", () => {
       version: number;
       state: { calendarTab?: string };
     };
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.state.calendarTab).toBe("heatmap");
   });
 

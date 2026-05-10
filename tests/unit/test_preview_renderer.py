@@ -107,3 +107,17 @@ def test_render_preview_propagates_output_theme_override():
     match = _HTML_TAG_THEME.search(html)
     assert match is not None
     assert match.group(1) == "newsroom-white"
+
+
+def test_render_preview_signal_briefing_output_style():
+    html = render_preview(
+        options={"target_sections": 2, "output_style": "signal_briefing"}
+    )
+    assert "Signal Briefing" in html
+    assert "오늘의 온도" in html
+    assert html.count('class="section-card"') == 2
+
+
+def test_render_preview_invalid_output_style_raises():
+    with pytest.raises(ValueError):
+        render_preview(options={"output_style": "unknown"})

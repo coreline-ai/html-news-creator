@@ -49,6 +49,11 @@ describe("Settings page", () => {
     fireEvent.click(screen.getByTestId("settings-output-theme-dark"));
     expect(useAppStore.getState().runOptions.output_theme).toBe("dark");
 
+    fireEvent.click(screen.getByTestId("settings-output-style-signal_briefing"));
+    expect(useAppStore.getState().runOptions.output_style).toBe(
+      "signal_briefing",
+    );
+
     fireEvent.change(screen.getByTestId("settings-language"), {
       target: { value: "en" },
     });

@@ -41,12 +41,14 @@ report_selection:
   max_community_sections: 1
   max_same_source_name: 2
   max_same_source_tier_ratio: 0.75
+  max_same_entity_sections: 4
   backfill_min_section_score: 35
   backfill_require_image: false
   backfill_relax_topic_quotas: true
   backfill_max_community_sections: 10
   backfill_max_same_source_name: 5
   backfill_max_same_source_tier_ratio: 1.0
+  backfill_max_same_entity_sections: 4
   noise_singleton_backfill_enabled: true
   max_noise_singleton_backfill_clusters: 10
   prefer_mainstream_first: true
@@ -102,3 +104,24 @@ source_aliases:
     - developer
   community:
     - community
+
+entity_aliases:
+  openai:
+    - openai
+    - chatgpt
+    - gpt-
+    - codex
+  anthropic:
+    - anthropic
+    - claude
+    - claude code
+  google:
+    - google
+    - gemini
+    - deepmind
+  meta:
+    - meta
+    - llama
+  microsoft:
+    - microsoft
+    - copilot

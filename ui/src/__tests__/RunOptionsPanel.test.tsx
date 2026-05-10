@@ -76,6 +76,26 @@ describe("RunOptionsPanel (TC-3.1)", () => {
     expect(sw).toHaveAttribute("aria-checked", "true");
   });
 
+  it("updates output_style from the Output group", () => {
+    render(
+      <AllProviders>
+        <RunOptionsPanel />
+      </AllProviders>,
+    );
+    const d = screen.getByTestId("group-D");
+    fireEvent.click(within(d).getByRole("button", { expanded: false }));
+
+    const signal = within(d).getByRole("radio", {
+      name: /시그널 브리핑형/i,
+    });
+    fireEvent.click(signal);
+
+    expect(useAppStore.getState().runOptions.output_style).toBe(
+      "signal_briefing",
+    );
+    expect(signal).toHaveAttribute("aria-checked", "true");
+  });
+
   it("resets options back to defaults", () => {
     useAppStore.setState({
       runOptions: { ...DEFAULT_RUN_OPTIONS, target_sections: 3, dry_run: true },

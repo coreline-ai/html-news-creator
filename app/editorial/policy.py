@@ -44,12 +44,14 @@ DEFAULT_POLICY: dict[str, Any] = {
         "max_community_sections": 1,
         "max_same_source_name": 2,
         "max_same_source_tier_ratio": 0.75,
+        "max_same_entity_sections": 4,
         "backfill_min_section_score": 35,
         "backfill_require_image": False,
         "backfill_relax_topic_quotas": True,
         "backfill_max_community_sections": 2,
         "backfill_max_same_source_name": 5,
         "backfill_max_same_source_tier_ratio": 0.9,
+        "backfill_max_same_entity_sections": 4,
         "prefer_mainstream_first": True,
     },
     "scoring_weights": {
@@ -84,6 +86,13 @@ DEFAULT_POLICY: dict[str, Any] = {
         "research": ["research", "paper_arxiv", "arxiv"],
         "developer_signal": ["developer_signal", "github", "official_github", "developer"],
         "community": ["community"],
+    },
+    "entity_aliases": {
+        "openai": ["openai", "chatgpt", "gpt-", "codex"],
+        "anthropic": ["anthropic", "claude", "claude code"],
+        "google": ["google", "gemini", "deepmind"],
+        "meta": ["meta", "llama"],
+        "microsoft": ["microsoft", "copilot"],
     },
 }
 

@@ -111,7 +111,10 @@ describe("NewReport — runtime status guard", () => {
     fireEvent.click(screen.getByTestId("run-button"));
 
     await waitFor(() => {
-      expect(runPayload).toMatchObject({ date: "2026-04-30" });
+      expect(runPayload).toMatchObject({
+        date: "2026-04-30",
+        output_style: "newsstream",
+      });
     });
   });
 

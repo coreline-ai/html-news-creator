@@ -81,6 +81,28 @@ def test_github_source_is_developer_signal_not_main_headline():
     assert result["eligible_for_main"] is True
 
 
+def test_reddit_claudecode_source_is_developer_signal_tooling():
+    result = rank_item(
+        {
+            "source_id": "Reddit ClaudeCode",
+            "source_type": "rss",
+            "title": "20 Claude Code commands worth using for coding agents",
+            "url": "https://www.reddit.com/r/ClaudeCode/comments/example/",
+        },
+        source={
+            "name": "Reddit ClaudeCode",
+            "source_type": "rss",
+            "trust_level": "community",
+            "source_tier": "developer_signal",
+            "content_category": "developer_signal",
+        },
+    )
+
+    assert result["source_tier"] == "developer_signal"
+    assert result["topic_type"] == "tooling"
+    assert result["eligible_for_main"] is True
+
+
 def test_complete_main_image_boosts_editorial_score():
     source = {"source_type": "trusted_media", "source_tier": "mainstream"}
     base_item = {

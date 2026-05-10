@@ -37,9 +37,10 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
       version: number;
       state: { runOptions: RunOptions; activeRun: ActiveRun | null };
     };
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.state.runOptions.target_sections).toBe(7);
     expect(parsed.state.runOptions.dry_run).toBe(true);
+    expect(parsed.state.runOptions.output_style).toBe("newsstream");
     expect(parsed.state.activeRun).toBeNull();
     // theme must NOT be in the persisted slice — ThemeToggle owns the
     // legacy "theme" key.
@@ -63,7 +64,7 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
       version: number;
       state: { runOptions: RunOptions; activeRun: ActiveRun | null };
     };
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
     expect(parsed.state.activeRun).toEqual(activeRun);
 
     useAppStore.setState({ activeRun: null });
@@ -95,6 +96,31 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
     expect(opts.target_sections).toBe(12);
     expect(opts.dry_run).toBe(true);
     expect(opts.min_section_score).toBe(50);
+    expect(opts.output_style).toBe("newsstream");
+  });
+
+  it("migrates older runOptions without output_style", async () => {
+    window.localStorage.setItem(
+      APP_KEY,
+      JSON.stringify({
+        version: 1,
+        state: {
+          runOptions: {
+            ...DEFAULT_RUN_OPTIONS,
+            output_style: undefined,
+            target_sections: 9,
+          },
+          activeRun: null,
+          calendarTab: "month",
+        },
+      }),
+    );
+
+    await useAppStore.persist.rehydrate();
+
+    const opts = useAppStore.getState().runOptions;
+    expect(opts.target_sections).toBe(9);
+    expect(opts.output_style).toBe("newsstream");
   });
 
   it("resetOptions reverts to defaults and updates the persisted blob", () => {

@@ -27,6 +27,9 @@ EXPANDED_SOURCE_NAMES = {
     "Reddit MachineLearning",
     "Reddit Artificial",
     "Reddit OpenAI",
+    "Reddit ClaudeCode",
+    "Reddit ClaudeAI",
+    "Reddit Anthropic",
     "Reddit LocalLLaMA",
 }
 EXCLUDED_DEFAULT_SOURCE_NAMES = {
@@ -163,6 +166,8 @@ def test_reddit_ai_sources_are_community_capped_candidates():
         "Reddit MachineLearning",
         "Reddit Artificial",
         "Reddit OpenAI",
+        "Reddit ClaudeAI",
+        "Reddit Anthropic",
         "Reddit LocalLLaMA",
     }
 
@@ -172,6 +177,20 @@ def test_reddit_ai_sources_are_community_capped_candidates():
         assert source["source_tier"] == "community"
         assert source["trust_level"] == "community"
         assert source["max_items"] <= 10
+
+
+def test_reddit_claudecode_is_registered_as_developer_signal():
+    sources = {source["name"]: source for source in load_sources()}
+
+    source = sources["Reddit ClaudeCode"]
+
+    assert source["source_type"] == "rss"
+    assert source["url"] == "https://www.reddit.com/r/ClaudeCode/.rss"
+    assert source["trust_level"] == "community"
+    assert source["source_tier"] == "developer_signal"
+    assert source["content_category"] == "developer_signal"
+    assert source["max_items"] <= 12
+    assert {"claude code", "coding agent"} <= set(source["keywords"])
 
 
 def test_meta_ai_blog_remains_registered():

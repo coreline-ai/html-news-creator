@@ -122,6 +122,19 @@ def test_build_argv_invalid_output_theme_dropped():
     assert "--output-theme" not in argv
 
 
+def test_build_argv_output_style_signal_briefing():
+    argv = _build_argv({"output_style": "signal_briefing"})
+    assert "--output-style" in argv
+    idx = argv.index("--output-style")
+    assert argv[idx + 1] == "signal_briefing"
+
+
+def test_build_argv_invalid_output_style_dropped():
+    """Bad style values are warned/dropped instead of reaching the CLI."""
+    argv = _build_argv({"output_style": "borrowed-style"})
+    assert "--output-style" not in argv
+
+
 def test_build_argv_source_types_carried_via_source_filter():
     argv = _build_argv({"source_types": ["rss", "github"]})
     payload = _override_payload(argv)

@@ -11,6 +11,7 @@ import {
   type SectionQuotas,
   type SourceType,
   type RunMode,
+  type OutputStyle,
   type OutputTheme,
   type DeployTarget,
 } from "@/lib/store";
@@ -36,8 +37,25 @@ const GROUPS: GroupDef[] = [
   { id: "A", label: "Execution", description: "Date, mode, range, dry-run, source types" },
   { id: "B", label: "Editorial", description: "Sections, scoring, quotas, signals" },
   { id: "C", label: "Sources", description: "Pipeline source registry" },
-  { id: "D", label: "Output", description: "Theme, language, format" },
+  { id: "D", label: "Output", description: "Style, theme, language, format" },
   { id: "E", label: "Publishing", description: "Deploy target, notifications, schedule" },
+];
+
+const OUTPUT_STYLES: {
+  value: OutputStyle;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "newsstream",
+    label: "뉴스스트림형",
+    description: "현재 기본 리포트 형식",
+  },
+  {
+    value: "signal_briefing",
+    label: "시그널 브리핑형",
+    description: "흐름·키워드·액션 중심 Beta",
+  },
 ];
 
 export function RunOptionsPanel() {
@@ -439,6 +457,50 @@ function OutputGroup({
   const themes: OutputTheme[] = ["dark", "light", "newsroom-white"];
   return (
     <>
+      <Field
+        id="opt-output-style"
+        label="Output style"
+        hint="실행까지 전달됩니다. 기본은 뉴스스트림형입니다."
+      >
+        <div
+          className="grid gap-2"
+          role="radiogroup"
+          aria-labelledby="opt-output-style-label"
+        >
+          {OUTPUT_STYLES.map((style) => {
+            const active = runOptions.output_style === style.value;
+            return (
+              <button
+                key={style.value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setOption("output_style", style.value)}
+                className={cn(
+                  "rounded-lg border px-3 py-2 text-left transition-colors",
+                  active
+                    ? "bg-primary text-primary-foreground border-transparent"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className="block text-xs font-semibold">
+                  {style.label}
+                </span>
+                <span
+                  className={cn(
+                    "mt-0.5 block text-[11px]",
+                    active
+                      ? "text-primary-foreground/80"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {style.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
       <Field id="opt-output-theme" label="Output theme">
         <div className="flex gap-2">
           {themes.map((t) => {
@@ -576,7 +638,11 @@ function Field({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <Label htmlFor={id} className="text-foreground text-xs font-medium">
+        <Label
+          id={`${id}-label`}
+          htmlFor={id}
+          className="text-foreground text-xs font-medium"
+        >
           {label}
         </Label>
         {previewOnly ? <PreviewOnlyBadge /> : null}

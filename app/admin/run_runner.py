@@ -46,7 +46,8 @@ _SUPPORTED_OPTION_KEYS: frozenset[str] = frozenset(
         # Runtime knobs consumed by ``_supervise`` (not forwarded as CLI flags
         # but explicitly handled — kept here so they don't trigger warnings).
         "max_runtime_sec",
-        # Output-side knob — flows through ``--output-theme``.
+        # Output-side knobs — flow through ``--output-style`` / ``--output-theme``.
+        "output_style",
         "output_theme",
         # Editorial policy knobs — folded into a single
         # ``--policy-override-json`` payload for the subprocess.
@@ -71,6 +72,10 @@ _SUPPORTED_OPTION_KEYS: frozenset[str] = frozenset(
 # become the dark default.
 _VALID_OUTPUT_THEMES: frozenset[str] = frozenset(
     {"light", "dark", "newsroom-white"}
+)
+
+_VALID_OUTPUT_STYLES: frozenset[str] = frozenset(
+    {"newsstream", "signal_briefing"}
 )
 
 # Per-line history retained per run (so a late SSE subscriber can replay)
@@ -213,6 +218,17 @@ def _build_argv(options: dict[str, Any]) -> list[str]:
         argv += ["--to-step", str(to_step)]
     if options.get("dry_run"):
         argv += ["--dry-run"]
+
+    output_style = options.get("output_style")
+    if output_style:
+        if str(output_style) in _VALID_OUTPUT_STYLES:
+            argv += ["--output-style", str(output_style)]
+        else:
+            logger.warning(
+                "invalid_output_style",
+                value=str(output_style),
+                allowed=sorted(_VALID_OUTPUT_STYLES),
+            )
 
     output_theme = options.get("output_theme")
     if output_theme:

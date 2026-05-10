@@ -5,6 +5,7 @@ import { todayKstISO } from "@/lib/kst";
 export type Theme = "dark" | "light";
 export type PreviewMode = "live" | "section";
 export type RunMode = "full" | "rss-only";
+export type OutputStyle = "newsstream" | "signal_briefing";
 export type OutputTheme = "dark" | "light" | "newsroom-white";
 export type SourceType = "rss" | "github" | "arxiv" | "website";
 export type DeployTarget = "netlify" | "local-only";
@@ -42,6 +43,7 @@ export interface RunOptions {
   community_max: number;
 
   // -------------------------------------------------------- D. Output
+  output_style: OutputStyle;
   output_theme: OutputTheme;
   language: string;
   format: "html" | "markdown";
@@ -74,6 +76,7 @@ export const DEFAULT_RUN_OPTIONS: RunOptions = {
   arxiv_max: 1,
   community_max: 1,
 
+  output_style: "newsstream",
   output_theme: "dark",
   language: "ko",
   format: "html",
@@ -109,7 +112,7 @@ const THEME_STORAGE_KEY = "theme";
 
 // Bumped together with the persisted shape below. If the persisted run
 // options shape changes incompatibly, bump this and add a `migrate` hook.
-const PERSIST_VERSION = 1;
+const PERSIST_VERSION = 2;
 
 function readInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -151,6 +154,49 @@ interface PersistedAppState {
   calendarTab: CalendarTab;
 }
 
+function mergeRunOptionsWithDefaults(value: unknown): RunOptions {
+  const candidate =
+    value && typeof value === "object" ? (value as Partial<RunOptions>) : {};
+  const candidateQuotas =
+    candidate.quotas && typeof candidate.quotas === "object"
+      ? candidate.quotas
+      : {};
+  return {
+    ...DEFAULT_RUN_OPTIONS,
+    ...candidate,
+    quotas: {
+      ...DEFAULT_RUN_OPTIONS.quotas,
+      ...candidateQuotas,
+    },
+  };
+}
+
+function migratePersistedState(
+  persistedState: unknown,
+): PersistedAppState {
+  if (!persistedState || typeof persistedState !== "object") {
+    return {
+      runOptions: { ...DEFAULT_RUN_OPTIONS },
+      activeRun: null,
+      calendarTab: "month",
+    };
+  }
+  const state = persistedState as Partial<PersistedAppState>;
+  const activeRun =
+    state.activeRun && typeof state.activeRun === "object"
+      ? {
+          ...state.activeRun,
+          options: mergeRunOptionsWithDefaults(state.activeRun.options),
+        }
+      : null;
+  return {
+    ...state,
+    runOptions: mergeRunOptionsWithDefaults(state.runOptions),
+    activeRun,
+    calendarTab: state.calendarTab ?? "month",
+  };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -190,6 +236,7 @@ export const useAppStore = create<AppState>()(
       name: "news-studio-options",
       version: PERSIST_VERSION,
       storage: createJSONStorage(() => window.localStorage),
+      migrate: migratePersistedState,
       // Only persist runOptions; theme has its own writer, previewMode is
       // ephemeral (the Review screen has its own persisted store).
       partialize: (state): PersistedAppState => ({

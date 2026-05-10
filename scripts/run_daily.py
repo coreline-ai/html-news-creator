@@ -22,6 +22,8 @@ STEPS = [
 ]
 
 DEFAULT_TARGET_SECTIONS = 6
+DEFAULT_OUTPUT_STYLE = "newsstream"
+SIGNAL_BRIEFING_OUTPUT_STYLE = "signal_briefing"
 
 
 def _json_dict(value) -> dict:
@@ -778,7 +780,51 @@ async def run_image_analyze(run_date: date, dry_run: bool, logger) -> dict:
     return {}
 
 
-async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
+def _normalize_output_style(value: str | None) -> str:
+    return (
+        SIGNAL_BRIEFING_OUTPUT_STYLE
+        if value == SIGNAL_BRIEFING_OUTPUT_STYLE
+        else DEFAULT_OUTPUT_STYLE
+    )
+
+
+def _section_output_meta(section: dict, output_style: str) -> dict:
+    meta: dict = {"output_style": output_style}
+    if output_style == SIGNAL_BRIEFING_OUTPUT_STYLE:
+        key_updates = section.get("key_updates")
+        tags = section.get("tags")
+        meta["key_updates"] = key_updates if isinstance(key_updates, list) else []
+        meta["image_detail_hint"] = section.get("image_detail_hint")
+        meta["tags"] = tags if isinstance(tags, list) else []
+    return meta
+
+
+def _extract_section_output_meta(tags_json) -> dict:
+    result = {
+        "key_updates": [],
+        "image_detail_hint": None,
+        "tags": [],
+    }
+    if not isinstance(tags_json, list):
+        return result
+    for entry in tags_json:
+        if not isinstance(entry, dict):
+            continue
+        if "key_updates" in entry and isinstance(entry["key_updates"], list):
+            result["key_updates"] = entry["key_updates"]
+        if "image_detail_hint" in entry:
+            result["image_detail_hint"] = entry["image_detail_hint"]
+        if "tags" in entry and isinstance(entry["tags"], list):
+            result["tags"] = entry["tags"]
+    return result
+
+
+async def run_generate(
+    run_date: date,
+    dry_run: bool,
+    logger,
+    output_style: str | None = None,
+) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import (
         Cluster,
@@ -806,8 +852,12 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
     )
     from sqlalchemy import delete, select, update
 
+    style_value = _normalize_output_style(output_style)
+
     async def _write_fallback_report(reason: str) -> dict:
         title = f"AI 트렌드 리포트 {run_date}: 수집 결과 부족"
+        if style_value == SIGNAL_BRIEFING_OUTPUT_STYLE:
+            title = f"AI 시그널 브리핑 {run_date}: 수집 결과 부족"
         summary = (
             "해당 날짜에 리포트로 묶을 AI 뉴스 클러스터가 충분하지 않아 "
             "폴백 리포트를 생성했습니다. 수집원·프록시·분류 로그를 확인하세요."
@@ -821,8 +871,15 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
                     db_report.title = title
                     db_report.status = "draft"
                     db_report.summary_ko = summary
-                    db_report.stats_json = {"fallback": True, "reason": reason}
-                    db_report.method_json = {"fallback": reason}
+                    db_report.stats_json = {
+                        "fallback": True,
+                        "reason": reason,
+                        "output_style": style_value,
+                    }
+                    db_report.method_json = {
+                        "fallback": reason,
+                        "output_style": style_value,
+                    }
                     db_report.updated_at = datetime.now(timezone.utc)
                     await session.execute(
                         delete(ReportSection).where(
@@ -835,8 +892,15 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
                         title=title,
                         status="draft",
                         summary_ko=summary,
-                        stats_json={"fallback": True, "reason": reason},
-                        method_json={"fallback": reason},
+                        stats_json={
+                            "fallback": True,
+                            "reason": reason,
+                            "output_style": style_value,
+                        },
+                        method_json={
+                            "fallback": reason,
+                            "output_style": style_value,
+                        },
                     )
                     session.add(db_report)
                 await session.flush()
@@ -871,7 +935,7 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
 
     editorial_policy = load_policy()
     editorial_ranker = EditorialRanker(editorial_policy)
-    section_gen = SectionGenerator()
+    section_gen = SectionGenerator(output_style=style_value)
     cluster_candidates = []
     sections_with_cluster = []
 
@@ -1091,7 +1155,9 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
     assembler = ReportAssembler()
     title_gen = TitleGenerator()
     sections_summary = " ".join(s.get("summary_ko", "") for s in sections[:5])
-    if sections_summary:
+    if style_value == SIGNAL_BRIEFING_OUTPUT_STYLE:
+        title = f"AI 시그널 브리핑 {run_date}"
+    elif sections_summary:
         titles = await title_gen.generate_titles(sections_summary)
         title = titles[0] if titles else f"AI 트렌드 리포트 {run_date}"
     else:
@@ -1101,6 +1167,7 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
         run_date=run_date,
         title=title,
         sections=sections,
+        output_style=style_value,
         stats={
             "candidate_clusters": len(cluster_candidates),
             "selected_clusters": len(selected_candidates),
@@ -1109,6 +1176,7 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
             "section_shortfall": max(0, target_sections - len(selected_candidates)),
             "source_image_sections": source_image_sections,
             "generated_image_fallbacks": generated_image_fallbacks,
+            "output_style": style_value,
         },
     )
     if len(selected_candidates) < target_sections:
@@ -1122,6 +1190,7 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
 
     method_json = {
         "editorial_policy": "data/editorial_policy.yaml",
+        "output_style": style_value,
         "report_selection": editorial_policy.get("report_selection", {}),
         "section_quotas": editorial_policy.get("section_quotas", {}),
     }
@@ -1177,7 +1246,10 @@ async def run_generate(run_date: date, dry_run: bool, logger) -> dict:
                     importance_score=section.get("importance_score", 0.0),
                     sources_json=section.get("sources_json", []),
                     image_evidence_json=image_evidence,
-                    tags_json=[{"editorial": section.get("editorial_json", {})}],
+                    tags_json=[
+                        {"editorial": section.get("editorial_json", {})},
+                        _section_output_meta(section, style_value),
+                    ],
                 )
                 session.add(rs)
                 # 클러스터 제목도 LLM이 생성한 제목으로 갱신
@@ -1198,6 +1270,7 @@ async def run_render(
     dry_run: bool,
     logger,
     output_theme: str | None = None,
+    output_style: str | None = None,
 ) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import Report, ReportSection, Verification, RawItem, AnalysisResult
@@ -1209,6 +1282,7 @@ async def run_render(
     report_data = None
     sections_data = []
     theme_value = output_theme or "dark"
+    style_value = _normalize_output_style(output_style)
 
     def _is_allowed_render_image(evidence: dict) -> bool:
         image_url = evidence.get("url", "")
@@ -1223,6 +1297,10 @@ async def run_render(
             select(Report).where(Report.report_date == run_date)
         )
         if db_report:
+            if output_style is None:
+                style_value = _normalize_output_style(
+                    _json_dict(db_report.method_json).get("output_style")
+                )
             sections_rows = list(await session.scalars(
                 select(ReportSection)
                 .where(ReportSection.report_id == db_report.id)
@@ -1246,20 +1324,27 @@ async def run_render(
             ) or 0
             verified_count = len(verif_map)
 
+            render_stats = dict(db_report.stats_json or {})
+            render_stats.update(
+                {
+                    "total_sources": total_sources,
+                    "ai_relevant": ai_relevant,
+                    "clusters": len(sections_rows),
+                    "verified": verified_count,
+                    "output_style": style_value,
+                }
+            )
+
             report_data = {
                 "title": db_report.title,
                 "report_date": str(db_report.report_date),
                 "summary_ko": db_report.summary_ko or "",
                 "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-                "stats": {
-                    "total_sources": total_sources,
-                    "ai_relevant": ai_relevant,
-                    "clusters": len(sections_rows),
-                    "verified": verified_count,
-                },
+                "stats": render_stats,
             }
             sections_data = []
             for rs in sections_rows:
+                output_meta = _extract_section_output_meta(rs.tags_json)
                 image_evidence = rs.image_evidence_json or []
                 content_images = [
                     e["url"]
@@ -1288,6 +1373,9 @@ async def run_render(
                         "sources_json": rs.sources_json or [],
                         "content_image_urls": content_images,
                         "og_image_url": fallback_image,
+                        "key_updates": output_meta["key_updates"],
+                        "image_detail_hint": output_meta["image_detail_hint"],
+                        "tags": output_meta["tags"],
                         "category": "other",
                     }
                 )
@@ -1298,21 +1386,38 @@ async def run_render(
             "report_date": str(run_date),
             "summary_ko": "오늘의 AI 트렌드 리포트입니다.",
             "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
-            "stats": {"total_sources": 0, "ai_relevant": 0, "clusters": 0, "verified": 0},
+            "stats": {
+                "total_sources": 0,
+                "ai_relevant": 0,
+                "clusters": 0,
+                "verified": 0,
+                "output_style": style_value,
+            },
         }
 
     output_path = f"public/news/{run_date}-trend.html"
     if not dry_run:
         renderer.render_to_file(
-            report_data, sections_data, output_path, output_theme=theme_value
+            report_data,
+            sections_data,
+            output_path,
+            output_theme=theme_value,
+            output_style=style_value,
         )
     else:
         html = renderer.render_report(
-            report_data, sections_data, output_theme=theme_value
+            report_data,
+            sections_data,
+            output_theme=theme_value,
+            output_style=style_value,
         )
         logger.info("render_dry_run", html_length=len(html))
 
-    return {"output_path": output_path, "output_theme": theme_value}
+    return {
+        "output_path": output_path,
+        "output_theme": theme_value,
+        "output_style": style_value,
+    }
 
 
 async def run_publish(run_date: date, dry_run: bool, logger) -> dict:
@@ -1471,10 +1576,13 @@ async def run_pipeline(
     to_step: str,
     dry_run: bool,
     output_theme: str | None = None,
+    output_style: str | None = None,
 ) -> None:
     logger = get_logger(step="pipeline")
+    style_value = _normalize_output_style(output_style)
     logger.info("pipeline_start", date=str(run_date), mode=mode, from_step=from_step,
-                to_step=to_step, dry_run=dry_run, output_theme=output_theme or "dark")
+                to_step=to_step, dry_run=dry_run, output_theme=output_theme or "dark",
+                output_style=style_value)
 
     from_idx = STEPS.index(from_step)
     to_idx = STEPS.index(to_step)
@@ -1493,8 +1601,15 @@ async def run_pipeline(
             kwargs: dict = {}
             if step == "collect" and mode == "rss-only":
                 kwargs["source_types"] = ["rss", "website", "arxiv"]
+            if step == "generate":
+                kwargs["output_style"] = style_value
             if step == "render":
                 kwargs["output_theme"] = output_theme
+                kwargs["output_style"] = (
+                    style_value
+                    if output_style is not None or "generate" in steps_to_run
+                    else None
+                )
             result = await fn(run_date, dry_run, logger, **kwargs)
             if step == "generate" and not dry_run:
                 sections = result.get("sections")
@@ -1556,6 +1671,15 @@ async def run_pipeline(
         "the operator's per-run choice instead of the dark default."
     ),
 )
+@click.option(
+    "--output-style",
+    type=click.Choice([DEFAULT_OUTPUT_STYLE, SIGNAL_BRIEFING_OUTPUT_STYLE]),
+    default=None,
+    help=(
+        "Choose the report output structure for this run. Omit on render-only "
+        "runs to preserve the style stored in Report.method_json."
+    ),
+)
 def main(
     run_date_str,
     mode,
@@ -1565,6 +1689,7 @@ def main(
     policy_path,
     policy_override_json,
     output_theme,
+    output_style,
 ):
     """Run the daily AI trend report pipeline."""
     if run_date_str:
@@ -1595,6 +1720,7 @@ def main(
             to_step,
             dry_run,
             output_theme=output_theme,
+            output_style=output_style,
         )
     )
 
