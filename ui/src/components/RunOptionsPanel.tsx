@@ -45,27 +45,54 @@ const GROUPS: GroupDef[] = [
 
 const VISUAL_THEME_LABELS: Record<
   VisualTheme,
-  { label: string; description: string }
+  {
+    label: string;
+    description: string;
+    swatchClassName: string;
+    selectedClassName: string;
+  }
 > = {
   linear_command_center: {
     label: "Linear Command Center",
     description: "Dense operations board with clear signal hierarchy.",
+    swatchClassName: "border-blue-300/40 bg-blue-500",
+    selectedClassName:
+      "border-blue-500/70 bg-blue-500/10 text-blue-950 ring-1 ring-blue-500/40 dark:text-blue-100",
   },
   anthropic_research_journal: {
     label: "Anthropic Research Journal",
     description: "Editorial research notes with calm reading rhythm.",
+    swatchClassName: "border-amber-200/50 bg-amber-600",
+    selectedClassName:
+      "border-amber-600/70 bg-amber-500/10 text-amber-950 ring-1 ring-amber-600/35 dark:text-amber-100",
   },
   cursor_warm_studio: {
     label: "Cursor Warm Studio",
     description: "Warm developer workspace for product/tooling briefs.",
+    swatchClassName: "border-orange-200/50 bg-orange-500",
+    selectedClassName:
+      "border-orange-500/70 bg-orange-500/10 text-orange-950 ring-1 ring-orange-500/35 dark:text-orange-100",
   },
   hyperstudio_terminal_ops: {
     label: "Hyperstudio Terminal Ops",
     description: "Default Refero console theme for fast scanning.",
+    swatchClassName: "border-yellow-200/50 bg-yellow-400",
+    selectedClassName:
+      "border-yellow-500/70 bg-yellow-500/10 text-yellow-950 ring-1 ring-yellow-500/35 dark:text-yellow-100",
+  },
+  hyperstudio_solid_dark: {
+    label: "Hyperstudio Solid Dark",
+    description: "No-gradient pure dark console with white mode support.",
+    swatchClassName: "border-zinc-500 bg-zinc-950 ring-1 ring-zinc-50/70",
+    selectedClassName:
+      "border-zinc-500 bg-zinc-950 text-zinc-50 ring-1 ring-zinc-500/70",
   },
   mercury_twilight_console: {
     label: "Mercury Twilight Console",
     description: "Twilight-grade console for high-contrast signal review.",
+    swatchClassName: "border-violet-200/50 bg-violet-500",
+    selectedClassName:
+      "border-violet-500/70 bg-violet-500/10 text-violet-950 ring-1 ring-violet-500/35 dark:text-violet-100",
   },
 };
 
@@ -252,7 +279,7 @@ function ExecutionGroup({
       <Field id="opt-mode" label="Mode" hint="full = run all 9 stages.">
         <select
           id="opt-mode"
-          className="bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
+          className="select-control bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
           value={runOptions.mode}
           onChange={(e) => setOption("mode", e.target.value as RunMode)}
         >
@@ -573,24 +600,27 @@ function OutputGroup({
                   aria-checked={active}
                   onClick={() => setOption("visual_theme", theme)}
                   className={cn(
-                    "rounded-lg border px-3 py-2 text-left transition-colors",
+                    "flex items-start gap-3 rounded-lg border px-3 py-2 text-left transition-colors",
                     active
-                      ? "bg-primary text-primary-foreground border-transparent"
+                      ? meta.selectedClassName
                       : "border-border bg-background text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <span className="block text-xs font-semibold">
-                    {meta.label}
-                  </span>
                   <span
+                    data-testid={`visual-theme-swatch-${theme}`}
+                    aria-hidden="true"
                     className={cn(
-                      "mt-0.5 block text-[11px]",
-                      active
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground",
+                      "mt-1.5 size-2.5 shrink-0 rounded-full border",
+                      meta.swatchClassName,
                     )}
-                  >
-                    {meta.description}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-current">
+                      {meta.label}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-current">
+                      {meta.description}
+                    </span>
                   </span>
                 </button>
               );
@@ -605,7 +635,7 @@ function OutputGroup({
       <Field id="opt-language" label="Language">
         <select
           id="opt-language"
-          className="bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
+          className="select-control bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
           value={runOptions.language}
           onChange={(e) => setOption("language", e.target.value)}
         >
@@ -616,7 +646,7 @@ function OutputGroup({
       <Field id="opt-format" label="Format" previewOnly>
         <select
           id="opt-format"
-          className="bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
+          className="select-control bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
           value={runOptions.format}
           onChange={(e) =>
             setOption("format", e.target.value as RunOptions["format"])

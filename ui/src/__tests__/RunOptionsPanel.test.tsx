@@ -40,6 +40,16 @@ describe("RunOptionsPanel (TC-3.1)", () => {
     expect(within(c).queryByText(/37 sources active/i)).toBeNull();
   });
 
+  it("uses the shared select control so dropdown chevrons are inset", () => {
+    render(
+      <AllProviders>
+        <RunOptionsPanel />
+      </AllProviders>,
+    );
+
+    expect(screen.getByLabelText(/^mode$/i)).toHaveClass("select-control");
+  });
+
   it("expands Sources group when its trigger is clicked", () => {
     render(
       <AllProviders>
@@ -119,12 +129,33 @@ describe("RunOptionsPanel (TC-3.1)", () => {
     const themeGroup = within(d).getByRole("radiogroup", {
       name: /refero visual theme/i,
     });
-    expect(within(themeGroup).getAllByRole("radio")).toHaveLength(5);
+    expect(within(themeGroup).getAllByRole("radio")).toHaveLength(6);
     expect(
       within(themeGroup).getByRole("radio", {
         name: /Hyperstudio Terminal Ops/i,
       }),
     ).toHaveAttribute("aria-checked", "true");
+    expect(
+      within(themeGroup).getByRole("radio", {
+        name: /Hyperstudio Solid Dark/i,
+      }),
+    ).toBeInTheDocument();
+    const solidDark = within(themeGroup).getByRole("radio", {
+      name: /Hyperstudio Solid Dark/i,
+    });
+    fireEvent.click(solidDark);
+    expect(solidDark).toHaveClass("bg-zinc-950");
+    expect(
+      screen.getByTestId("visual-theme-swatch-hyperstudio_solid_dark"),
+    ).toHaveClass("bg-zinc-950");
+    expect(within(solidDark).getByText("Hyperstudio Solid Dark")).toHaveClass(
+      "text-current",
+    );
+    expect(
+      within(solidDark).getByText(
+        "No-gradient pure dark console with white mode support.",
+      ),
+    ).toHaveClass("text-current");
 
     fireEvent.click(
       within(themeGroup).getByRole("radio", {

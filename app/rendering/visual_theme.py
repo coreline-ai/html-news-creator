@@ -7,6 +7,7 @@ VISUAL_THEME_ALLOWLIST: frozenset[str] = frozenset(
         "anthropic_research_journal",
         "cursor_warm_studio",
         "hyperstudio_terminal_ops",
+        "hyperstudio_solid_dark",
         "mercury_twilight_console",
     }
 )

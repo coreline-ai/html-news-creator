@@ -200,7 +200,7 @@ export function AddSourceDialog({ open, onOpenChange }: AddSourceDialogProps) {
                   id="add-source-type"
                   value={sourceType}
                   onChange={(e) => setSourceType(e.target.value)}
-                  className="border-input bg-background text-foreground focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
+                  className="select-control border-input bg-background text-foreground focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
                   aria-invalid={Boolean(submitted && errors.source_type)}
                 >
                   {SOURCE_TYPES.map((t) => (
@@ -220,7 +220,7 @@ export function AddSourceDialog({ open, onOpenChange }: AddSourceDialogProps) {
                   id="add-source-tier"
                   value={sourceTier}
                   onChange={(e) => setSourceTier(e.target.value)}
-                  className="border-input bg-background text-foreground focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
+                  className="select-control border-input bg-background text-foreground focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
                   aria-invalid={Boolean(submitted && errors.source_tier)}
                 >
                   {SOURCE_TIERS.map((t) => (

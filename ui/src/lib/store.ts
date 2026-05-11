@@ -12,6 +12,7 @@ export type VisualTheme =
   | "anthropic_research_journal"
   | "cursor_warm_studio"
   | "hyperstudio_terminal_ops"
+  | "hyperstudio_solid_dark"
   | "mercury_twilight_console";
 export type SourceType = "rss" | "github" | "arxiv" | "website";
 export type DeployTarget = "netlify" | "local-only";
@@ -72,6 +73,7 @@ export const VISUAL_THEMES: VisualTheme[] = [
   "anthropic_research_journal",
   "cursor_warm_studio",
   "hyperstudio_terminal_ops",
+  "hyperstudio_solid_dark",
   "mercury_twilight_console",
 ];
 

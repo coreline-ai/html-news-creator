@@ -151,8 +151,11 @@ def test_signal_briefing_output_style_uses_briefing_template():
     assert "Signal Briefing" in html
     assert "Hyperstudio Terminal Ops" in html
     assert "font-size: 2.2em;" in html
-    assert "h1 { font-size: 1.7em; }" in html
-    assert ".metric span { color: var(--muted); font-size: 12px;" in html
+    assert "font-size: clamp(24px, 7vw, 29px);" in html
+    assert ".hero-summary { font-size: 14px; line-height: 1.62; }" in html
+    assert ".metric strong { font-size: clamp(18px, 5vw, 20px); }" in html
+    assert "font-size: clamp(9px, .9vw, 12px);" in html
+    assert "@container (max-width: 118px)" in html
     assert "핵심 기류" in html
     assert "후속 체크포인트" in html
 
@@ -197,6 +200,7 @@ def test_signal_briefing_visual_theme_presets_render_data_attribute():
         "anthropic_research_journal",
         "cursor_warm_studio",
         "hyperstudio_terminal_ops",
+        "hyperstudio_solid_dark",
         "mercury_twilight_console",
     ]
 
@@ -225,8 +229,65 @@ def test_signal_briefing_visual_theme_presets_define_distinct_tokens():
     assert '[data-visual-theme="anthropic_research_journal"]' in html
     assert '[data-visual-theme="cursor_warm_studio"]' in html
     assert '[data-visual-theme="hyperstudio_terminal_ops"]' in html
+    assert '[data-visual-theme="hyperstudio_solid_dark"]' in html
     assert '[data-visual-theme="mercury_twilight_console"]' in html
     assert "--visual-grid-size: 28px;" in html
     assert "--font-heading: Georgia, 'Times New Roman', serif;" in html
     assert "--radius: 18px;" in html
     assert "--visual-image-filter: saturate(.7) contrast(1.15) brightness(.72) hue-rotate(8deg);" in html
+
+
+def test_signal_briefing_hyperstudio_solid_dark_has_no_gradient_page_effects():
+    renderer = make_renderer()
+    html = renderer.render_report(
+        make_report(),
+        sections=[],
+        output_style="signal_briefing",
+        output_theme="dark",
+        visual_theme="hyperstudio_solid_dark",
+    )
+
+    assert 'data-visual-theme="hyperstudio_solid_dark"' in html
+    assert '<body data-visual-theme=' not in html
+    assert 'visual_theme_id=hyperstudio_solid_dark' in html
+    assert '[data-theme="dark"][data-visual-theme="hyperstudio_solid_dark"]' in html
+    assert '[data-theme="newsroom-white"][data-visual-theme="hyperstudio_solid_dark"]' in html
+    solid_block = html.split(
+        '[data-visual-theme="hyperstudio_solid_dark"] {',
+        1,
+    )[1].split("}", 1)[0]
+    light_block = html.split(
+        '[data-theme="light"][data-visual-theme="hyperstudio_solid_dark"],',
+        1,
+    )[1].split("}", 1)[0]
+    assert "--accent: #f5b84b;" in solid_block
+    assert "--accent-2: #53d487;" in solid_block
+    assert "--accent-3: #f97316;" in solid_block
+    assert "--accent: #111111;" not in light_block
+    assert "--accent-2: #3d3d3d;" not in light_block
+    assert '--page-background: var(--bg);' in html
+    assert '--callout-background: var(--surface-2);' in html
+    assert '--visual-image-filter: saturate(1.04) contrast(1.04) brightness(.94);' in html
+    assert 'grayscale(1)' not in html
+    assert '--shadow: none;' in html
+
+
+def test_signal_briefing_metric_cards_fit_large_numbers():
+    renderer = make_renderer()
+    html = renderer.render_report(
+        make_report(
+            stats={
+                "total_sources": 10270,
+                "ai_relevant": 9240,
+                "clusters": 120,
+                "verified": 999,
+            }
+        ),
+        sections=[],
+        output_style="signal_briefing",
+    )
+
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in html
+    assert "text-overflow: ellipsis;" in html
+    assert "10270" in html
+    assert "수집 항목" in html

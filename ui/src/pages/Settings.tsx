@@ -131,7 +131,7 @@ export function Settings() {
             <SettingField label="Language">
               <select
                 data-testid="settings-language"
-                className="bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
+                className="select-control bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
                 value={runOptions.language}
                 onChange={(e) => setOption("language", e.target.value)}
               >
@@ -142,7 +142,7 @@ export function Settings() {
             <SettingField label="Format" hint="Markdown is preview-only until the run pipeline supports it end-to-end.">
               <select
                 data-testid="settings-format"
-                className="bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
+                className="select-control bg-background border-input text-foreground h-9 w-full rounded-md border px-3 text-sm"
                 value={runOptions.format}
                 onChange={(e) =>
                   setOption("format", e.target.value as RunOptions["format"])
