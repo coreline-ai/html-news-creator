@@ -37,10 +37,13 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
       version: number;
       state: { runOptions: RunOptions; activeRun: ActiveRun | null };
     };
-    expect(parsed.version).toBe(2);
+    expect(parsed.version).toBe(3);
     expect(parsed.state.runOptions.target_sections).toBe(7);
     expect(parsed.state.runOptions.dry_run).toBe(true);
     expect(parsed.state.runOptions.output_style).toBe("newsstream");
+    expect(parsed.state.runOptions.visual_theme).toBe(
+      "hyperstudio_terminal_ops",
+    );
     expect(parsed.state.activeRun).toBeNull();
     // theme must NOT be in the persisted slice — ThemeToggle owns the
     // legacy "theme" key.
@@ -64,7 +67,7 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
       version: number;
       state: { runOptions: RunOptions; activeRun: ActiveRun | null };
     };
-    expect(parsed.version).toBe(2);
+    expect(parsed.version).toBe(3);
     expect(parsed.state.activeRun).toEqual(activeRun);
 
     useAppStore.setState({ activeRun: null });
@@ -97,6 +100,7 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
     expect(opts.dry_run).toBe(true);
     expect(opts.min_section_score).toBe(50);
     expect(opts.output_style).toBe("newsstream");
+    expect(opts.visual_theme).toBe("hyperstudio_terminal_ops");
   });
 
   it("migrates older runOptions without output_style", async () => {
@@ -121,6 +125,36 @@ describe("zustand persist — useAppStore (news-studio-options)", () => {
     const opts = useAppStore.getState().runOptions;
     expect(opts.target_sections).toBe(9);
     expect(opts.output_style).toBe("newsstream");
+    expect(opts.visual_theme).toBe("hyperstudio_terminal_ops");
+  });
+
+  it("migrates missing or invalid visual_theme to the default", async () => {
+    window.localStorage.setItem(
+      APP_KEY,
+      JSON.stringify({
+        version: 2,
+        state: {
+          runOptions: {
+            ...DEFAULT_RUN_OPTIONS,
+            visual_theme: "unknown_theme",
+          },
+          activeRun: {
+            run_id: "run-old",
+            started_at: "2026-05-01T00:00:00.000Z",
+            options: { ...DEFAULT_RUN_OPTIONS, visual_theme: undefined },
+          },
+        },
+      }),
+    );
+
+    await useAppStore.persist.rehydrate();
+
+    expect(useAppStore.getState().runOptions.visual_theme).toBe(
+      "hyperstudio_terminal_ops",
+    );
+    expect(useAppStore.getState().activeRun?.options.visual_theme).toBe(
+      "hyperstudio_terminal_ops",
+    );
   });
 
   it("resetOptions reverts to defaults and updates the persisted blob", () => {

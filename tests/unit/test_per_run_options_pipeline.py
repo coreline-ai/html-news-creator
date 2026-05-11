@@ -208,3 +208,22 @@ def _scrub_override_env(monkeypatch):
     """Each test starts with a clean override env to avoid cross-test bleed."""
     monkeypatch.delenv(POLICY_OVERRIDE_JSON_ENV, raising=False)
     yield
+
+
+def test_build_argv_visual_theme_forwarded():
+    argv = _build_argv({"visual_theme": "linear_command_center"})
+    assert "--visual-theme" in argv
+    idx = argv.index("--visual-theme")
+    assert argv[idx + 1] == "linear_command_center"
+
+
+def test_build_argv_invalid_visual_theme_normalized_to_default():
+    argv = _build_argv({"visual_theme": "not-a-theme"})
+    idx = argv.index("--visual-theme")
+    assert argv[idx + 1] == "hyperstudio_terminal_ops"
+
+
+def test_build_argv_empty_visual_theme_normalized_to_default():
+    argv = _build_argv({"visual_theme": ""})
+    idx = argv.index("--visual-theme")
+    assert argv[idx + 1] == "hyperstudio_terminal_ops"

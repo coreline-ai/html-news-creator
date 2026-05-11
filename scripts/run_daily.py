@@ -6,6 +6,7 @@ import os
 from datetime import date, datetime, timezone
 import click
 from app.editorial.policy import POLICY_PATH_ENV
+from app.rendering.visual_theme import VISUAL_THEME_ALLOWLIST, normalize_visual_theme
 from app.utils.logger import get_logger
 
 STEPS = [
@@ -824,6 +825,7 @@ async def run_generate(
     dry_run: bool,
     logger,
     output_style: str | None = None,
+    visual_theme: str | None = None,
 ) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import (
@@ -853,6 +855,7 @@ async def run_generate(
     from sqlalchemy import delete, select, update
 
     style_value = _normalize_output_style(output_style)
+    visual_theme_value = normalize_visual_theme(visual_theme)
 
     async def _write_fallback_report(reason: str) -> dict:
         title = f"AI 트렌드 리포트 {run_date}: 수집 결과 부족"
@@ -875,10 +878,12 @@ async def run_generate(
                         "fallback": True,
                         "reason": reason,
                         "output_style": style_value,
+                        "visual_theme": visual_theme_value,
                     }
                     db_report.method_json = {
                         "fallback": reason,
                         "output_style": style_value,
+                        "visual_theme": visual_theme_value,
                     }
                     db_report.updated_at = datetime.now(timezone.utc)
                     await session.execute(
@@ -896,10 +901,12 @@ async def run_generate(
                             "fallback": True,
                             "reason": reason,
                             "output_style": style_value,
+                            "visual_theme": visual_theme_value,
                         },
                         method_json={
                             "fallback": reason,
                             "output_style": style_value,
+                            "visual_theme": visual_theme_value,
                         },
                     )
                     session.add(db_report)
@@ -1177,6 +1184,7 @@ async def run_generate(
             "source_image_sections": source_image_sections,
             "generated_image_fallbacks": generated_image_fallbacks,
             "output_style": style_value,
+            "visual_theme": visual_theme_value,
         },
     )
     if len(selected_candidates) < target_sections:
@@ -1191,6 +1199,7 @@ async def run_generate(
     method_json = {
         "editorial_policy": "data/editorial_policy.yaml",
         "output_style": style_value,
+        "visual_theme": visual_theme_value,
         "report_selection": editorial_policy.get("report_selection", {}),
         "section_quotas": editorial_policy.get("section_quotas", {}),
     }
@@ -1271,6 +1280,7 @@ async def run_render(
     logger,
     output_theme: str | None = None,
     output_style: str | None = None,
+    visual_theme: str | None = None,
 ) -> dict:
     from app.db import AsyncSessionLocal
     from app.models.db_models import Report, ReportSection, Verification, RawItem, AnalysisResult
@@ -1283,6 +1293,7 @@ async def run_render(
     sections_data = []
     theme_value = output_theme or "dark"
     style_value = _normalize_output_style(output_style)
+    visual_theme_value = normalize_visual_theme(visual_theme)
 
     def _is_allowed_render_image(evidence: dict) -> bool:
         image_url = evidence.get("url", "")
@@ -1300,6 +1311,10 @@ async def run_render(
             if output_style is None:
                 style_value = _normalize_output_style(
                     _json_dict(db_report.method_json).get("output_style")
+                )
+            if visual_theme is None:
+                visual_theme_value = normalize_visual_theme(
+                    _json_dict(db_report.method_json).get("visual_theme")
                 )
             sections_rows = list(await session.scalars(
                 select(ReportSection)
@@ -1332,6 +1347,7 @@ async def run_render(
                     "clusters": len(sections_rows),
                     "verified": verified_count,
                     "output_style": style_value,
+                    "visual_theme": visual_theme_value,
                 }
             )
 
@@ -1392,6 +1408,7 @@ async def run_render(
                 "clusters": 0,
                 "verified": 0,
                 "output_style": style_value,
+                "visual_theme": visual_theme_value,
             },
         }
 
@@ -1403,6 +1420,7 @@ async def run_render(
             output_path,
             output_theme=theme_value,
             output_style=style_value,
+            visual_theme=visual_theme_value,
         )
     else:
         html = renderer.render_report(
@@ -1410,6 +1428,7 @@ async def run_render(
             sections_data,
             output_theme=theme_value,
             output_style=style_value,
+            visual_theme=visual_theme_value,
         )
         logger.info("render_dry_run", html_length=len(html))
 
@@ -1417,6 +1436,7 @@ async def run_render(
         "output_path": output_path,
         "output_theme": theme_value,
         "output_style": style_value,
+        "visual_theme": visual_theme_value,
     }
 
 
@@ -1577,12 +1597,14 @@ async def run_pipeline(
     dry_run: bool,
     output_theme: str | None = None,
     output_style: str | None = None,
+    visual_theme: str | None = None,
 ) -> None:
     logger = get_logger(step="pipeline")
     style_value = _normalize_output_style(output_style)
+    visual_theme_value = normalize_visual_theme(visual_theme)
     logger.info("pipeline_start", date=str(run_date), mode=mode, from_step=from_step,
                 to_step=to_step, dry_run=dry_run, output_theme=output_theme or "dark",
-                output_style=style_value)
+                output_style=style_value, visual_theme=visual_theme_value)
 
     from_idx = STEPS.index(from_step)
     to_idx = STEPS.index(to_step)
@@ -1603,11 +1625,17 @@ async def run_pipeline(
                 kwargs["source_types"] = ["rss", "website", "arxiv"]
             if step == "generate":
                 kwargs["output_style"] = style_value
+                kwargs["visual_theme"] = visual_theme_value
             if step == "render":
                 kwargs["output_theme"] = output_theme
                 kwargs["output_style"] = (
                     style_value
                     if output_style is not None or "generate" in steps_to_run
+                    else None
+                )
+                kwargs["visual_theme"] = (
+                    visual_theme_value
+                    if visual_theme is not None or "generate" in steps_to_run
                     else None
                 )
             result = await fn(run_date, dry_run, logger, **kwargs)
@@ -1680,6 +1708,15 @@ async def run_pipeline(
         "runs to preserve the style stored in Report.method_json."
     ),
 )
+@click.option(
+    "--visual-theme",
+    default=None,
+    help=(
+        "Refero visual theme for signal_briefing. Invalid or empty values "
+        "fall back to hyperstudio_terminal_ops. Allowed: "
+        + ", ".join(sorted(VISUAL_THEME_ALLOWLIST))
+    ),
+)
 def main(
     run_date_str,
     mode,
@@ -1690,6 +1727,7 @@ def main(
     policy_override_json,
     output_theme,
     output_style,
+    visual_theme,
 ):
     """Run the daily AI trend report pipeline."""
     if run_date_str:
@@ -1721,6 +1759,7 @@ def main(
             dry_run,
             output_theme=output_theme,
             output_style=output_style,
+            visual_theme=visual_theme,
         )
     )
 

@@ -7,6 +7,12 @@ export type PreviewMode = "live" | "section";
 export type RunMode = "full" | "rss-only";
 export type OutputStyle = "newsstream" | "signal_briefing";
 export type OutputTheme = "dark" | "light" | "newsroom-white";
+export type VisualTheme =
+  | "linear_command_center"
+  | "anthropic_research_journal"
+  | "cursor_warm_studio"
+  | "hyperstudio_terminal_ops"
+  | "mercury_twilight_console";
 export type SourceType = "rss" | "github" | "arxiv" | "website";
 export type DeployTarget = "netlify" | "local-only";
 export type CalendarTab = "month" | "heatmap";
@@ -45,6 +51,7 @@ export interface RunOptions {
   // -------------------------------------------------------- D. Output
   output_style: OutputStyle;
   output_theme: OutputTheme;
+  visual_theme: VisualTheme;
   language: string;
   format: "html" | "markdown";
 
@@ -59,6 +66,16 @@ export interface ActiveRun {
   started_at: string;
   options: RunOptions;
 }
+
+export const VISUAL_THEMES: VisualTheme[] = [
+  "linear_command_center",
+  "anthropic_research_journal",
+  "cursor_warm_studio",
+  "hyperstudio_terminal_ops",
+  "mercury_twilight_console",
+];
+
+export const DEFAULT_VISUAL_THEME: VisualTheme = "hyperstudio_terminal_ops";
 
 export const DEFAULT_RUN_OPTIONS: RunOptions = {
   date: todayKstISO(),
@@ -78,6 +95,7 @@ export const DEFAULT_RUN_OPTIONS: RunOptions = {
 
   output_style: "newsstream",
   output_theme: "dark",
+  visual_theme: DEFAULT_VISUAL_THEME,
   language: "ko",
   format: "html",
 
@@ -112,7 +130,7 @@ const THEME_STORAGE_KEY = "theme";
 
 // Bumped together with the persisted shape below. If the persisted run
 // options shape changes incompatibly, bump this and add a `migrate` hook.
-const PERSIST_VERSION = 2;
+const PERSIST_VERSION = 3;
 
 function readInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -154,6 +172,12 @@ interface PersistedAppState {
   calendarTab: CalendarTab;
 }
 
+function isVisualTheme(value: unknown): value is VisualTheme {
+  return (
+    typeof value === "string" && VISUAL_THEMES.includes(value as VisualTheme)
+  );
+}
+
 function mergeRunOptionsWithDefaults(value: unknown): RunOptions {
   const candidate =
     value && typeof value === "object" ? (value as Partial<RunOptions>) : {};
@@ -164,6 +188,9 @@ function mergeRunOptionsWithDefaults(value: unknown): RunOptions {
   return {
     ...DEFAULT_RUN_OPTIONS,
     ...candidate,
+    visual_theme: isVisualTheme(candidate.visual_theme)
+      ? candidate.visual_theme
+      : DEFAULT_VISUAL_THEME,
     quotas: {
       ...DEFAULT_RUN_OPTIONS.quotas,
       ...candidateQuotas,

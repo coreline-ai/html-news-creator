@@ -14,6 +14,8 @@ import {
   type OutputStyle,
   type OutputTheme,
   type DeployTarget,
+  VISUAL_THEMES,
+  type VisualTheme,
 } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +42,32 @@ const GROUPS: GroupDef[] = [
   { id: "D", label: "Output", description: "Style, theme, language, format" },
   { id: "E", label: "Publishing", description: "Deploy target, notifications, schedule" },
 ];
+
+const VISUAL_THEME_LABELS: Record<
+  VisualTheme,
+  { label: string; description: string }
+> = {
+  linear_command_center: {
+    label: "Linear Command Center",
+    description: "Dense operations board with clear signal hierarchy.",
+  },
+  anthropic_research_journal: {
+    label: "Anthropic Research Journal",
+    description: "Editorial research notes with calm reading rhythm.",
+  },
+  cursor_warm_studio: {
+    label: "Cursor Warm Studio",
+    description: "Warm developer workspace for product/tooling briefs.",
+  },
+  hyperstudio_terminal_ops: {
+    label: "Hyperstudio Terminal Ops",
+    description: "Default Refero console theme for fast scanning.",
+  },
+  mercury_twilight_console: {
+    label: "Mercury Twilight Console",
+    description: "Twilight-grade console for high-contrast signal review.",
+  },
+};
 
 const OUTPUT_STYLES: {
   value: OutputStyle;
@@ -523,6 +551,57 @@ function OutputGroup({
           })}
         </div>
       </Field>
+      {runOptions.output_style === "signal_briefing" ? (
+        <Field
+          id="opt-visual-theme"
+          label="Refero visual theme"
+          hint="signal_briefing HTML에 전달되는 Refero 테마입니다."
+        >
+          <div
+            className="grid gap-2"
+            role="radiogroup"
+            aria-labelledby="opt-visual-theme-label"
+          >
+            {VISUAL_THEMES.map((theme) => {
+              const meta = VISUAL_THEME_LABELS[theme];
+              const active = runOptions.visual_theme === theme;
+              return (
+                <button
+                  key={theme}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setOption("visual_theme", theme)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground border-transparent"
+                      : "border-border bg-background text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <span className="block text-xs font-semibold">
+                    {meta.label}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-[11px]",
+                      active
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {meta.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      ) : (
+        <div className="border-border bg-muted/30 text-muted-foreground rounded-md border px-3 py-2 text-[11px]">
+          Refero visual themes are available when Output style is signal_briefing.
+        </div>
+      )}
       <Field id="opt-language" label="Language">
         <select
           id="opt-language"

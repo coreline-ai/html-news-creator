@@ -1,181 +1,520 @@
+{%- set _visual_themes = [
+  'linear_command_center',
+  'anthropic_research_journal',
+  'cursor_warm_studio',
+  'hyperstudio_terminal_ops',
+  'mercury_twilight_console'
+] -%}
+{%- set visual_theme_value = visual_theme|default('hyperstudio_terminal_ops') -%}
+{%- if visual_theme_value not in _visual_themes -%}
+  {%- set visual_theme_value = 'hyperstudio_terminal_ops' -%}
+{%- endif -%}
 <!DOCTYPE html>
-<html lang="ko" data-theme="{{ output_theme|default('dark') }}">
+<html lang="ko" data-theme="{{ output_theme|default('dark') }}" data-visual-theme="{{ visual_theme_value }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ report.summary_ko|default('오늘의 AI 시그널 브리핑') }}">
   <title>{{ report.title }}</title>
   <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
     :root {
-      color-scheme: dark;
-      --bg: #0d1020;
-      --panel: rgba(255,255,255,.07);
-      --panel-strong: rgba(255,255,255,.12);
-      --text: #f7f7fb;
-      --muted: #a8b0c7;
-      --line: rgba(255,255,255,.14);
-      --accent: #8b5cf6;
-      --accent-2: #22d3ee;
-      --good: #34d399;
-    }
-    [data-theme="light"], [data-theme="newsroom-white"] {
       color-scheme: light;
-      --bg: #f6f7fb;
-      --panel: rgba(255,255,255,.82);
-      --panel-strong: #ffffff;
-      --text: #111827;
-      --muted: #5b6477;
-      --line: rgba(17,24,39,.12);
-      --accent: #6d28d9;
-      --accent-2: #0891b2;
-      --good: #047857;
+      --bg: #f7f7f4;
+      --bg-grid: rgba(38, 37, 16, .055);
+      --surface: #ffffff;
+      --surface-2: #f7f7f4;
+      --surface-3: #efeee8;
+      --text: #262510;
+      --heading: #18180f;
+      --muted: #6f6e67;
+      --muted-2: #8a8982;
+      --line: #d9d8d2;
+      --line-strong: #c8c7be;
+      --accent: #f59e0b;
+      --accent-text: #16140f;
+      --accent-2: #168a49;
+      --accent-3: #f54e00;
+      --chip: #f2f1eb;
+      --shadow: 0 18px 50px rgba(38, 37, 16, .08);
+      --radius: 8px;
+      --radius-sm: 4px;
+      --terminal-font: 'SFMono-Regular', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+      --font-body: Pretendard, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-heading: var(--font-body);
+      --visual-glow-1: color-mix(in srgb, var(--accent-2) 20%, transparent);
+      --visual-glow-2: color-mix(in srgb, var(--accent) 18%, transparent);
+      --visual-grid-size: 34px;
+      --visual-image-filter: saturate(.82) contrast(1.08) brightness(.78);
+      --content-width: 1180px;
+      --section-pad-min: 18px;
+      --section-pad-max: 30px;
+      --hero-pad-min: 22px;
+      --hero-pad-max: 42px;
+      --card-gap: 18px;
+      --title-tracking: -.025em;
     }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #101010;
+      --bg-grid: rgba(255, 255, 255, .045);
+      --surface: #080808;
+      --surface-2: #151515;
+      --surface-3: #1d1d1d;
+      --text: #f3f3f3;
+      --heading: #ffffff;
+      --muted: #a4a4a4;
+      --muted-2: #767676;
+      --line: #333333;
+      --line-strong: #4a4a4a;
+      --accent: #f5b84b;
+      --accent-text: #080808;
+      --accent-2: #53d487;
+      --accent-3: #f97316;
+      --chip: #101010;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .38);
+    }
+
+    [data-theme="newsroom-white"] {
+      color-scheme: light;
+      --bg: #ffffff;
+      --bg-grid: rgba(15, 23, 42, .045);
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --surface-3: #f1f5f9;
+      --text: #0f172a;
+      --heading: #020617;
+      --muted: #475569;
+      --muted-2: #64748b;
+      --line: #e2e8f0;
+      --line-strong: #cbd5e1;
+      --accent: #f59e0b;
+      --accent-text: #111827;
+      --accent-2: #16a34a;
+      --accent-3: #2563eb;
+      --chip: #f8fafc;
+      --shadow: 0 14px 42px rgba(15, 23, 42, .08);
+    }
+
+    [data-visual-theme="linear_command_center"] {
+      --accent: #2563eb;
+      --accent-2: #06b6d4;
+      --accent-3: #7c3aed;
+      --radius: 6px;
+      --radius-sm: 3px;
+      --visual-glow-1: color-mix(in srgb, #2563eb 18%, transparent);
+      --visual-glow-2: color-mix(in srgb, #06b6d4 15%, transparent);
+      --visual-grid-size: 28px;
+      --content-width: 1240px;
+      --section-pad-min: 16px;
+      --section-pad-max: 26px;
+      --hero-pad-min: 20px;
+      --hero-pad-max: 36px;
+      --card-gap: 14px;
+      --title-tracking: -.045em;
+    }
+
+    [data-visual-theme="anthropic_research_journal"] {
+      --accent: #b45309;
+      --accent-2: #64748b;
+      --accent-3: #a16207;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --font-heading: Georgia, 'Times New Roman', serif;
+      --visual-glow-1: color-mix(in srgb, #d6b88d 20%, transparent);
+      --visual-glow-2: color-mix(in srgb, #64748b 11%, transparent);
+      --visual-grid-size: 44px;
+      --content-width: 1080px;
+      --section-pad-min: 22px;
+      --section-pad-max: 38px;
+      --hero-pad-min: 26px;
+      --hero-pad-max: 48px;
+      --card-gap: 24px;
+      --title-tracking: -.015em;
+    }
+
+    [data-visual-theme="cursor_warm_studio"] {
+      --accent: #ff7a1a;
+      --accent-2: #22c55e;
+      --accent-3: #ec4899;
+      --radius: 18px;
+      --radius-sm: 10px;
+      --visual-glow-1: color-mix(in srgb, #ff7a1a 22%, transparent);
+      --visual-glow-2: color-mix(in srgb, #22c55e 14%, transparent);
+      --visual-grid-size: 40px;
+      --content-width: 1140px;
+      --section-pad-min: 22px;
+      --section-pad-max: 34px;
+      --hero-pad-min: 26px;
+      --hero-pad-max: 44px;
+      --card-gap: 22px;
+      --title-tracking: -.035em;
+    }
+
+    [data-visual-theme="hyperstudio_terminal_ops"] {
+      --accent: #f5b84b;
+      --accent-2: #53d487;
+      --accent-3: #f97316;
+      --radius: 8px;
+      --radius-sm: 4px;
+      --visual-glow-1: color-mix(in srgb, var(--accent-2) 20%, transparent);
+      --visual-glow-2: color-mix(in srgb, var(--accent) 18%, transparent);
+      --visual-grid-size: 34px;
+      --content-width: 1180px;
+      --section-pad-min: 18px;
+      --section-pad-max: 30px;
+      --hero-pad-min: 22px;
+      --hero-pad-max: 42px;
+      --card-gap: 18px;
+      --title-tracking: -.025em;
+    }
+
+    [data-visual-theme="mercury_twilight_console"] {
+      --accent: #a78bfa;
+      --accent-2: #22d3ee;
+      --accent-3: #f472b6;
+      --radius: 12px;
+      --radius-sm: 6px;
+      --terminal-font: 'Berkeley Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+      --visual-glow-1: color-mix(in srgb, #4f46e5 24%, transparent);
+      --visual-glow-2: color-mix(in srgb, #06b6d4 18%, transparent);
+      --visual-grid-size: 32px;
+      --visual-image-filter: saturate(.7) contrast(1.15) brightness(.72) hue-rotate(8deg);
+      --content-width: 1160px;
+      --section-pad-min: 20px;
+      --section-pad-max: 32px;
+      --hero-pad-min: 24px;
+      --hero-pad-max: 40px;
+      --card-gap: 20px;
+      --title-tracking: -.055em;
+    }
+
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
       min-height: 100vh;
       background:
-        radial-gradient(circle at top left, rgba(139,92,246,.24), transparent 34rem),
-        radial-gradient(circle at 80% 10%, rgba(34,211,238,.18), transparent 30rem),
+        radial-gradient(circle at 16% -8%, var(--visual-glow-1), transparent 30rem),
+        radial-gradient(circle at 88% 0%, var(--visual-glow-2), transparent 34rem),
+        linear-gradient(var(--bg-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
         var(--bg);
+      background-size: auto, auto, var(--visual-grid-size) var(--visual-grid-size), var(--visual-grid-size) var(--visual-grid-size), auto;
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
+      font-family: var(--font-body);
       line-height: 1.68;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
-    a { color: inherit; text-decoration-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-    .wrap { width: min(1060px, calc(100% - 32px)); margin: 0 auto; padding: 52px 0 72px; }
-    .hero {
-      border: 1px solid var(--line);
-      background: linear-gradient(135deg, var(--panel-strong), var(--panel));
-      border-radius: 28px;
-      padding: clamp(24px, 4vw, 44px);
-      box-shadow: 0 24px 80px rgba(0,0,0,.18);
-    }
-    .eyebrow {
-      display: inline-flex;
-      gap: 8px;
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: var(--accent); }
+    .wrap { width: min(var(--content-width), calc(100% - 32px)); margin: 0 auto; padding: 30px 0 84px; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
       align-items: center;
+      padding: 10px 0 18px;
+      backdrop-filter: blur(14px);
+    }
+    .back-link, .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
       border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
       border-radius: 999px;
-      padding: 5px 10px;
+      padding: 7px 10px;
       color: var(--muted);
       font-size: 12px;
-      letter-spacing: .08em;
+      font-weight: 850;
+    }
+    .console {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .console-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      padding: 11px 14px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-family: var(--terminal-font);
+      font-size: 12px;
+    }
+    .window-dot { width: 9px; height: 9px; border-radius: 99px; background: var(--accent-2); }
+    .window-dot:nth-child(2) { background: var(--accent); }
+    .window-dot:nth-child(3) { background: #fb7185; }
+    .console-path { margin-left: 6px; color: var(--accent-2); }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+      gap: clamp(18px, 4vw, 38px);
+      align-items: stretch;
+      padding: clamp(var(--hero-pad-min), 4vw, var(--hero-pad-max));
+    }
+    .kicker, .eyebrow, .meta-line, .metric span, .tag, .source-list li, footer {
+      font-family: var(--terminal-font);
+    }
+    .kicker, .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .1em;
       text-transform: uppercase;
     }
-    h1 { margin: 18px 0 12px; font-size: clamp(34px, 6vw, 68px); line-height: 1.04; letter-spacing: -.06em; }
-    .hero-summary { max-width: 820px; color: var(--muted); font-size: 18px; }
-    .metrics, .keyword-row, .card-grid { display: grid; gap: 12px; }
+    h1 {
+      margin: 18px 0 16px;
+      color: var(--heading);
+      font-family: var(--font-heading);
+      font-size: 2.2em;
+      line-height: 1.3;
+      letter-spacing: var(--title-tracking);
+    }
+    .hero-summary { max-width: 760px; color: var(--muted); font-size: 17px; line-height: 1.72; }
+    .hero-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      padding: 18px;
+      min-height: 100%;
+    }
     .metrics {
       display: flex;
       flex-wrap: nowrap;
-      gap: 10px;
-      margin-top: 26px;
+      gap: 8px;
+      margin-top: 18px;
       overflow-x: auto;
       padding-bottom: 2px;
       white-space: nowrap;
     }
-    .metric, .brief-card, .section-card {
-      border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: 20px;
-      padding: 16px;
-    }
     .metric {
-      display: inline-flex;
       flex: 1 0 auto;
+      display: inline-flex;
       align-items: baseline;
       justify-content: center;
       gap: 7px;
-      min-width: 0;
-      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      padding: 11px 12px;
     }
-    .metric strong { display: inline; font-size: 24px; line-height: 1; }
-    .metric span, .muted { color: var(--muted); font-size: 13px; }
-    .section-card { margin-top: 18px; padding: clamp(18px, 3vw, 30px); }
-    .section-head { display: flex; gap: 14px; align-items: flex-start; }
+    .metric strong { color: var(--heading); font-size: 24px; line-height: 1; letter-spacing: -.05em; }
+    .metric span { color: var(--muted); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+    .main-event, blockquote {
+      margin: 16px 0 0;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 13%, transparent), transparent 72%);
+      padding: 12px 14px;
+      color: var(--muted);
+    }
+    blockquote strong, .main-event strong { color: var(--accent); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--chip);
+      color: var(--muted);
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 850;
+    }
+    .muted { color: var(--muted); }
+    .section-card, .brief-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .section-card {
+      position: relative;
+      overflow: hidden;
+      margin-top: var(--card-gap);
+      padding: clamp(var(--section-pad-min), 3vw, var(--section-pad-max));
+    }
+    .section-card::before {
+      content: "●";
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      color: var(--accent-2);
+      font-size: 11px;
+    }
+    .section-head { display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: start; }
     .section-index {
-      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: white;
-      font-weight: 800;
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      color: var(--accent);
+      font-family: var(--terminal-font);
+      font-size: 26px;
+      font-weight: 950;
+      letter-spacing: -.08em;
+      line-height: 1;
     }
-    h2 { margin: 0; font-size: clamp(22px, 3vw, 34px); line-height: 1.22; letter-spacing: -.03em; }
-    h3 { margin: 34px 0 12px; font-size: 18px; }
-    .divider { height: 1px; background: var(--line); margin: 20px 0; }
+    h2 { margin: 0; color: var(--heading); font-family: var(--font-heading); font-size: clamp(24px, 3vw, 36px); line-height: 1.08; letter-spacing: -.05em; }
+    h3 { margin: 28px 0 10px; color: var(--accent); font-family: var(--terminal-font); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
+    .meta-line { margin-top: 9px; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 900; }
+    .divider { height: 1px; background: var(--line); margin: 18px 0; }
     .image-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 18px 0; }
-    figure { margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: rgba(0,0,0,.08); }
-    figure img { display: block; width: 100%; max-height: 420px; object-fit: cover; }
-    figcaption { padding: 9px 12px; color: var(--muted); font-size: 12px; }
-    ul { padding-left: 1.2rem; }
+    figure { margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+    figure img { display: block; width: 100%; max-height: 430px; object-fit: cover; filter: var(--visual-image-filter); }
+    [data-theme="light"] figure img, [data-theme="newsroom-white"] figure img { filter: saturate(.9) contrast(1.02) brightness(1); }
+    figcaption { padding: 9px 12px; color: var(--muted); font-size: 12px; font-family: var(--terminal-font); }
+    ul { padding-left: 1.25rem; }
     li { margin: 8px 0; }
-    blockquote {
-      margin: 16px 0 0;
-      border-left: 4px solid var(--accent-2);
-      padding: 10px 0 10px 14px;
+    li::marker { color: var(--accent); }
+    .source-list { display: grid; gap: 8px; padding-left: 0; list-style: none; }
+    .source-list li {
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      padding: 9px 10px;
       color: var(--muted);
-      background: linear-gradient(90deg, rgba(34,211,238,.08), transparent);
+      font-size: 13px;
     }
-    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .tag {
+    .source-list a { color: var(--text); }
+    .source-list a:hover { color: var(--accent); }
+    .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
+    .brief-card { padding: 18px; background: var(--surface-2); }
+    .brief-card h2 { font-size: 22px; }
+    footer { margin-top: 32px; color: var(--muted); font-size: 12px; }
+    .theme-toggle {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 100;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
       border: 1px solid var(--line);
       border-radius: 999px;
-      padding: 3px 9px;
+      background: var(--surface);
       color: var(--muted);
-      font-size: 12px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: color .2s, border-color .2s, transform .2s, background .2s;
     }
-    .source-list { display: grid; gap: 8px; padding-left: 0; list-style: none; }
-    .source-list li { margin: 0; color: var(--muted); font-size: 14px; }
-    .source-list a { color: var(--text); }
-    .brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 28px; }
-    .brief-card h2 { font-size: 22px; }
-    footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
-    @media (max-width: 760px) {
+    .theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .theme-toggle svg { width: 20px; height: 20px; display: block; }
+    .theme-toggle .ico-sun, .theme-toggle .ico-newsroom { display: none; }
+    [data-theme="dark"] .theme-toggle .ico-sun { display: block; }
+    [data-theme="dark"] .theme-toggle .ico-moon { display: none; }
+    [data-theme="newsroom-white"] .theme-toggle .ico-newsroom { display: block; }
+    [data-theme="newsroom-white"] .theme-toggle .ico-moon,
+    [data-theme="newsroom-white"] .theme-toggle .ico-sun { display: none; }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; }
       .brief-grid { grid-template-columns: 1fr; }
-      .section-head { flex-direction: column; }
+    }
+    @media (max-width: 640px) {
+      .wrap { width: min(100% - 24px, 1180px); padding-top: 18px; }
+      h1 { font-size: 1.7em; }
+      .topbar { position: relative; align-items: flex-start; flex-direction: column; }
+      .section-head { grid-template-columns: 1fr; }
+      .section-index { width: 42px; height: 42px; font-size: 22px; }
+      .theme-toggle { right: 16px; bottom: 16px; width: 40px; height: 40px; }
+    }
+    @media print {
+      body { background: white; color: #111827; }
+      .topbar, .theme-toggle { display: none !important; }
+      .console, .section-card, .brief-card { box-shadow: none; break-inside: avoid; }
     }
   </style>
+  <script>
+    (function(){
+      try {
+        var p = JSON.parse(localStorage.getItem('ai_news_prefs') || '{}');
+        var allowed = {'light': true, 'dark': true, 'newsroom-white': true};
+        var current = document.documentElement.dataset.theme || 'dark';
+        var t = allowed[p.theme] ? p.theme : (allowed[current] ? current : 'dark');
+        document.documentElement.dataset.theme = t;
+      } catch(e){}
+    })();
+  </script>
 </head>
-<body>
+<body data-visual-theme="{{ visual_theme_value }}">
   <main class="wrap">
-    <section class="hero">
-      <span class="eyebrow">Signal Briefing · {{ report.report_date }}</span>
-      <h1>{{ report.title }}</h1>
-      <p class="hero-summary">{{ report.summary_ko }}</p>
-      <div class="metrics" aria-label="report metrics">
-        <div class="metric"><strong>{{ report.stats.total_sources|default(0) }}</strong><span>수집 항목</span></div>
-        <div class="metric"><strong>{{ report.stats.ai_relevant|default(0) }}</strong><span>AI 관련</span></div>
-        <div class="metric"><strong>{{ report.stats.clusters|default(sections|length) }}</strong><span>최종 섹션</span></div>
-        <div class="metric"><strong>{{ report.stats.verified|default(0) }}</strong><span>검증 신호</span></div>
+    <div class="topbar">
+      <a class="back-link" href="/">← AI 트렌드 리포트</a>
+      <span class="pill">{{ visual_theme_value|replace('_', ' ')|title }} · Signal Briefing</span>
+    </div>
+
+    <section class="console hero-console">
+      <div class="console-bar">
+        <span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span>
+        <span class="console-path">coreline-signal-briefing / {{ report.report_date }}</span>
       </div>
-      {% if report.stats.main_event %}
-      <blockquote><strong>메인 이벤트</strong> — {{ report.stats.main_event }}</blockquote>
-      {% endif %}
-      {% if report.stats.top_keywords %}
-      <div class="tag-row" aria-label="top keywords">
-        {% for keyword in report.stats.top_keywords[:8] %}
-        <span class="tag">#{{ keyword }}</span>
-        {% endfor %}
+      <div class="hero">
+        <div>
+          <span class="eyebrow">Signal Briefing · {{ report.report_date }}</span>
+          <h1>{{ report.title }}</h1>
+          <p class="hero-summary">{{ report.summary_ko }}</p>
+          {% if report.stats.top_keywords %}
+          <div class="tag-row" aria-label="top keywords">
+            {% for keyword in report.stats.top_keywords[:8] %}
+            <span class="tag">#{{ keyword }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <aside class="hero-panel">
+          <div>
+            <div class="kicker">terminal status</div>
+            <div class="metrics" aria-label="report metrics">
+              <div class="metric"><strong>{{ report.stats.total_sources|default(0) }}</strong><span>수집 항목</span></div>
+              <div class="metric"><strong>{{ report.stats.ai_relevant|default(0) }}</strong><span>AI 관련</span></div>
+              <div class="metric"><strong>{{ report.stats.clusters|default(sections|length) }}</strong><span>최종 섹션</span></div>
+              <div class="metric"><strong>{{ report.stats.verified|default(0) }}</strong><span>검증 신호</span></div>
+            </div>
+            {% if report.stats.main_event %}
+            <p class="main-event"><strong>메인 이벤트</strong> — {{ report.stats.main_event }}</p>
+            {% endif %}
+          </div>
+          {% if report.stats.signal_axes %}
+          <p class="muted">신호 축: {{ report.stats.signal_axes|join(" · ") }}</p>
+          {% endif %}
+        </aside>
       </div>
-      {% endif %}
-      {% if report.stats.signal_axes %}
-      <p class="muted">신호 축: {{ report.stats.signal_axes|join(" · ") }}</p>
-      {% endif %}
     </section>
 
     {% if sections %}
       {% for section in sections %}
       <article class="section-card">
         <div class="section-head">
-          <span class="section-index">{{ loop.index }}</span>
+          <span class="section-index">{{ "%02d"|format(loop.index) }}</span>
           <div>
             <h2>{{ section.title or section.title_ko }}</h2>
-            <p class="muted">{{ section.category|default("signal") }} · score {{ "%.2f"|format(section.importance_score|default(0)) }}</p>
+            <p class="meta-line">lane={{ section.category|default("signal") }} · score={{ "%.2f"|format(section.importance_score|default(0)) }}</p>
           </div>
         </div>
 
@@ -190,8 +529,8 @@
         {% if image_url %}
         <div class="image-grid">
           <figure>
-            <img src="{{ image_url }}" alt="{{ section.title or section.title_ko }}">
-            <figcaption>대표 이미지 · 원문 출처 기준</figcaption>
+            <img src="{{ image_url }}" alt="{{ section.title or section.title_ko }}" onerror="this.closest('figure').style.display='none'">
+            <figcaption>visual evidence · source image</figcaption>
           </figure>
         </div>
         {% endif %}
@@ -201,7 +540,7 @@
         {% endif %}
 
         {% if section.key_updates %}
-        <h3>주요 소식들</h3>
+        <h3>key updates</h3>
         <ul>
           {% for update in section.key_updates[:4] %}
           <li>{{ update }}</li>
@@ -217,7 +556,7 @@
         {% endif %}
 
         {% if section.sources_json %}
-        <h3>주요 출처</h3>
+        <h3>source trace</h3>
         <ul class="source-list">
           {% for src in section.sources_json[:5] %}
           <li>↳ <a href="{{ src.url }}" target="_blank" rel="noopener noreferrer">{{ src.name or src.source_name or src.url }}</a></li>
@@ -243,7 +582,7 @@
 
     <section class="brief-grid">
       <div class="brief-card">
-        <h2>📊 오늘의 온도</h2>
+        <h2>핵심 기류</h2>
         <ul>
           {% for item in report.stats.today_temperature|default([]) %}
           <li>{{ item }}</li>
@@ -253,7 +592,7 @@
         </ul>
       </div>
       <div class="brief-card">
-        <h2>💡 행동으로 옮길 것</h2>
+        <h2>후속 체크포인트</h2>
         <ul>
           {% for item in report.stats.action_items|default([]) %}
           <li>{{ item }}</li>
@@ -265,8 +604,50 @@
     </section>
 
     <footer>
-      Generated at {{ report.created_at }} · output_style={{ output_style }} · theme={{ output_theme|default('dark') }}
+      Generated at {{ report.created_at }} · output_style={{ output_style }} · theme={{ output_theme|default('dark') }} · visual_theme={{ visual_theme_value|replace('_', '-') }} · visual_theme_id={{ visual_theme_value }}
     </footer>
   </main>
+
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="뉴스룸 화이트로 전환" title="뉴스룸 화이트로 전환">
+    <svg class="ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg class="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+    </svg>
+    <svg class="ico-newsroom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 21h14a2 2 0 0 0 2-2V8l-6-6H6a2 2 0 0 0-2 2v17z"/>
+      <path d="M14 2v6h6"/>
+      <path d="M8 12h8M8 16h8M8 8h2"/>
+    </svg>
+  </button>
+
+  <script>
+    (function(){
+      var btn = document.getElementById('theme-toggle');
+      if(!btn) return;
+      var themes = ['light', 'dark', 'newsroom-white'];
+      var nextLabels = {
+        light: '다크 모드로 전환',
+        dark: '뉴스룸 화이트로 전환',
+        'newsroom-white': '기본 라이트 모드로 전환'
+      };
+      function normalize(t){ return themes.indexOf(t) >= 0 ? t : 'dark'; }
+      function apply(t){
+        t = normalize(t);
+        document.documentElement.dataset.theme = t;
+        btn.setAttribute('aria-label', nextLabels[t]);
+        btn.setAttribute('title', nextLabels[t]);
+        try{ localStorage.setItem('ai_news_prefs', JSON.stringify({theme:t})); }catch(e){}
+      }
+      apply(document.documentElement.dataset.theme || 'dark');
+      btn.addEventListener('click', function(){
+        var current = normalize(document.documentElement.dataset.theme);
+        var next = themes[(themes.indexOf(current) + 1) % themes.length];
+        apply(next);
+      });
+    })();
+  </script>
 </body>
 </html>

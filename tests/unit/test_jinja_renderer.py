@@ -149,5 +149,84 @@ def test_signal_briefing_output_style_uses_briefing_template():
 
     assert "<!DOCTYPE html>" in html
     assert "Signal Briefing" in html
-    assert "오늘의 온도" in html
-    assert "행동으로 옮길 것" in html
+    assert "Hyperstudio Terminal Ops" in html
+    assert "font-size: 2.2em;" in html
+    assert "h1 { font-size: 1.7em; }" in html
+    assert ".metric span { color: var(--muted); font-size: 12px;" in html
+    assert "핵심 기류" in html
+    assert "후속 체크포인트" in html
+
+
+def test_signal_briefing_supports_hyperstudio_white_theme_toggle():
+    renderer = make_renderer()
+    html = renderer.render_report(
+        make_report(),
+        sections=[],
+        output_style="signal_briefing",
+        output_theme="newsroom-white",
+    )
+
+    assert 'data-theme="newsroom-white"' in html
+    assert "visual_theme=hyperstudio-terminal-ops" in html
+    assert '[data-theme="dark"]' in html
+    assert '[data-theme="newsroom-white"]' in html
+    assert "ico-newsroom" in html
+    assert "var themes = ['light', 'dark', 'newsroom-white'];" in html
+    assert "뉴스룸 화이트로 전환" in html
+    assert "기본 라이트 모드로 전환" in html
+
+
+def test_signal_briefing_defaults_to_hyperstudio_visual_theme():
+    renderer = make_renderer()
+    html = renderer.render_report(
+        make_report(),
+        sections=[],
+        output_style="signal_briefing",
+    )
+
+    assert 'data-visual-theme="hyperstudio_terminal_ops"' in html
+    assert "visual_theme=hyperstudio-terminal-ops" in html
+    assert "visual_theme_id=hyperstudio_terminal_ops" in html
+
+
+def test_signal_briefing_visual_theme_presets_render_data_attribute():
+    renderer = make_renderer()
+    template = renderer.env.get_template("report_signal_briefing.html.j2")
+    visual_themes = [
+        "linear_command_center",
+        "anthropic_research_journal",
+        "cursor_warm_studio",
+        "hyperstudio_terminal_ops",
+        "mercury_twilight_console",
+    ]
+
+    for visual_theme in visual_themes:
+        html = template.render(
+            report=make_report(),
+            sections=[],
+            output_theme="dark",
+            output_style="signal_briefing",
+            visual_theme=visual_theme,
+        )
+
+        assert f'data-visual-theme="{visual_theme}"' in html
+        assert f"visual_theme_id={visual_theme}" in html
+
+
+def test_signal_briefing_visual_theme_presets_define_distinct_tokens():
+    renderer = make_renderer()
+    html = renderer.render_report(
+        make_report(),
+        sections=[],
+        output_style="signal_briefing",
+    )
+
+    assert '[data-visual-theme="linear_command_center"]' in html
+    assert '[data-visual-theme="anthropic_research_journal"]' in html
+    assert '[data-visual-theme="cursor_warm_studio"]' in html
+    assert '[data-visual-theme="hyperstudio_terminal_ops"]' in html
+    assert '[data-visual-theme="mercury_twilight_console"]' in html
+    assert "--visual-grid-size: 28px;" in html
+    assert "--font-heading: Georgia, 'Times New Roman', serif;" in html
+    assert "--radius: 18px;" in html
+    assert "--visual-image-filter: saturate(.7) contrast(1.15) brightness(.72) hue-rotate(8deg);" in html

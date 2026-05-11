@@ -23,6 +23,7 @@ from app.admin.job_runs import persist_job_run_state
 from app.admin import policy_admin
 from app.config import settings
 from app.editorial.policy import POLICY_PATH_ENV
+from app.rendering.visual_theme import VISUAL_THEME_ALLOWLIST, normalize_visual_theme
 from app.utils.logger import get_logger
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +50,7 @@ _SUPPORTED_OPTION_KEYS: frozenset[str] = frozenset(
         # Output-side knobs — flow through ``--output-style`` / ``--output-theme``.
         "output_style",
         "output_theme",
+        "visual_theme",
         # Editorial policy knobs — folded into a single
         # ``--policy-override-json`` payload for the subprocess.
         "target_sections",
@@ -196,7 +198,8 @@ def _build_argv(options: dict[str, Any]) -> list[str]:
     …) is folded into a single ``--policy-override-json`` blob the
     subprocess deep-merges on top of the resolved YAML policy. Output theme
     rides on its own ``--output-theme`` flag because it doesn't live in the
-    policy schema.
+    policy schema. Visual theme is forwarded as ``--visual-theme`` because it
+    belongs to the renderer contract, not the editorial policy schema.
 
     Keys outside ``_SUPPORTED_OPTION_KEYS`` are logged via
     ``logger.warning("ignored_run_option")`` so the operator can see what
@@ -229,6 +232,18 @@ def _build_argv(options: dict[str, Any]) -> list[str]:
                 value=str(output_style),
                 allowed=sorted(_VALID_OUTPUT_STYLES),
             )
+
+    visual_theme = options.get("visual_theme")
+    if visual_theme is not None:
+        normalized_visual_theme = normalize_visual_theme(str(visual_theme))
+        if normalized_visual_theme != str(visual_theme).strip():
+            logger.warning(
+                "invalid_visual_theme",
+                value=str(visual_theme),
+                fallback=normalized_visual_theme,
+                allowed=sorted(VISUAL_THEME_ALLOWLIST),
+            )
+        argv += ["--visual-theme", normalized_visual_theme]
 
     output_theme = options.get("output_theme")
     if output_theme:

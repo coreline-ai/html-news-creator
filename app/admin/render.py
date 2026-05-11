@@ -10,8 +10,9 @@ itself has no ``enabled`` column), and rewrites
 so operators can see exactly which HTML was deployed.
 
 The renderer defaults to the existing newsstream template, but honours
-``Report.method_json.output_style`` so a report generated as a signal briefing
-keeps that structure when operators re-render or publish it.
+``Report.method_json.output_style`` and ``Report.method_json.visual_theme`` so
+a report generated as a signal briefing keeps that structure/theme when
+operators re-render or publish it.
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db_models import Report, ReportArtifact, ReportSection
 from app.rendering.jinja_renderer import JinjaRenderer
+from app.rendering.visual_theme import normalize_visual_theme
 from app.utils.logger import get_logger
 from app.utils.source_images import is_usable_representative_image_url
 
@@ -183,6 +185,7 @@ async def render_published(
     disabled_section_ids: Optional[Iterable[str]] = None,
     output_theme: str = "dark",
     output_style: str | None = None,
+    visual_theme: str | None = None,
 ) -> Path:
     """Re-render the published HTML for ``date_kst`` from current DB state.
 
@@ -197,6 +200,9 @@ async def render_published(
             shipping dark.
         output_style: ``newsstream`` or ``signal_briefing``. When omitted, the
             value persisted in ``Report.method_json.output_style`` is used.
+        visual_theme: Refero visual theme id for ``signal_briefing``. When
+            omitted, ``Report.method_json.visual_theme`` is used with default
+            fallback.
 
     Returns:
         Path to the freshly written HTML file.
@@ -227,6 +233,14 @@ async def render_published(
     )
     resolved_output_style = _normalize_output_style(
         output_style or stored_output_style
+    )
+    stored_visual_theme = (
+        (db_report.method_json or {}).get("visual_theme")
+        if isinstance(db_report.method_json, dict)
+        else None
+    )
+    resolved_visual_theme = normalize_visual_theme(
+        visual_theme if visual_theme is not None else stored_visual_theme
     )
 
     sections_result = await db.execute(
@@ -265,6 +279,7 @@ async def render_published(
         str(output_path),
         output_theme=output_theme,
         output_style=resolved_output_style,
+        visual_theme=resolved_visual_theme,
     )
 
     artifact = ReportArtifact(
@@ -283,6 +298,7 @@ async def render_published(
         disabled_count=len(disabled_set),
         output_theme=output_theme,
         output_style=resolved_output_style,
+        visual_theme=resolved_visual_theme,
         path=str(output_rel),
     )
     return written_path

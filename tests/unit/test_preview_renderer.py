@@ -114,10 +114,55 @@ def test_render_preview_signal_briefing_output_style():
         options={"target_sections": 2, "output_style": "signal_briefing"}
     )
     assert "Signal Briefing" in html
-    assert "오늘의 온도" in html
+    assert "핵심 기류" in html
     assert html.count('class="section-card"') == 2
 
 
 def test_render_preview_invalid_output_style_raises():
     with pytest.raises(ValueError):
         render_preview(options={"output_style": "unknown"})
+
+
+def test_render_preview_passes_visual_theme_to_renderer(monkeypatch):
+    captured = {}
+
+    def _fake_render_report(self, report, sections, **kwargs):
+        captured.update(kwargs)
+        return "<!DOCTYPE html>"
+
+    monkeypatch.setattr(
+        "app.rendering.jinja_renderer.JinjaRenderer.render_report",
+        _fake_render_report,
+    )
+    html = render_preview(
+        options={
+            "target_sections": 1,
+            "output_style": "signal_briefing",
+            "visual_theme": "mercury_twilight_console",
+        }
+    )
+
+    assert html == "<!DOCTYPE html>"
+    assert captured["visual_theme"] == "mercury_twilight_console"
+
+
+def test_render_preview_invalid_visual_theme_uses_default(monkeypatch):
+    captured = {}
+
+    def _fake_render_report(self, report, sections, **kwargs):
+        captured.update(kwargs)
+        return "<!DOCTYPE html>"
+
+    monkeypatch.setattr(
+        "app.rendering.jinja_renderer.JinjaRenderer.render_report",
+        _fake_render_report,
+    )
+    render_preview(
+        options={
+            "target_sections": 1,
+            "output_style": "signal_briefing",
+            "visual_theme": "bad-theme",
+        }
+    )
+
+    assert captured["visual_theme"] == "hyperstudio_terminal_ops"

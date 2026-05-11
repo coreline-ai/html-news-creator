@@ -96,6 +96,46 @@ describe("RunOptionsPanel (TC-3.1)", () => {
     expect(signal).toHaveAttribute("aria-checked", "true");
   });
 
+  it("shows Refero visual theme choices only for signal_briefing", () => {
+    render(
+      <AllProviders>
+        <RunOptionsPanel />
+      </AllProviders>,
+    );
+    const d = screen.getByTestId("group-D");
+    fireEvent.click(within(d).getByRole("button", { expanded: false }));
+
+    expect(
+      within(d).queryByLabelText(/refero visual theme/i),
+    ).not.toBeInTheDocument();
+    expect(
+      within(d).getByText(/available when output style is signal_briefing/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(d).getByRole("radio", { name: /시그널 브리핑형/i }),
+    );
+
+    const themeGroup = within(d).getByRole("radiogroup", {
+      name: /refero visual theme/i,
+    });
+    expect(within(themeGroup).getAllByRole("radio")).toHaveLength(5);
+    expect(
+      within(themeGroup).getByRole("radio", {
+        name: /Hyperstudio Terminal Ops/i,
+      }),
+    ).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(
+      within(themeGroup).getByRole("radio", {
+        name: /Mercury Twilight Console/i,
+      }),
+    );
+    expect(useAppStore.getState().runOptions.visual_theme).toBe(
+      "mercury_twilight_console",
+    );
+  });
+
   it("resets options back to defaults", () => {
     useAppStore.setState({
       runOptions: { ...DEFAULT_RUN_OPTIONS, target_sections: 3, dry_run: true },

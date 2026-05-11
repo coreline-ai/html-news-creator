@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import jinja2
+from app.rendering.visual_theme import normalize_visual_theme
 from app.utils.logger import get_logger
 
 DEFAULT_OUTPUT_STYLE = "newsstream"
@@ -30,6 +31,7 @@ class JinjaRenderer:
         sections: list,
         output_theme: str = "dark",
         output_style: str = DEFAULT_OUTPUT_STYLE,
+        visual_theme: str | None = None,
     ) -> str:
         """Render daily report HTML. report and sections can be dicts or ORM objects.
 
@@ -40,6 +42,7 @@ class JinjaRenderer:
         """
         requested_style = str(output_style or DEFAULT_OUTPUT_STYLE)
         style = normalize_output_style(output_style)
+        visual_theme_value = normalize_visual_theme(visual_theme)
         if style != requested_style:
             self.logger.warning(
                 "invalid_output_style_fallback",
@@ -52,12 +55,14 @@ class JinjaRenderer:
             sections=sections,
             output_theme=output_theme,
             output_style=style,
+            visual_theme=visual_theme_value,
         )
         self.logger.info(
             "render_complete",
             sections=len(sections),
             output_theme=output_theme,
             output_style=style,
+            visual_theme=visual_theme_value,
         )
         return html
 
@@ -68,6 +73,7 @@ class JinjaRenderer:
         output_path: str,
         output_theme: str = "dark",
         output_style: str = DEFAULT_OUTPUT_STYLE,
+        visual_theme: str | None = None,
     ) -> Path:
         """Render and write to file. Creates parent dirs if needed."""
         html = self.render_report(
@@ -75,6 +81,7 @@ class JinjaRenderer:
             sections,
             output_theme=output_theme,
             output_style=output_style,
+            visual_theme=visual_theme,
         )
         path = Path(output_path)
         path.parent.mkdir(parents=True, exist_ok=True)

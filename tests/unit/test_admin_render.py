@@ -275,3 +275,41 @@ async def test_render_published_storage_path_is_project_root_relative(tmp_path):
     p = Path(artifact.storage_path)
     assert not p.is_absolute()
     assert artifact.storage_path == "public/news/2026-04-30-trend.html"
+
+
+@pytest.mark.asyncio
+async def test_render_published_preserves_report_visual_theme(tmp_path):
+    report_id = str(uuid.uuid4())
+    sections = [_FakeSection(str(uuid.uuid4()), 0, "brief")]
+    report = _FakeReport(report_id, date_cls.fromisoformat("2026-04-30"))
+    report.method_json = {
+        "output_style": "signal_briefing",
+        "visual_theme": "cursor_warm_studio",
+    }
+    db = _make_db(report, sections)
+
+    fake_render = MagicMock(return_value=tmp_path / "out.html")
+    with patch("app.admin.render.JinjaRenderer") as MockRenderer:
+        MockRenderer.return_value.render_to_file = fake_render
+        await render_published("2026-04-30", db, disabled_section_ids=None)
+
+    _args, kwargs = fake_render.call_args
+    assert kwargs["output_style"] == "signal_briefing"
+    assert kwargs["visual_theme"] == "cursor_warm_studio"
+
+
+@pytest.mark.asyncio
+async def test_render_published_invalid_stored_visual_theme_uses_default(tmp_path):
+    report_id = str(uuid.uuid4())
+    sections = [_FakeSection(str(uuid.uuid4()), 0, "brief")]
+    report = _FakeReport(report_id, date_cls.fromisoformat("2026-04-30"))
+    report.method_json = {"visual_theme": "bad-theme"}
+    db = _make_db(report, sections)
+
+    fake_render = MagicMock(return_value=tmp_path / "out.html")
+    with patch("app.admin.render.JinjaRenderer") as MockRenderer:
+        MockRenderer.return_value.render_to_file = fake_render
+        await render_published("2026-04-30", db, disabled_section_ids=None)
+
+    _args, kwargs = fake_render.call_args
+    assert kwargs["visual_theme"] == "hyperstudio_terminal_ops"

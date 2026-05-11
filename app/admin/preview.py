@@ -17,6 +17,7 @@ from typing import Any
 
 from app.admin.policy_admin import merge_with_options
 from app.rendering.jinja_renderer import JinjaRenderer
+from app.rendering.visual_theme import normalize_visual_theme
 
 TEMPLATES_DIR = str(Path(__file__).resolve().parents[2] / "templates")
 _VALID_OUTPUT_STYLES = {"newsstream", "signal_briefing"}
@@ -224,6 +225,9 @@ def render_preview(
 
     output_theme = (opts.get("output_theme") if isinstance(opts, dict) else None) or "dark"
     output_style = (opts.get("output_style") if isinstance(opts, dict) else None) or "newsstream"
+    visual_theme = normalize_visual_theme(
+        opts.get("visual_theme") if isinstance(opts, dict) else None
+    )
     if str(output_style) not in _VALID_OUTPUT_STYLES:
         raise ValueError(f"output_style must be one of {sorted(_VALID_OUTPUT_STYLES)}")
 
@@ -233,6 +237,7 @@ def render_preview(
         sections_data,
         output_theme=output_theme,
         output_style=str(output_style),
+        visual_theme=visual_theme,
     )
 
 

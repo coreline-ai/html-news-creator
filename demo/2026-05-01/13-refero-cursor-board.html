@@ -3,10 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cursor Warm Studio Board</title>
+<title>Cursor Warm Studio Board · 2026-05-10</title>
 <link rel="icon" href="data:,">
 <style>
-
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Pretendard,Inter,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}a{color:inherit;text-decoration:none}img{display:block;max-width:100%}.demo-nav{position:sticky;top:0;z-index:30;display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line);backdrop-filter:blur(16px);background:var(--nav-bg)}.demo-nav .links{display:flex;gap:8px;flex-wrap:wrap}.demo-nav a{font-size:12px;border:1px solid var(--line);padding:7px 9px;border-radius:var(--nav-radius);font-weight:760;background:var(--nav-chip)}.demo-nav strong{font-size:13px}.board{max-width:var(--max);margin:0 auto;padding:30px 16px 92px}.headline{display:grid;grid-template-columns:1.08fr .92fr;gap:24px;align-items:end;margin:28px 0 18px}.kicker{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:var(--muted)}.headline h1{font-size:clamp(44px,7.8vw,104px);line-height:.86;margin:0;letter-spacing:-.08em;color:var(--headline)}.headline p{max-width:620px;color:var(--text-muted);line-height:1.62;margin:0}.hero-panel{border:1px solid var(--line);background:var(--panel);border-radius:var(--panel-radius);padding:18px;box-shadow:var(--shadow)}.token-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:18px}.token{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 9px;font-size:11px;font-weight:850;background:var(--token-bg);color:var(--token-text)}.dot{width:17px;height:17px;border-radius:999px;border:1px solid rgba(128,128,128,.35)}.variant-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.variant-links a{border:1px solid var(--line);border-radius:var(--button-radius);padding:10px 12px;font-size:12px;font-weight:900}.variant-links a.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}.masonry{columns:4 260px;column-gap:16px;margin-top:18px}.tile{break-inside:avoid;background:var(--card);border:1px solid var(--line);border-radius:var(--card-radius);overflow:hidden;margin:0 0 16px;box-shadow:var(--tile-shadow);position:relative}.tile .media{position:relative;display:block;overflow:hidden;background:var(--media-bg);min-height:220px}.tile:nth-child(3n) .media{min-height:320px}.tile:nth-child(4n) .media{min-height:180px}.tile .media img{width:100%;height:100%;object-fit:cover;filter:var(--image-filter);mix-blend-mode:var(--image-blend)}.tile .media:before{content:"";position:absolute;inset:0;background:var(--image-overlay);z-index:1;pointer-events:none}.media.image-missing:after,.media:not(:has(img)):after{content:attr(data-title);position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font-size:28px;font-weight:950;line-height:.96;letter-spacing:-.06em;background:var(--fallback);color:var(--fallback-text)}.copy{padding:var(--card-pad)}.idx{font-size:var(--idx-size);font-weight:950;color:var(--accent);letter-spacing:-.08em;line-height:.85}.meta-line{display:flex;align-items:center;gap:8px;justify-content:space-between;margin-top:10px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:900}.tile h2{font-size:27px;line-height:1;margin:9px 0 10px;letter-spacing:-.055em;color:var(--card-title)}.tile p{color:var(--card-text);line-height:1.56;margin:0 0 12px}.chip{display:inline-flex;align-items:center;gap:5px;border-radius:var(--chip-radius);padding:6px 8px;margin:4px 4px 0 0;font-size:11px;font-weight:820;line-height:1;border:1px solid var(--chip-line);background:var(--chip-bg);color:var(--chip-text)}.chip.official{color:var(--official)}.chip.source-media{color:var(--media)}.chip.research{color:var(--research)}.chip.more{opacity:.72}.footnote{margin-top:24px;color:var(--text-muted);font-size:13px;line-height:1.6}.footnote a{text-decoration:underline;text-underline-offset:3px;font-weight:900}@media(max-width:980px){.headline{grid-template-columns:1fr}.masonry{columns:3 230px}}@media(max-width:760px){.demo-nav{position:relative;align-items:flex-start;flex-direction:column}.demo-nav .links{gap:6px}.demo-nav a{font-size:11px}.headline{display:block}.masonry{columns:1}.tile .media{min-height:220px!important}.board{padding-inline:14px}}
 
@@ -17,126 +16,130 @@ body.cursor{--max:1380px;--bg:#f7f7f4;--headline:#262510;--text-muted:#6f6e67;--
 body.hyperstudio{--max:1440px;--bg:#101010;--headline:#f3f3f3;--text-muted:#a4a4a4;--muted:#949494;--line:#333;--nav-bg:rgba(16,16,16,.9);--nav-chip:#080808;--nav-radius:8px;--panel:#080808;--panel-radius:8px;--shadow:0 24px 70px rgba(0,0,0,.38);--token-bg:#151515;--token-text:#f3f3f3;--button-radius:8px;--accent:#f5b84b;--accent-text:#080808;--card:#080808;--card-radius:8px;--tile-shadow:0 20px 70px rgba(0,0,0,.36);--card-pad:20px;--idx-size:38px;--card-title:#f3f3f3;--card-text:#c1c1c1;--media-bg:linear-gradient(135deg,#101010,#080808);--image-filter:grayscale(.85) contrast(1.25) brightness(.62);--image-blend:screen;--image-overlay:linear-gradient(180deg,rgba(8,8,8,.2),rgba(8,8,8,.55));--fallback:radial-gradient(circle at 18% 0,#2ab86f 0,transparent 30%),linear-gradient(135deg,#101010,#080808);--fallback-text:#f3f3f3;--chip-radius:20px;--chip-line:#333;--chip-bg:#101010;--chip-text:#f3f3f3;--official:#53d487;--media:#f5b84b;--research:#c1c1c1;background:#101010;color:#f3f3f3}.hyperstudio .kicker,.hyperstudio .meta-line,.hyperstudio .idx{font-family:'SFMono-Regular','IBM Plex Mono',ui-monospace,monospace}.hyperstudio .tile:before{content:'●';position:absolute;top:14px;right:14px;color:#53d487;font-size:10px;z-index:2}
 body.mercury{--max:1400px;--bg:#171721;--headline:#ededf3;--text-muted:#c3c3cc;--muted:#70707d;--line:#343445;--nav-bg:rgba(23,23,33,.88);--nav-chip:#272735;--nav-radius:32px;--panel:#1e1e2a;--panel-radius:4px;--shadow:0 30px 90px rgba(0,0,0,.32);--token-bg:#272735;--token-text:#ededf3;--button-radius:32px;--accent:#5266eb;--accent-text:#fff;--card:#1e1e2a;--card-radius:0px;--tile-shadow:0 26px 90px rgba(0,0,0,.3);--card-pad:24px;--idx-size:44px;--card-title:#ededf3;--card-text:#c3c3cc;--media-bg:linear-gradient(135deg,#272735,#171721);--image-filter:saturate(.75) contrast(1.05) brightness(.68);--image-blend:normal;--image-overlay:linear-gradient(180deg,rgba(82,102,235,.08),rgba(23,23,33,.44));--fallback:radial-gradient(circle at 82% 0,#5266eb 0,transparent 28%),linear-gradient(135deg,#272735,#171721);--fallback-text:#ededf3;--chip-radius:32px;--chip-line:#343445;--chip-bg:#272735;--chip-text:#ededf3;--official:#9bd3ff;--media:#cdddff;--research:#b9a8ff;background:radial-gradient(circle at 76% -10%,rgba(82,102,235,.22),transparent 32%),#171721;color:#ededf3}.mercury .headline h1{font-weight:680;letter-spacing:-.06em}.mercury .tile{border-left:1px solid #5266eb}
 
+.theme-switcher{display:flex;gap:8px;flex-wrap:wrap}.theme-switcher a.is-current{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}.live-source{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:999px;padding:7px 9px;font-size:11px;font-weight:850;color:var(--token-text);background:var(--token-bg)}.metric-board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}.metric-card{border:1px solid var(--line);border-radius:var(--panel-radius);background:var(--token-bg);padding:10px}.metric-card b{display:block;color:var(--headline);font-size:20px;letter-spacing:-.04em}.metric-card span{display:block;color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}.main-event{margin-top:14px;border-left:3px solid var(--accent);padding:10px 0 10px 12px;color:var(--text-muted);line-height:1.55}.tile h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}.update-list{padding-left:18px;margin:8px 0 12px;color:var(--card-text);line-height:1.5}.update-list li{margin:6px 0}.signal-note{border:1px solid var(--line);background:var(--token-bg);border-radius:var(--panel-radius);padding:11px 12px;margin:12px 0;color:var(--card-text);line-height:1.52}.signal-note strong{color:var(--accent)}.source-chips{margin-top:10px}.source-chips .chip{max-width:100%;white-space:normal;line-height:1.25}.tile.is-low-confidence{opacity:.92}.board-summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.board-summary span{border:1px solid var(--line);border-radius:999px;padding:7px 9px;background:var(--token-bg);font-size:11px;font-weight:850;color:var(--token-text)}.footnote{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}.footnote span{display:inline-flex;gap:8px;flex-wrap:wrap}.footnote a{font-weight:900}@media(max-width:760px){.metric-board{grid-template-columns:repeat(2,minmax(0,1fr))}.footnote{display:block}}
+
 </style>
 </head>
 <body class="cursor">
-<nav class="demo-nav"><strong>Coreline Refero Visual Boards · 2026-05-01</strong><div class="links"><a href="index.html">Index</a><a href="05-visual-board.html">Visual Board</a><a href="11-refero-linear-board.html">Linear</a><a href="12-refero-anthropic-board.html">Anthropic</a><a href="13-refero-cursor-board.html">Cursor</a><a href="14-refero-hyperstudio-board.html">Hyperstudio</a><a href="15-refero-mercury-board.html">Mercury</a><a href="refero-design-library.html">Refero Library</a></div></nav>
+<nav class="demo-nav"><strong>Coreline Refero Visual Boards · 2026-05-10</strong><div class="links"><a href="index.html">Index</a><a href="05-visual-board.html">05 Visual Board</a><span class="theme-switcher"><a href="11-refero-linear-board.html">Linear</a><a href="12-refero-anthropic-board.html">Anthropic</a><a class="is-current" href="13-refero-cursor-board.html">Cursor</a><a href="14-refero-hyperstudio-board.html">Hyperstudio</a><a href="15-refero-mercury-board.html">Mercury</a></span><a href="http://127.0.0.1:8000/api/reports/2026-05-10/html">API HTML</a></div></nav>
 <main class="board">
   <section class="headline">
     <div>
       <div class="kicker">Refero shortlist · developer studio</div>
-      <h1>Developer-studio cards for source-heavy AI reports.</h1>
+      <h1>AI 시그널 브리핑 2026-05-10</h1>
+      <div class="board-summary"><span>축: 안전/정책</span><span>축: 인프라</span><span>축: 제품</span><span>축: 기타</span><span>#infrastructure</span><span>#safety</span><span>#확산</span><span>#community</span></div>
     </div>
     <aside class="hero-panel">
-      <div class="kicker">Cursor tokens applied to 05 Visual Board</div>
-      <p>warm off-white canvas, 4px radius, code-like mono labels, orange outline accent를 적용한 개발자 도구형 Visual Board입니다. 관리자/데모 탐색 UI에 맞춘 밀도입니다.</p>
-      <div class="token-row"><span class="token"><span class="dot" style="background:#f7f7f4"></span>Canvas Parchment</span><span class="token"><span class="dot" style="background:#262510"></span>Inkwell</span><span class="token"><span class="dot" style="background:#7a7974"></span>Muted Stone</span><span class="token"><span class="dot" style="background:#f54e00"></span>Onyx Outline</span><span class="token"><span class="dot" style="background:#4ade80"></span>Chartreuse</span></div>
-      <div class="variant-links"><a class="primary" href="refero-design-md/cursor-warm-studio.md">Open local MD →</a><a href="https://styles.refero.design/style/4e3b4717-84c8-4599-baaf-a343c3d619b6">Refero source</a></div>
+      <div class="kicker">Cursor tokens applied to current API report</div>
+      <p>warm off-white canvas, 4px radius, code-like mono labels, orange outline accent를 적용한 개발자 도구형 Visual Board입니다. Claude Code·MCP·로컬 LLM 신호를 빠르게 훑기 좋게 압축했습니다.</p>
+      <p>오늘은 측정 어려운 고성능 AI와 자동화 에이전트 논의 확산 · 중국 AI 투자전 가속, 바이트댄스·딥시크·엔비디아가 공급망을 흔든다 · 로컬 LLM 운영 피로감 속 NVIDIA ‘슬라이스형’ 모델 공개 흐름이 두드러졌습니다. 아래 섹션은 사실, 커뮤니티 신호, 개발자 관점 시사점을 분리해 정리했습니다.</p>
+      <div class="metric-board"><div class="metric-card"><b>41</b><span>수집 항목</span></div><div class="metric-card"><b>41</b><span>AI 관련</span></div><div class="metric-card"><b>7</b><span>최종 섹션</span></div><div class="metric-card"><b></b><span>검증 신호</span></div></div>
+      <div class="main-event"><strong>메인 이벤트</strong> — 측정 어려운 고성능 AI와 자동화 에이전트 논의 확산 / 중국 AI 투자전 가속, 바이트댄스·딥시크·엔비디아가 공급망을 흔든다</div>
+      <div class="token-row"><span class="token"><span class="dot" style="background:#f7f7f4"></span>Canvas</span><span class="token"><span class="dot" style="background:#ffffff"></span>Panel</span><span class="token"><span class="dot" style="background:#262510"></span>Ink</span><span class="token"><span class="dot" style="background:#f54e00"></span>Orange</span><span class="token"><span class="dot" style="background:#4ade80"></span>Green</span></div>
+      <div class="variant-links"><a class="primary" href="refero-design-md/cursor-warm-studio.md">Open local MD →</a><a href="https://styles.refero.design/style/4e3b4717-84c8-4599-baaf-a343c3d619b6">Refero source</a><a href="http://127.0.0.1:8000/api/reports/2026-05-10/html">Original API HTML</a></div>
     </aside>
   </section>
-  <section class="masonry" aria-label="AI report cards">
+  <section class="masonry" aria-label="2026-05-10 AI report cards">
 <article class="tile">
-  <a class="media" href="https://aws.amazon.com/blogs/machine-learning/configuring-amazon-bedrock-agentcore-gateway-for-secure-access-to-private-resources/" target="_blank" rel="noopener" data-title="AWS 에이전트"><img src="https://d2908q01vomqb2.cloudfront.net/f1f836cb4ea6efb2a0b1b99f41ad8b103eff4b59/2026/04/29/image-1-12.png" alt="AWS 에이전트" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+  <a class="media" href="https://the-decoder.com/metr-says-it-can-barely-measure-claude-mythos-palo-alto-networks-warns-of-autonomous-ai-attackers/" target="_blank" rel="noopener" data-title="측정 어려운 고성능 AI와 자동화 에이전트 논의 확산"><img src="https://the-decoder.com/wp-content/uploads/2026/05/cybersecurity_llm_kraken-1200x670.png" alt="측정 어려운 고성능 AI와 자동화 에이전트 논의 확산" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">01</div>
-    <div class="meta-line"><span>Enterprise</span><span>2 sources</span></div>
-    <h2>AWS 에이전트</h2>
-    <p>두 글은 AWS가 생성형 AI 에이전트를 단순 챗봇이 아니라 기업 내부 시스템과 데이터 분석 워크플로에 연결되는 운영 인프라로 확장하고 있음을 보여준다. 특히 보안 네트워크 연결, 데이터 접근, BI 자동화가 함께 강조되며 엔터프라이즈 AI 도입의 병목인 권한·연결·분석 전문성 문제를 낮추려는 방향성이 뚜렷하다.</p>
-    <div><a class="chip official" href="https://aws.amazon.com/blogs/machine-learning/configuring-amazon-bedrock-agentcore-gateway-for-secure-access-to-private-resources/" target="_blank" rel="noopener">AWS Machine Learning Blog 공식</a><a class="chip official" href="https://aws.amazon.com/blogs/machine-learning/unleashing-agentic-ai-analytics-on-amazon-sagemaker-with-amazon-athena-and-amazon-quick/" target="_blank" rel="noopener">AWS Machine Learning Blog 공식</a></div>
+    <div class="meta-line"><span>industry</span><span>19 sources · score 0.96</span></div>
+    <h2>측정 어려운 고성능 AI와 자동화 에이전트 논의 확산</h2>
+    <p>METR가 Anthropic의 Claude Mythos급 모델 역량을 측정하기 어렵다고 언급한 소식과, Palo Alto Networks가 자율 AI 공격자 가능성을 경고한 보도가 포함됐다. 사카나 AI는 여러 거대 모델을 지휘하는 7B 규모 오케스트레이션 모델을 공개했다고 보도됐다. Reddit에서는 AI 뉴스 피드 도구, AI 감정의 가능성, AI를 통한 학습 가속 경험에 대한 논의가 올라왔다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>METR는 Claude Mythos 수준의 모델 역량을 기존 방식으로 충분히 측정하기 어렵다는 취지의 평가 이슈를 제기했다.</li><li>Palo Alto Networks는 자율적으로 행동하는 AI 공격자 가능성을 경고하며 에이전트형 AI의 보안 리스크를 부각했다.</li><li>사카나 AI는 여러 대형 모델을 지휘하는 7B 규모 ‘지휘자’ 모델을 공개해 오케스트레이션 자동화를 강조했다.</li><li>Reddit에서는 AI 뉴스 통합 피드, AI 감정 가능성, AI를 활용한 학습 가속 경험 등 사용자 중심 논의가 확산됐다.</li></ul>
+    <div class="signal-note"><strong>Social</strong> — 커뮤니티에서는 AI 관련 정보를 한곳에서 추적하려는 수요, AI가 이해와 학습을 보조하는 방식, 그리고 AI의 주관적 경험 가능성 같은 철학적 주제에 관심이 나타났다. 다만 해당 Reddit 게시물들은 검증된 연구 결과라기보다 사용자 제안과 토론 신호에 가깝다.</div>
+    <div class="signal-note"><strong>Implication</strong> — 개발자와 운영자 관점에서는 모델 성능이 기존 벤치마크와 평가 체계의 측정 한계를 밀어붙이고 있으며, 동시에 다중 모델 오케스트레이션과 자율 에이전트 보안 리스크가 실무 이슈로 부상하고 있다. 특히 에이전트형 시스템을 도입할 때는 능력 평가, 권한 제한, 감사 로그, 외부 도구 호출 통제 같은 운영 안전장치가 더 중요해질 수 있다.</div>
+    <div><span class="chip">#agent</span><span class="chip">#safety</span><span class="chip">#evaluation</span><span class="chip">#orchestration</span><span class="chip">#community</span></div>
+    <div class="source-chips"><a class="chip source-media" href="https://the-decoder.com/metr-says-it-can-barely-measure-claude-mythos-palo-alto-networks-warns-of-autonomous-ai-attackers/" target="_blank" rel="noopener">The Decoder AI</a><a class="chip source-media" href="https://www.aitimes.com/news/articleView.html?idxno=210290" target="_blank" rel="noopener">AI타임스</a><a class="chip source" href="https://www.reddit.com/r/OpenAI/comments/1t93mfu/aiwire_ai_news_in_one_feed_so_you_dont_need_5/" target="_blank" rel="noopener">Reddit OpenAI</a><span class="chip more">+16</span></div>
   </div>
 </article>
 <article class="tile">
-  <a class="media" href="https://aws.amazon.com/blogs/machine-learning/reinforcement-fine-tuning-with-llm-as-a-judge/" target="_blank" rel="noopener" data-title="LLM 제어성 강화"><img src="https://d2908q01vomqb2.cloudfront.net/f1f836cb4ea6efb2a0b1b99f41ad8b103eff4b59/2026/04/23/ML-20696-1.png" alt="LLM 제어성 강화" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+  <a class="media" href="https://www.reddit.com/r/OpenAI/comments/1t91ah9/still_lots_of_goblins/" target="_blank" rel="noopener" data-title="로컬 LLM 운영 피로감 속 NVIDIA ‘슬라이스형’ 모델 공개"><img src="../../public/assets/generated/2026-05-10/19d7e4e3-3da3-4bfb-bf20-7c89de268bd9.svg" alt="로컬 LLM 운영 피로감 속 NVIDIA ‘슬라이스형’ 모델 공개" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">02</div>
-    <div class="meta-line"><span>Model</span><span>3 sources</span></div>
-    <h2>LLM 제어성 강화</h2>
-    <p>세 자료는 모두 LLM을 단순 생성 모델에서 통제·검증 가능한 시스템으로 전환하려는 흐름을 보여준다. RFT와 LLM judge는 외부 평가 신호를 통한 정렬을, Silico는 내부 메커니즘 조정을, 페르소나 연구는 프롬프트 기반 시뮬레이션의 한계를 드러내며 향후 모델 신뢰성 확보에는 평가·해석·행동 검증이 함께 필요함을 시사한다.</p>
-    <div><a class="chip official" href="https://aws.amazon.com/blogs/machine-learning/reinforcement-fine-tuning-with-llm-as-a-judge/" target="_blank" rel="noopener">AWS Machine Learning Blog 공식</a><a class="chip source" href="https://www.technologyreview.com/2026/04/30/1136721/this-startups-new-mechanistic-interpretability-tool-lets-you-debug-llms/" target="_blank" rel="noopener">MIT Technology Review AI 미디어</a><a class="chip official" href="http://arxiv.org/abs/2604.28048v1" target="_blank" rel="noopener">arXiv cs.CL 공식</a></div>
+    <div class="meta-line"><span>tooling</span><span>5 sources · score 0.84</span></div>
+    <h2>로컬 LLM 운영 피로감 속 NVIDIA ‘슬라이스형’ 모델 공개</h2>
+    <p>Reddit 기반 클러스터에서 로컬 LLM 평가 하네스, Claude Code 훅 활용, 개인 환경에서의 대형 모델 실행 경험, 이미지/생성 품질 관련 불만으로 보이는 게시물이 함께 포착됐다. 이 중 NVIDIA AI는 하나의 체크포인트에 30B, 23B, 12B 추론 모델을 담고 제로샷 슬라이싱을 지원한다는 Star Elastic 공개 소식이 공유됐다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>NVIDIA AI의 Star Elastic 소식이 공유됐으며, 하나의 체크포인트에 30B·23B·12B 추론 모델을 포함하고 제로샷 슬라이싱을 지원한다고 소개됐다.</li><li>LocalLLaMA에서는 평가 하네스가 너무 많아 선택과 설정이 어렵다는 사용자 피로감이 나타났다.</li><li>ClaudeCode 커뮤니티에서는 개발 워크플로 자동화를 위한 ‘훅’ 활용 사례와 추천을 묻는 논의가 이어졌다.</li><li>로컬 환경에서 대형 모델급 경험을 재현하려는 실험성 게시물과 생성 품질에 대한 불만성 게시물이 함께 관찰됐다.</li></ul>
+    <div class="signal-note"><strong>Social</strong> — LocalLLaMA와 ClaudeCode 커뮤니티에서는 모델을 직접 돌리고 평가·자동화하려는 사용자가 늘어나는 한편, 하네스 선택지 과다와 워크플로 구성의 복잡성에 피로감을 드러내는 신호가 보인다. ‘DeepSeek V4 Pro at home’ 같은 제목은 최신 폐쇄형/대형 모델 경험을 로컬에서 재현하려는 커뮤니티식 실험 또는 밈 성격의 관심을 반영한다.</div>
+    <div class="signal-note"><strong>Implication</strong> — 개발자 관점에서는 모델 성능 자체보다 평가 하네스, 훅, 체크포인트 배포 방식처럼 운영·실험 생산성을 좌우하는 주변 도구의 중요성이 커지고 있다. Star Elastic처럼 하나의 체크포인트에서 여러 크기의 모델을 꺼내 쓰는 방식은 배포·벤치마크·리소스 최적화 측면에서 관심을 받을 수 있지만, 실제 품질과 호환성은 별도 검증이 필요하다.</div>
+    <div><span class="chip">#local-llm</span><span class="chip">#evaluation</span><span class="chip">#tooling</span><span class="chip">#nvidia</span><span class="chip">#workflow</span></div>
+    <div class="source-chips"><a class="chip source" href="https://www.reddit.com/r/OpenAI/comments/1t91ah9/still_lots_of_goblins/" target="_blank" rel="noopener">Reddit OpenAI</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t8gb1e/i_am_overwhelmed_by_harnesses/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t94ito/i_have_deepseek_v4_pro_at_home/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><span class="chip more">+2</span></div>
   </div>
 </article>
 <article class="tile">
-  <a class="media" href="https://www.aitimes.com/news/articleView.html?idxno=209986" target="_blank" rel="noopener" data-title="AI 도입의 명암"><img src="https://cdn.aitimes.com/news/photo/202604/209986_212530_028.jpg" alt="AI 도입의 명암" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+  <a class="media" href="https://www.reddit.com/r/Anthropic/comments/1t8s6z0/made_a_claude_code_plugin_for_persistent_project/" target="_blank" rel="noopener" data-title="Claude Code 사용자층, 워크플로·한도·투명성 개선 요구 확산"><img src="../../public/assets/generated/2026-05-10/bf638b0a-3355-41cd-8817-bef5e269ca54.svg" alt="Claude Code 사용자층, 워크플로·한도·투명성 개선 요구 확산" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">03</div>
-    <div class="meta-line"><span>Enterprise</span><span>12 sources</span></div>
-    <h2>AI 도입의 명암</h2>
-    <p>AI 도입이 실험 단계를 넘어 핵심 업무와 공공 인프라로 확산되면서 비용 통제, 데이터 안보, 규제 균형이 주요 경영·정책 과제로 부상하고 있다. 특히 중국 AI 모델 사용 조사와 EU 규제 갈등은 AI 공급망과 모델 선택이 기술 문제가 아니라 지정학·규제 리스크로 연결되고 있음을 보여준다.</p>
-    <div><a class="chip source" href="https://www.aitimes.com/news/articleView.html?idxno=209986" target="_blank" rel="noopener">AI타임스 미디어</a><a class="chip source" href="https://www.aitimes.com/news/articleView.html?idxno=209991" target="_blank" rel="noopener">AI타임스 미디어</a><a class="chip source" href="https://www.aitimes.com/news/articleView.html?idxno=209998" target="_blank" rel="noopener">AI타임스 미디어</a><span class="chip more">+9</span></div>
+    <div class="meta-line"><span>tooling</span><span>6 sources · score 0.84</span></div>
+    <h2>Claude Code 사용자층, 워크플로·한도·투명성 개선 요구 확산</h2>
+    <p>Reddit의 Anthropic 및 ClaudeCode 커뮤니티에서 Claude Code 관련 게시물이 다수 올라왔다. 주제는 프로젝트 관리를 위한 Claude Code 플러그인 ProMa 제작, Claude Code Web의 plan mode가 임의로 꺼진다는 문제 제기, 유용한 Claude Code 명령어 정리, Claude Pro 사용 한도 비교 질문, 투명한 Thinking 표시 복구 요구 등이다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>한 사용자가 Claude Code에서 지속적인 프로젝트 관리를 돕는 플러그인 ProMa를 제작해 공유했다.</li><li>Claude Code Web에서 plan mode가 임의로 꺼진다는 사용자 불만이 제기됐다.</li><li>Claude Code에서 활용할 만한 20개 명령어를 정리한 커뮤니티 게시물이 공유됐다.</li><li>Claude Pro의 사용 한도가 ChatGPT Plus와 비교해 어느 정도인지, 그리고 투명한 Thinking 표시를 복구해 달라는 요구가 올라왔다.</li></ul>
+    <div class="signal-note"><strong>Social</strong> — 커뮤니티 신호는 Claude Code를 실제 개발 워크플로에 깊게 통합하려는 사용자가 늘고 있음을 보여준다. 동시에 plan mode 안정성, 사용량 한도 예측 가능성, 모델 추론 과정의 가시성에 대한 불만과 개선 요구도 함께 나타난다.</div>
+    <div class="signal-note"><strong>Implication</strong> — 개발자 관점에서는 Claude Code가 단순 채팅형 도구를 넘어 IDE/터미널 기반 작업 관리 도구로 확장되고 있지만, 장기 프로젝트 상태 관리와 UX 일관성, 한도 정책 투명성이 adoption의 병목이 될 수 있다. 플러그인·명령어 공유가 활발해지는 만큼 Anthropic이 공식 워크플로 기능과 상태 보존 기능을 강화할 여지도 커 보인다.</div>
+    <div><span class="chip">#claude-code</span><span class="chip">#tooling</span><span class="chip">#developer-experience</span><span class="chip">#community</span></div>
+    <div class="source-chips"><a class="chip source" href="https://www.reddit.com/r/Anthropic/comments/1t8s6z0/made_a_claude_code_plugin_for_persistent_project/" target="_blank" rel="noopener">Reddit Anthropic</a><a class="chip source" href="https://www.reddit.com/r/ClaudeCode/comments/1t94eoh/claude_code_web_just_randomly_turning_off_plan/" target="_blank" rel="noopener">Reddit ClaudeCode</a><a class="chip source" href="https://www.reddit.com/r/ClaudeCode/comments/1t8712b/20_claude_code_commands_worth_using/" target="_blank" rel="noopener">Reddit ClaudeCode</a><span class="chip more">+3</span></div>
   </div>
 </article>
 <article class="tile">
-  <a class="media" href="https://github.com/microsoft/playwright-mcp/releases/tag/v0.0.72" target="_blank" rel="noopener" data-title="AI 개발도구 개선"><img src="https://opengraph.githubassets.com/2286037d2717ea04460e47a60f8b0643753b684efc832b644ad0383a7b1218cc/microsoft/playwright-mcp/releases/tag/v0.0.72" alt="AI 개발도구 개선" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+  <a class="media" href="https://the-decoder.com/bytedance-plans-over-30-billion-for-ai-expansion-bets-big-on-chinese-chips/" target="_blank" rel="noopener" data-title="중국 AI 투자전 가속, 바이트댄스·딥시크·엔비디아가 공급망을 흔든다"><img src="https://the-decoder.com/wp-content/uploads/2025/12/china_neural_network.jpeg" alt="중국 AI 투자전 가속, 바이트댄스·딥시크·엔비디아가 공급망을 흔든다" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">04</div>
-    <div class="meta-line"><span>Developer</span><span>3 sources</span></div>
-    <h2>AI 개발도구 개선</h2>
-    <p>최근 AI 개발 도구 업데이트는 모델 실행 자체보다 에이전트·코딩 도구·로컬 추론 인프라의 사용성을 높이는 방향으로 진행되고 있다. 특히 Anthropic 호환 게이트웨이, MCP 기반 브라우저 자동화, CUDA/ROCm 병행 구성은 개발자가 다양한 모델과 하드웨어를 유연하게 연결하려는 수요가 커지고 있음을 시사한다.</p>
-    <div><a class="chip official" href="https://github.com/microsoft/playwright-mcp/releases/tag/v0.0.72" target="_blank" rel="noopener">GitHub microsoft 공식</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t0bkaf/cuda_rocm_simultaneously_with_dggml_backend_dlon/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip official" href="https://github.com/anthropics/claude-code/releases/tag/v2.1.126" target="_blank" rel="noopener">GitHub anthropics 공식</a></div>
+    <div class="meta-line"><span>industry</span><span>3 sources · score 0.86</span></div>
+    <h2>중국 AI 투자전 가속, 바이트댄스·딥시크·엔비디아가 공급망을 흔든다</h2>
+    <p>보도에 따르면 바이트댄스는 AI 확장을 위해 300억 달러 이상을 투입하고 중국산 칩 활용에 무게를 두는 것으로 전해졌다. 엔비디아는 올해 투자 규모가 58.6조 원을 넘어 전년 규모를 이미 상회했다는 보도가 나왔다. 딥시크 창립자 량원펑은 사재 약 4조 원 투자 계획과 함께 V4.1을 6월 출시할 예정이라고 보도됐다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>바이트댄스가 AI 확장에 300억 달러 이상을 계획하고 중국산 칩 활용에 베팅하고 있다는 보도가 나왔다.</li><li>엔비디아의 올해 투자 규모가 58.6조 원을 넘어서며 전년 규모를 이미 초과했다는 분석이 제기됐다.</li><li>딥시크 창립자 량원펑이 사재 약 4조 원을 투자할 예정이며, V4.1 모델은 6월 출시 예정으로 보도됐다.</li></ul>
+
+    <div class="signal-note"><strong>Implication</strong> — 개발자와 운영자 관점에서는 모델 성능 경쟁뿐 아니라 칩 조달, 공급망 통제, 자본 투입 규모가 AI 서비스의 지속성과 비용 구조를 좌우하는 국면이 강화되고 있다. 특히 중국 빅테크와 모델 스타트업이 자국 칩 및 대규모 투자로 독자 생태계를 확대하려는 움직임은 API 가격, 모델 선택지, 배포 지역 전략에 영향을 줄 수 있다.</div>
+    <div><span class="chip">#infrastructure</span><span class="chip">#chips</span><span class="chip">#model</span><span class="chip">#china_ai</span><span class="chip">#investment</span></div>
+    <div class="source-chips"><a class="chip source-media" href="https://the-decoder.com/bytedance-plans-over-30-billion-for-ai-expansion-bets-big-on-chinese-chips/" target="_blank" rel="noopener">The Decoder AI</a><a class="chip source-media" href="https://www.aitimes.com/news/articleView.html?idxno=210301" target="_blank" rel="noopener">AI타임스</a><a class="chip source-media" href="https://www.aitimes.com/news/articleView.html?idxno=210296" target="_blank" rel="noopener">AI타임스</a></div>
   </div>
 </article>
 <article class="tile">
-  <a class="media" href="https://github.com/microsoft/vscode/releases/tag/1.118.1" target="_blank" rel="noopener" data-title="코딩 에이전트 개선"><img src="https://opengraph.githubassets.com/7c2704ef32c5f874661fa3df3e695e9bd33980fd63b7e376ff97bdd00e37c9f6/microsoft/vscode/releases/tag/1.118.1" alt="코딩 에이전트 개선" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+  <a class="media" href="https://www.reddit.com/r/OpenAI/comments/1t8aezx/how_openai_runs_its_codex_coding_agent_safely_at/" target="_blank" rel="noopener" data-title="코딩 에이전트 안전 운영과 비정형 채널 위협 논의 확산"><img src="https://external-preview.redd.it/f7MPEWBWK7oNF0mca9ROIwD_wT0JzcoX_5Zp9IcTs8I.png?width=640&amp;crop=smart&amp;auto=webp&amp;s=e2ec074f38546e0a91037e86983fa343ffd6a3ac" alt="코딩 에이전트 안전 운영과 비정형 채널 위협 논의 확산" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">05</div>
-    <div class="meta-line"><span>Developer</span><span>3 sources</span></div>
-    <h2>코딩 에이전트 개선</h2>
-    <p>최근 업데이트는 IDE와 터미널 기반 코딩 에이전트가 단순 코드 보조를 넘어 목표 기반 작업 지속, 상태 관리, 권한·제어 흐름을 강화하는 방향으로 진화하고 있음을 시사한다.</p>
-    <div><a class="chip official" href="https://github.com/microsoft/vscode/releases/tag/1.118.1" target="_blank" rel="noopener">GitHub microsoft 공식</a><a class="chip official" href="https://github.com/openai/codex/releases/tag/rust-v0.129.0-alpha.1" target="_blank" rel="noopener">GitHub openai 공식</a><a class="chip official" href="https://github.com/openai/codex/releases/tag/rust-v0.128.0" target="_blank" rel="noopener">GitHub openai 공식</a></div>
+    <div class="meta-line"><span>tooling</span><span>2 sources · score 0.77</span></div>
+    <h2>코딩 에이전트 안전 운영과 비정형 채널 위협 논의 확산</h2>
+    <p>제공된 클러스터에는 OpenAI의 Codex 코딩 에이전트를 대규모로 안전하게 운영하는 방식에 대한 Reddit 공유글과, Claude Code 커뮤니티의 ‘Morse code is SCARY’라는 게시글이 포함되어 있다. 원문 본문 내용은 제공되지 않아 구체적인 기술 조치나 사례는 확인할 수 없다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>OpenAI의 Codex 코딩 에이전트 안전 운영 방식에 대한 Reddit 공유글이 올라오며, 대규모 에이전트 실행 시 보안·격리·통제 문제가 다시 주목받고 있다.</li><li>Claude Code 커뮤니티에서는 ‘Morse code is SCARY’라는 게시글을 통해 비정형 인코딩 메시지가 에이전트와 상호작용할 때 발생할 수 있는 위험에 대한 논의가 감지된다.</li></ul>
+    <div class="signal-note"><strong>Social</strong> — 개발자 커뮤니티에서는 코딩 에이전트의 샌드박싱, 권한 제어, 출력 검증뿐 아니라 모스 부호처럼 비정형 인코딩된 메시지가 에이전트 행동이나 데이터 유출 경로로 악용될 수 있는지에 대한 관심이 나타난다.</div>
+    <div class="signal-note"><strong>Implication</strong> — 코딩 에이전트를 운영하는 팀은 단순한 코드 실행 안전성뿐 아니라 텍스트·인코딩·은닉 채널을 통한 지시 전달 가능성까지 위협 모델에 포함해야 한다. 에이전트 권한 최소화, 네트워크·파일 접근 제한, 로그 기반 이상행동 탐지, 출력 디코딩 검사가 중요해질 수 있다.</div>
+    <div><span class="chip">#coding-agent</span><span class="chip">#safety</span><span class="chip">#tooling</span><span class="chip">#prompt-injection</span><span class="chip">#agent-security</span></div>
+    <div class="source-chips"><a class="chip source" href="https://www.reddit.com/r/OpenAI/comments/1t8aezx/how_openai_runs_its_codex_coding_agent_safely_at/" target="_blank" rel="noopener">Reddit OpenAI</a><a class="chip source" href="https://www.reddit.com/r/ClaudeCode/comments/1t8x2fm/morse_code_is_scary/" target="_blank" rel="noopener">Reddit ClaudeCode</a></div>
   </div>
 </article>
-<article class="tile">
-  <a class="media" href="https://www.reddit.com/r/LocalLLaMA/comments/1t09hbr/got_hipfire_running_in_docker_on_my_rx_7900_xtx/" target="_blank" rel="noopener" data-title="로컬 Qwen 부상"><img src="https://external-preview.redd.it/ZmNoZmo3bTg1ZnlnMfrHJCrXXDbNbm9MLJAUuBsJyUz8TTykmJPxX78goGLU.png?width=640&amp;crop=smart&amp;auto=webp&amp;s=3198ee024123a993b4b1b74046d8d401100f8460" alt="로컬 Qwen 부상" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+<article class="tile is-low-confidence">
+  <a class="media" href="https://www.reddit.com/r/LocalLLaMA/comments/1t8olv3/exactly_a_year_ago_i_started_working_on_an_mcp/" target="_blank" rel="noopener" data-title="MCP 오픈소스 회고와 ICML 워크숍 마감 혼선이 함께 포착"><img src="https://external-preview.redd.it/2wPHJLFAM3cXHpd3i1I_GectAxIAHcR_jf9_XJdXMA4.png?width=640&amp;crop=smart&amp;auto=webp&amp;s=94319c8b785812aaa302581d7dea0da26f05066d" alt="MCP 오픈소스 회고와 ICML 워크숍 마감 혼선이 함께 포착" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">06</div>
-    <div class="meta-line"><span>Model</span><span>5 sources</span></div>
-    <h2>로컬 Qwen 부상</h2>
-    <p>공식 벤치마크가 아닌 커뮤니티 실험이지만, Qwen 3.6 27B·35B가 약 30B급 로컬 모델 시장에서 코딩·에이전트·장문맥 용도로 강한 선호를 얻고 있음을 시사한다. 특히 긴 컨텍스트와 실사용 속도를 동시에 확보하려는 수요가 커지면서, 기존 Qwen Coder 30B, Gemma 계열 등 older 30B급 모델의 상대적 매력이 약화되고 있다는 인식이 확산되는 모습이다.</p>
-    <div><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t09hbr/got_hipfire_running_in_docker_on_my_rx_7900_xtx/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t07s6x/longcontext_coding_on_rtx_5080_16gb_qwen3635ba3b/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t07su1/followup_qwen3627b_on_1_rtx_3090_pushing_to_218k/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><span class="chip more">+2</span></div>
+    <div class="meta-line"><span>tooling</span><span>3 sources · score 0.56</span></div>
+    <h2>MCP 오픈소스 회고와 ICML 워크숍 마감 혼선이 함께 포착</h2>
+    <p>Reddit r/LocalLLaMA에는 1년 전 시작한 MCP 서버가 작성자의 가장 활발한 오픈소스 프로젝트가 됐다는 회고 글이 올라왔다. r/MachineLearning에는 ICML FM4LS 워크숍 제출 링크가 예상보다 일찍 닫힌 것 같다는 문의와, 워크숍 초록 마감이 엄격한지 유연한지 묻는 글이 게시됐다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>r/LocalLLaMA에서 한 개발자가 1년 전 시작한 MCP 서버가 자신의 가장 활발한 오픈소스 프로젝트가 됐다고 회고했다.</li><li>r/MachineLearning에서 ICML FM4LS 워크숍 제출 링크가 조기 종료된 것 같다는 문의가 제기됐다.</li><li>별도 게시글에서는 워크숍 초록 마감이 hard deadline인지 soft deadline인지에 대한 확인 요청이 올라왔다.</li></ul>
+    <div class="signal-note"><strong>Social</strong> — 커뮤니티에서는 MCP 관련 개인 오픈소스 프로젝트의 장기 유지와 사용성에 대한 관심이 이어지는 한편, 학회 워크숍 제출 시스템과 마감 정책의 불확실성에 대한 실무적 불만과 확인 수요가 나타났다.</div>
+    <div class="signal-note"><strong>Implication</strong> — 개발자 관점에서는 MCP 생태계가 개인 프로젝트 단위에서도 지속적인 사용자를 만들고 있음을 시사한다. 연구자와 운영자 관점에서는 워크숍 제출 마감, 링크 상태, 초록·본문 마감 구분을 명확히 공지하지 않으면 제출자 혼선이 커질 수 있다.</div>
+    <div><span class="chip">#mcp</span><span class="chip">#open_source</span><span class="chip">#community</span><span class="chip">#conference</span></div>
+    <div class="source-chips"><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t8olv3/exactly_a_year_ago_i_started_working_on_an_mcp/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip source" href="https://www.reddit.com/r/MachineLearning/comments/1t8nks7/anyone_trying_to_submit_for_icml_fm4ls_workshop/" target="_blank" rel="noopener">Reddit MachineLearning</a><a class="chip source" href="https://www.reddit.com/r/MachineLearning/comments/1t8715r/is_workshop_abstract_deadline_hard_or_soft/" target="_blank" rel="noopener">Reddit MachineLearning</a></div>
   </div>
 </article>
-<article class="tile">
-  <a class="media" href="http://arxiv.org/abs/2604.28025v1" target="_blank" rel="noopener" data-title="3D복원 확장"><img src="assets/generated/manual-3d-reconstruction.svg" alt="3D복원 확장" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
+<article class="tile is-low-confidence">
+  <a class="media" href="https://www.reddit.com/r/LocalLLaMA/comments/1t88zvv/beellamacpp_advanced_dflash_turboquant_with/" target="_blank" rel="noopener" data-title="로컬 LLM 커뮤니티, 장문 컨텍스트와 구형 GPU 최적화 실험 확산"><img src="https://external-preview.redd.it/t3DTJ8K2TE17BAIjuHqbfP3ERS-kc9mK_NReW9wVrps.png?width=140&amp;height=70&amp;auto=webp&amp;s=e1e30da26a19da15d08cd0427314e5a0caa96968" alt="로컬 LLM 커뮤니티, 장문 컨텍스트와 구형 GPU 최적화 실험 확산" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
   <div class="copy">
     <div class="idx">07</div>
-    <div class="meta-line"><span>Research</span><span>2 sources</span></div>
-    <h2>3D복원 확장</h2>
-    <p>두 논문은 3D 재구성 연구가 일반적인 시각 복원 성능 개선을 넘어, 포용적 인체 모델링과 산업 제조 현장 적용처럼 구체적이고 실용적인 도메인으로 확장되고 있음을 보여준다. 특히 신체 다양성을 반영하는 모델링과 제조 공정의 디지털화는 향후 AR/VR, 재활, 품질 검사, 디지털 트윈 등 응용 분야와 연결될 가능성이 크다.</p>
-    <div><a class="chip official" href="http://arxiv.org/abs/2604.28025v1" target="_blank" rel="noopener">arXiv cs.CV 공식</a><a class="chip official" href="http://arxiv.org/abs/2604.28064v1" target="_blank" rel="noopener">arXiv cs.CV 공식</a></div>
-  </div>
-</article>
-<article class="tile">
-  <a class="media" href="https://www.reddit.com/r/OpenAI/comments/1t037ex/openai_rolls_out_advanced_security_mode_for/" target="_blank" rel="noopener" data-title="보안 기능 강화"><img src="https://techcrunch.com/wp-content/uploads/2026/04/OopenAI-how-to-1.jpg?w=1024" alt="보안 기능 강화" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
-  <div class="copy">
-    <div class="idx">08</div>
-    <div class="meta-line"><span>Enterprise</span><span>4 sources</span></div>
-    <h2>보안 기능 강화</h2>
-    <p>OpenAI는 일반 소비자용 AI 서비스에서도 피싱·계정 탈취 대응을 강화하는 동시에, 공격적 오용 가능성이 큰 사이버보안 모델은 선별 접근 방식으로 통제하려는 전략을 취하고 있다. 이는 Anthropic의 제한 배포를 비판했던 입장과 달리, 고위험 AI 기능에서는 업계 전반이 접근 제한을 사실상 표준으로 받아들이고 있음을 시사한다.</p>
-    <div><a class="chip source" href="https://www.reddit.com/r/OpenAI/comments/1t037ex/openai_rolls_out_advanced_security_mode_for/" target="_blank" rel="noopener">Reddit OpenAI</a><a class="chip source" href="https://techcrunch.com/2026/04/30/openai-announces-new-advanced-security-for-chatgpt-accounts-including-a-partnership-with-yubico/" target="_blank" rel="noopener">TechCrunch AI 미디어</a><a class="chip source" href="https://techcrunch.com/2026/04/30/after-dissing-anthropic-for-limiting-mythos-openai-restricts-access-to-cyber-too/" target="_blank" rel="noopener">TechCrunch AI 미디어</a><span class="chip more">+1</span></div>
-  </div>
-</article>
-<article class="tile">
-  <a class="media" href="https://www.reddit.com/r/artificial/comments/1t03h0n/elon_musk_says_his_xai_startups_models_were/" target="_blank" rel="noopener" data-title="xAI 증류 논란"><img src="https://techcrunch.com/wp-content/uploads/2026/04/musk-court-2273245544.jpg?w=1024" alt="xAI 증류 논란" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
-  <div class="copy">
-    <div class="idx">09</div>
-    <div class="meta-line"><span>Model</span><span>3 sources</span></div>
-    <h2>xAI 증류 논란</h2>
-    <p>이번 증언은 모델 증류가 중국 AI 기업만의 문제가 아니라 미국 주요 AI 랩 간 경쟁에서도 활용될 수 있음을 드러낸 사례다. OpenAI와 Anthropic이 제3자의 증류 학습에 강경한 태도를 보이는 가운데, 업계 전반의 데이터 사용 기준과 API 약관 집행이 더 큰 쟁점으로 부상할 가능성이 있다.</p>
-    <div><a class="chip source" href="https://www.reddit.com/r/artificial/comments/1t03h0n/elon_musk_says_his_xai_startups_models_were/" target="_blank" rel="noopener">Reddit Artificial</a><a class="chip source" href="https://techcrunch.com/2026/04/30/elon-musk-testifies-that-xai-trained-grok-on-openai-models/" target="_blank" rel="noopener">TechCrunch AI 미디어</a><a class="chip source" href="https://www.theverge.com/ai-artificial-intelligence/921546/elon-musk-xai-openai-trial-model-distillation" target="_blank" rel="noopener">The Verge AI 미디어</a></div>
-  </div>
-</article>
-<article class="tile">
-  <a class="media" href="https://techcrunch.com/2026/04/30/googles-gemini-ai-assistant-is-hitting-the-road-in-millions-of-vehicles/" target="_blank" rel="noopener" data-title="차량용 제미나이"><img src="https://techcrunch.com/wp-content/uploads/2026/04/Gemini-google-vehicles.jpeg?w=1024" alt="차량용 제미나이" onerror="this.remove();this.parentElement.classList.add('image-missing')"></a>
-  <div class="copy">
-    <div class="idx">10</div>
-    <div class="meta-line"><span>Product</span><span>2 sources</span></div>
-    <h2>차량용 제미나이</h2>
-    <p>Gemini의 차량 탑재는 생성형 AI가 스마트폰·웹을 넘어 자동차 인포테인먼트와 차량 제어 인터페이스로 확장되는 흐름을 보여준다. 자연어 대화, 차량별 정보 조회, 설정 변경 등이 강화되면서 차량 내 음성 UX 경쟁이 본격화될 가능성이 크다.</p>
-    <div><a class="chip source" href="https://techcrunch.com/2026/04/30/googles-gemini-ai-assistant-is-hitting-the-road-in-millions-of-vehicles/" target="_blank" rel="noopener">TechCrunch AI 미디어</a><a class="chip source" href="https://www.theverge.com/tech/921117/google-gemini-ai-assistant-cars-upgrade" target="_blank" rel="noopener">The Verge AI 미디어</a></div>
+    <div class="meta-line"><span>tooling</span><span>3 sources · score 0.64</span></div>
+    <h2>로컬 LLM 커뮤니티, 장문 컨텍스트와 구형 GPU 최적화 실험 확산</h2>
+    <p>LocalLLaMA 커뮤니티에서 BeeLlama.cpp가 DFlash와 TurboQuant를 적용해 Qwen 3.6 27B Q5를 RTX 3090에서 200k 컨텍스트로 실행하고 기준 대비 2~3배 빠르며 피크 135 tps를 기록했다는 사례가 공유됐다. 별도 게시물에서는 Qwen3.6-27B MTP를 듀얼 Mi50에서 성공적으로 구동한 사례와, Minimax 2.7을 Strix Halo 환경에서 100k 컨텍스트로 실행한 사례가 올라왔다.</p>
+    <h3>Key updates</h3><ul class="update-list"><li>BeeLlama.cpp가 DFlash와 TurboQuant를 적용해 Qwen 3.6 27B Q5를 RTX 3090에서 200k 컨텍스트로 실행했다고 공유됐다.</li><li>해당 사례는 기준 대비 2~3배 속도 향상과 피크 135 tps를 주장하지만, 세부 벤치마크 조건은 추가 확인이 필요하다.</li><li>Qwen3.6-27B MTP를 듀얼 Mi50에서 구동한 커뮤니티 성공 사례가 추가로 보고됐다.</li><li>Minimax 2.7을 Strix Halo에서 100k 컨텍스트로 실행한 사례도 공유되며 다양한 비주류 하드웨어 실험이 이어지고 있다.</li></ul>
+    <div class="signal-note"><strong>Social</strong> — 세 게시물 모두 공식 벤치마크나 논문보다는 커뮤니티 기반 재현·튜닝 사례로, 고가 최신 GPU 없이도 장문 컨텍스트 모델을 운용하려는 관심이 커지고 있음을 보여준다.</div>
+    <div class="signal-note"><strong>Implication</strong> — 개발자 관점에서는 추론 최적화가 모델 선택만큼 중요해지고 있으며, 컨텍스트 길이·양자화·KV 캐시·하드웨어 조합별 실제 처리량 검증이 로컬 배포의 핵심 체크포인트가 되고 있다. 다만 게시물 제목 기반 수치이므로 재현 조건, 프롬프트 길이, 배치 크기, 정확도 손실 여부는 별도 확인이 필요하다.</div>
+    <div><span class="chip">#local-llm</span><span class="chip">#inference</span><span class="chip">#quantization</span><span class="chip">#hardware</span><span class="chip">#long-context</span></div>
+    <div class="source-chips"><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t88zvv/beellamacpp_advanced_dflash_turboquant_with/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t86j45/more_qwen3627b_mtp_success_but_on_dual_mi50s/" target="_blank" rel="noopener">Reddit LocalLLaMA</a><a class="chip source" href="https://www.reddit.com/r/LocalLLaMA/comments/1t8k6fg/running_minimax_27_at_100k_context_on_strix_halo/" target="_blank" rel="noopener">Reddit LocalLLaMA</a></div>
   </div>
 </article>
   </section>
-  <p class="footnote">이 파일은 기존 <a href="05-visual-board.html">05 Visual Board</a>와 동일한 10개 AI 리포트 카드를 사용하고, Refero Design MD Shortlist의 스타일 토큰만 적용한 비교용 정적 HTML입니다.</p>
+  <p class="footnote"><span>이 파일은 <a href="http://127.0.0.1:8000/api/reports/2026-05-10/html">/api/reports/2026-05-10/html</a> 내용을 Refero Visual Board 5개 토큰 체계로 재렌더링한 비교용 정적 HTML입니다.</span><span>2026-05-10 · 7 sections · generated from local API</span></p>
 </main>
 </body>
 </html>
