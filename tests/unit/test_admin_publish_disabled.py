@@ -141,7 +141,7 @@ async def test_publish_report_real_deploy_renders_then_deploys():
     fake_deploy = AsyncMock(
         return_value={
             "status": "success",
-            "deploy_url": "https://ai-news-5min-kr.netlify.app/2026-04-30-trend.html",
+            "deploy_url": "https://example.netlify.app/news/2026-04-30-trend.html",
             "stdout": "",
         }
     )
@@ -165,12 +165,14 @@ async def test_publish_report_real_deploy_renders_then_deploys():
     render_session.__aexit__ = AsyncMock(return_value=None)
 
     with patch.object(publish_module, "render_published", fake_render), \
+         patch.object(publish_module, "_update_static_index"), \
          patch("app.admin.publish.AsyncSessionLocal",
                side_effect=[render_session, publish_session]), \
          patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy), \
          patch("app.admin.publish.settings") as mock_settings:
         mock_settings.netlify_auth_token = "tok"
         mock_settings.netlify_site_id = "site"
+        mock_settings.report_public_base_url = "http://localhost:3000"
         result = await publish_module.publish_report(
             "2026-04-30",
             dry_run=False,
@@ -179,9 +181,110 @@ async def test_publish_report_real_deploy_renders_then_deploys():
 
     fake_render.assert_awaited_once()
     fake_deploy.assert_awaited_once()
-    assert result["status"] == "success"
+    assert result["status"] == "published"
+    assert result["details"]["status"] == "success"
     assert result["dry_run"] is False
     assert result["disabled_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_publish_report_missing_netlify_config_falls_back_to_local_static():
+    """No Netlify secrets: render, mark published, and return local URL."""
+    from app.admin import publish as publish_module
+
+    fake_render = AsyncMock(return_value=Path("public/news/2026-04-30-trend.html"))
+
+    publish_session = AsyncMock()
+    publish_session.__aenter__ = AsyncMock(return_value=publish_session)
+    publish_session.__aexit__ = AsyncMock(return_value=None)
+    report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = report
+    exec_result = MagicMock()
+    exec_result.scalars.return_value = scalars_mock
+    publish_session.execute = AsyncMock(return_value=exec_result)
+    publish_session.commit = AsyncMock(return_value=None)
+
+    render_session = AsyncMock()
+    render_session.__aenter__ = AsyncMock(return_value=render_session)
+    render_session.__aexit__ = AsyncMock(return_value=None)
+
+    fake_deploy = AsyncMock()
+
+    with patch.object(publish_module, "render_published", fake_render), \
+         patch.object(publish_module, "_update_static_index") as update_index, \
+         patch("app.admin.publish.AsyncSessionLocal",
+               side_effect=[render_session, publish_session]), \
+         patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy), \
+         patch("app.admin.publish.settings") as mock_settings:
+        mock_settings.netlify_auth_token = ""
+        mock_settings.netlify_site_id = ""
+        mock_settings.report_public_base_url = "http://localhost:3000"
+        result = await publish_module.publish_report(
+            "2026-04-30",
+            dry_run=False,
+            disabled_section_ids=["x"],
+        )
+
+    fake_render.assert_awaited_once()
+    update_index.assert_called_once_with("2026-04-30")
+    fake_deploy.assert_not_awaited()
+    publish_session.commit.assert_awaited_once()
+    assert report.status == "published"
+    assert result["status"] == "published"
+    assert result["details"]["status"] == "skipped"
+    assert result["details"]["target"] == "local_static"
+    assert result["details"]["reason"] == "netlify_configuration_missing"
+    assert result["deployed_url"] == (
+        "http://localhost:3000/news/2026-04-30-trend.html"
+    )
+
+
+@pytest.mark.asyncio
+async def test_publish_report_netlify_failure_keeps_local_publish_success():
+    """Remote deploy failure must not hide the generated local HTML result."""
+    from app.admin import publish as publish_module
+
+    fake_render = AsyncMock(return_value=Path("public/news/2026-04-30-trend.html"))
+    fake_deploy = AsyncMock(
+        return_value={"status": "failed", "error": "netlify cli failed"}
+    )
+
+    publish_session = AsyncMock()
+    publish_session.__aenter__ = AsyncMock(return_value=publish_session)
+    publish_session.__aexit__ = AsyncMock(return_value=None)
+    report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = report
+    exec_result = MagicMock()
+    exec_result.scalars.return_value = scalars_mock
+    publish_session.execute = AsyncMock(return_value=exec_result)
+    publish_session.commit = AsyncMock(return_value=None)
+
+    render_session = AsyncMock()
+    render_session.__aenter__ = AsyncMock(return_value=render_session)
+    render_session.__aexit__ = AsyncMock(return_value=None)
+
+    with patch.object(publish_module, "render_published", fake_render), \
+         patch.object(publish_module, "_update_static_index"), \
+         patch("app.admin.publish.AsyncSessionLocal",
+               side_effect=[render_session, publish_session]), \
+         patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy), \
+         patch("app.admin.publish.settings") as mock_settings:
+        mock_settings.netlify_auth_token = "tok"
+        mock_settings.netlify_site_id = "site"
+        mock_settings.report_public_base_url = "http://localhost:3000"
+        result = await publish_module.publish_report("2026-04-30")
+
+    fake_deploy.assert_awaited_once()
+    publish_session.commit.assert_awaited_once()
+    assert report.status == "published"
+    assert result["status"] == "published"
+    assert result["details"]["status"] == "failed"
+    assert result["details"]["local_status"] == "published"
+    assert result["deployed_url"] == (
+        "http://localhost:3000/news/2026-04-30-trend.html"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +299,7 @@ def test_publish_route_forwards_disabled_section_ids():
     fake_publish = AsyncMock(
         return_value={
             "status": "dry_run",
-            "deployed_url": "https://ai-news-5min-kr.netlify.app/2026-04-30-trend.html",
+            "deployed_url": "https://example.netlify.app/news/2026-04-30-trend.html",
             "report_date": "2026-04-30",
             "dry_run": True,
             "rendered_path": "public/news/2026-04-30-trend.html",
@@ -232,7 +335,7 @@ def test_publish_route_backwards_compatible_without_disabled_ids():
     fake_publish = AsyncMock(
         return_value={
             "status": "dry_run",
-            "deployed_url": "https://ai-news-5min-kr.netlify.app/2026-04-30-trend.html",
+            "deployed_url": "https://example.netlify.app/news/2026-04-30-trend.html",
             "report_date": "2026-04-30",
             "dry_run": True,
         }

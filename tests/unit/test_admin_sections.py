@@ -11,7 +11,7 @@ TC-4 coverage:
 - POST /api/reports/{date}/reorder (bad)    → 400 (empty/foreign ids)
 - POST /api/reports/{date}/publish (dry_run)→ 200 + deployed_url (no Netlify call)
 - POST /api/reports/{date}/publish (real)   → uses NetlifyPublisher mock
-- POST /api/reports/{date}/publish (no cfg) → 400 when Netlify config missing
+- POST /api/reports/{date}/publish (no cfg) → local static fallback
 """
 from __future__ import annotations
 
@@ -482,7 +482,7 @@ def test_publish_invokes_netlify_publisher():
     fake_deploy = AsyncMock(
         return_value={
             "status": "success",
-            "deploy_url": "https://ai-news-5min-kr.netlify.app/2026-04-30-trend.html",
+            "deploy_url": "https://example.netlify.app/news/2026-04-30-trend.html",
             "stdout": "",
         }
     )
@@ -501,15 +501,18 @@ def test_publish_invokes_netlify_publisher():
     fake_session.add = MagicMock()  # sync API — see _make_db() helper note
 
     with patch("app.deployment.netlify.NetlifyPublisher.deploy", fake_deploy), \
+         patch("app.admin.publish._update_static_index"), \
          patch("app.admin.publish.AsyncSessionLocal", return_value=fake_session), \
          patch("app.admin.publish.settings") as mock_settings:
         mock_settings.netlify_auth_token = "tok-abc"
         mock_settings.netlify_site_id = "site-xyz"
+        mock_settings.report_public_base_url = "http://localhost:3000"
         try:
             resp = client.post("/api/reports/2026-04-30/publish", json={})
             assert resp.status_code == 200
             body = resp.json()
-            assert body["status"] == "success"
+            assert body["status"] == "published"
+            assert body["details"]["status"] == "success"
             assert body["deployed_url"].endswith("2026-04-30-trend.html")
             assert body["dry_run"] is False
             fake_deploy.assert_awaited_once()
@@ -517,14 +520,8 @@ def test_publish_invokes_netlify_publisher():
             _clear_override()
 
 
-def test_publish_missing_netlify_config_returns_400():
-    """Without auth token / site id we must not fall back to a synthetic URL.
-
-    Phase B introduced an unconditional render step before the deploy. The
-    helper opens its own ``AsyncSessionLocal`` for that render, so we patch
-    it here too — otherwise the test would attempt a real DB connection
-    before the Netlify check ever runs.
-    """
+def test_publish_missing_netlify_config_returns_local_fallback():
+    """Missing Netlify config still produces a local static publish result."""
     report = _ReportRow(str(uuid.uuid4()), date_cls.fromisoformat("2026-04-30"))
     _override_db(_make_db(report=report))
 
@@ -533,21 +530,32 @@ def test_publish_missing_netlify_config_returns_400():
             "public/news/2026-04-30-trend.html"
         )
     )
+    fake_session = AsyncMock()
+    fake_session.__aenter__ = AsyncMock(return_value=fake_session)
+    fake_session.__aexit__ = AsyncMock(return_value=None)
+    scalars_mock = MagicMock()
+    scalars_mock.first.return_value = report
+    exec_result = MagicMock()
+    exec_result.scalars.return_value = scalars_mock
+    fake_session.execute = AsyncMock(return_value=exec_result)
+    fake_session.commit = AsyncMock(return_value=None)
+
     with patch("app.admin.publish.render_published", fake_render), \
-         patch("app.admin.publish.AsyncSessionLocal") as mock_session_factory, \
+         patch("app.admin.publish._update_static_index"), \
+         patch("app.admin.publish.AsyncSessionLocal", return_value=fake_session), \
          patch("app.admin.publish.settings") as mock_settings:
-        # The render path also opens a session via the factory, but since
-        # render_published is now a pure mock it never touches it.
-        mock_session_factory.return_value.__aenter__ = AsyncMock(
-            return_value=AsyncMock()
-        )
-        mock_session_factory.return_value.__aexit__ = AsyncMock(return_value=None)
         mock_settings.netlify_auth_token = ""
         mock_settings.netlify_site_id = ""
+        mock_settings.report_public_base_url = "http://localhost:3000"
         try:
             resp = client.post("/api/reports/2026-04-30/publish", json={})
-            assert resp.status_code == 400
-            assert "netlify" in resp.json()["detail"].lower()
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["status"] == "published"
+            assert body["details"]["status"] == "skipped"
+            assert body["details"]["reason"] == "netlify_configuration_missing"
+            assert body["details"]["target"] == "local_static"
+            assert body["deployed_url"].endswith("2026-04-30-trend.html")
         finally:
             _clear_override()
 

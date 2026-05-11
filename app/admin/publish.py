@@ -8,10 +8,10 @@ Behaviour:
 - ``dry_run=True``: re-renders but skips the Netlify deploy, returning a
   synthetic preview URL.
 - Otherwise requires ``settings.netlify_auth_token`` AND
-  ``settings.netlify_site_id``. Missing config raises ``RuntimeError``
-  (route → 400).
-- On a successful deploy, marks the Report as ``published`` and stamps
-  ``published_at``.
+  ``settings.netlify_site_id`` to push to Netlify. Missing config falls back
+  to the local static result so the operator still gets a usable HTML output.
+- On a successful local/static publish, marks the Report as ``published`` and
+  stamps ``published_at``.
 """
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from app.admin.render import render_published
 from app.config import settings
 from app.db import AsyncSessionLocal
 from app.deployment.netlify import NetlifyPublisher
+from app.deployment.static_publisher import StaticPublisher
 from app.models.db_models import Report
 from app.utils.logger import get_logger
 
@@ -48,7 +49,28 @@ def _publish_history_path() -> Path:
 
 
 def _synthetic_url(date_kst: str) -> str:
-    return f"https://ai-news-5min-kr.netlify.app/{date_kst}-trend.html"
+    base_url = (settings.report_public_base_url or "http://localhost:3000").rstrip("/")
+    return f"{base_url}/news/{date_kst}-trend.html"
+
+
+async def _mark_report_published(run_date: date_cls) -> None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Report).where(Report.report_date == run_date)
+        )
+        db_report = result.scalars().first()
+        if db_report is None:
+            raise LookupError(f"report not found: {run_date.isoformat()}")
+
+        now = datetime.now(timezone.utc)
+        db_report.status = "published"
+        db_report.published_at = now
+        db_report.updated_at = now
+        await session.commit()
+
+
+def _update_static_index(date_kst: str) -> None:
+    StaticPublisher(public_dir="public/news")._update_index(date_kst)
 
 
 def _record_publish_history(entry: dict[str, Any]) -> None:
@@ -79,7 +101,6 @@ async def publish_report(
     Returns a dict mirroring the route response. Raises:
       - ValueError on bad date
       - LookupError if the report row is missing
-      - RuntimeError if Netlify config is missing on a real deploy
     """
     try:
         run_date = date_cls.fromisoformat(date_kst)
@@ -123,43 +144,36 @@ async def publish_report(
 
     auth_token = getattr(settings, "netlify_auth_token", "") or ""
     site_id = getattr(settings, "netlify_site_id", "") or ""
+    deploy_url = _synthetic_url(date_kst)
+
+    # Match the CLI pipeline behaviour: once the HTML is rendered locally,
+    # publishing succeeds from the operator's perspective. Netlify is an
+    # optional remote deployment layer on top of the static result.
+    _update_static_index(date_kst)
+    await _mark_report_published(run_date)
+
     if not auth_token or not site_id:
-        raise RuntimeError(
-            "netlify configuration missing — set NETLIFY_AUTH_TOKEN and "
-            "NETLIFY_SITE_ID before publishing"
-        )
-
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Report).where(Report.report_date == run_date)
-        )
-        db_report = result.scalars().first()
-        if db_report is None:
-            raise LookupError(f"report not found: {date_kst}")
-
-        publisher = NetlifyPublisher(site_id=site_id, auth_token=auth_token)
-        deploy_result = await publisher.deploy(publish_dir=publish_dir or "public")
-
-        deploy_url = deploy_result.get("deploy_url") or _synthetic_url(date_kst)
-        if deploy_result.get("status") == "success":
-            db_report.status = "published"
-            db_report.published_at = datetime.now(timezone.utc)
-            await session.commit()
-            logger.info(
-                "publish_report_done",
-                date_kst=date_kst,
-                deploy_url=deploy_url,
-                disabled_count=len(disabled_list),
+        missing = [
+            name
+            for name, value in (
+                ("NETLIFY_AUTH_TOKEN", auth_token),
+                ("NETLIFY_SITE_ID", site_id),
             )
-
+            if not value
+        ]
         response = {
-            "status": deploy_result.get("status", "unknown"),
+            "status": "published",
             "deployed_url": deploy_url,
             "report_date": date_kst,
             "dry_run": False,
             "rendered_path": str(rendered_path),
             "disabled_count": len(disabled_list),
-            "details": deploy_result,
+            "details": {
+                "status": "skipped",
+                "target": "local_static",
+                "reason": "netlify_configuration_missing",
+                "missing": missing,
+            },
         }
         _record_publish_history(
             {
@@ -170,6 +184,51 @@ async def publish_report(
                 "theme": theme_value,
                 "disabled_count": len(disabled_list),
                 "rendered_path": str(rendered_path),
+                "details": response["details"],
             }
         )
+        logger.warning(
+            "publish_netlify_config_missing_local_fallback",
+            date_kst=date_kst,
+            missing=",".join(missing),
+            deploy_url=deploy_url,
+        )
         return response
+
+    publisher = NetlifyPublisher(site_id=site_id, auth_token=auth_token)
+    deploy_result = await publisher.deploy(publish_dir=publish_dir or "public")
+
+    deploy_url = deploy_result.get("deploy_url") or deploy_url
+    response = {
+        "status": "published",
+        "deployed_url": deploy_url,
+        "report_date": date_kst,
+        "dry_run": False,
+        "rendered_path": str(rendered_path),
+        "disabled_count": len(disabled_list),
+        "details": {
+            **deploy_result,
+            "target": "netlify",
+            "local_status": "published",
+        },
+    }
+    _record_publish_history(
+        {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "report_date": date_kst,
+            "status": response["status"],
+            "deploy_url": deploy_url,
+            "theme": theme_value,
+            "disabled_count": len(disabled_list),
+            "rendered_path": str(rendered_path),
+            "details": response["details"],
+        }
+    )
+    logger.info(
+        "publish_report_done",
+        date_kst=date_kst,
+        deploy_url=deploy_url,
+        netlify_status=deploy_result.get("status", "unknown"),
+        disabled_count=len(disabled_list),
+    )
+    return response

@@ -578,7 +578,9 @@ async def api_publish_report(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except RuntimeError as exc:
-        # Netlify config missing → 400 (operator action required).
+        # Unexpected publish-time runtime errors remain operator-actionable.
+        # Missing Netlify config is handled as a local static fallback inside
+        # publish_report().
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:  # pragma: no cover — defensive
         logger.error("publish_failed", date_kst=date_kst, error=str(exc))

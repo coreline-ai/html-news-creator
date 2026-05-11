@@ -318,7 +318,7 @@ cd ui && npm run dev   # 시각 확인 + 옵션 변경 → preview 갱신
 - 섹션 드래그로 순서 변경 → `reorder` API 호출 → 응답 후 미리보기 자동 갱신
 - 섹션 off 토글 → 즉시 미리보기에서 사라짐
 - Regenerate 클릭 → 단일 섹션만 LLM 재생성, 화면 갱신
-- Publish 성공 → "https://ai-news-5min-kr.netlify.app/2026-04-30-trend.html" 복사 가능
+- Publish 성공 → "https://example.netlify.app/news/2026-04-30-trend.html" 복사 가능
 
 #### Test Cases
 - [x] TC-4.1: SectionList 드래그 → onDragEnd 핸들러가 reorder API 호출
