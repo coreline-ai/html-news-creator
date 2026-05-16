@@ -2,7 +2,7 @@
 
 <img width="2752" height="1536" alt="똑똑한 AI 뉴스레터 공장" src="https://github.com/user-attachments/assets/89588a1e-7a92-4985-b066-ecf65aecf6d5" /><br>
 
-<img width="1672" height="941" alt="ChatGPT Image 2026년 4월 30일 오후 08_10_05" src="https://github.com/user-attachments/assets/9ac90ff4-3299-4ad3-b024-5df30742d3de" />
+<img width="0" height="0" alt="ChatGPT Image 2026년 4월 30일 오후 08_10_05" src="https://github.com/user-attachments/assets/9ac90ff4-3299-4ad3-b024-5df30742d3de" />
 
 # 🔥 HTML News Creator
 
