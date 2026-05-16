@@ -15,7 +15,7 @@
 [![CI](https://github.com/coreline-ai/html-news-creator/actions/workflows/ci.yml/badge.svg)](https://github.com/coreline-ai/html-news-creator/actions)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-매일 새벽 **37개 활성 소스**에서 AI 트렌드를 수집·분류·클러스터링하고,
+매일 새벽 **40개 활성 소스**에서 AI 트렌드를 수집·분류·클러스터링하고,
 편집 정책과 image-aware backfill 기반으로 **최대 10개 주제의 개발자 중심 뉴스레터 HTML**을 자동 생성하는 파이프라인입니다.
 
 </div>
@@ -26,7 +26,7 @@
 
 | 기능 | 설명 |
 |------|------|
-| 🌐 **멀티 소스 수집** | RSS, GitHub Release, arXiv, Hacker News, Reddit, YouTube 등 37개 활성 소스 |
+| 🌐 **멀티 소스 수집** | RSS, GitHub Release, arXiv, Hacker News, Reddit, YouTube 등 40개 활성 소스 |
 | 🤖 **LLM 분류·요약** | AI 관련성 판별, 한국어 팩트 요약, 시사점 생성 |
 | 📐 **임베딩 클러스터링** | HDBSCAN으로 동일 주제 기사를 자동 그룹화 |
 | 📰 **편집 정책 기반 선정** | 소스 등급·클러스터 크기·토픽 할당량·이미지 우선 backfill로 최대 10개 섹션 선정 |
@@ -49,7 +49,7 @@
 │                                                                     │
 │  ① collect  →  ② extract  →  ③ classify  →  ④ cluster            │
 │     │               │              │               │               │
-│  37개 활성 소스   Trafilatura    LLM 판별         HDBSCAN           │
+│  40개 활성 소스   Trafilatura    LLM 판별         HDBSCAN           │
 │  RSS/GitHub     본문 추출      AI 관련성         임베딩 클러스터   │
 │  arXiv/HN                      점수화                              │
 │                                                                     │
@@ -137,7 +137,7 @@ html-news-creator/
 │   └── src/__tests__/           # Vitest 컴포넌트·store 테스트
 │
 ├── data/
-│   ├── sources_registry.yaml   # 37개 활성 소스 설정
+│   ├── sources_registry.yaml   # 40개 활성 소스 설정
 │   ├── editorial_policy.yaml   # 점수 공식·할당량·티어·backfill
 │   └── official_domains.yaml   # 공식 도메인 화이트리스트
 │
@@ -169,7 +169,7 @@ html-news-creator/
 
 ## 📰 소스 구성
 
-### 소스 등급 (37개 활성 소스)
+### 소스 등급 (40개 활성 소스)
 
 | 등급 | 소스 예시 | 부스트 |
 |------|----------|--------|
@@ -177,20 +177,20 @@ html-news-creator/
 | 🟠 **mainstream** | TechCrunch, The Verge, The Decoder, MIT Tech Review, VentureBeat, AI타임스 | +12 |
 | 🟡 **developer_signal** | GitHub (openai / anthropics / google-deepmind / microsoft / meta-llama / huggingface) | +14 |
 | 🔵 **research** | arXiv cs.AI / cs.LG / cs.CL / cs.CV | +4 |
-| ⚪ **community** | Hacker News AI, Reddit r/MachineLearning, r/artificial, r/OpenAI, r/LocalLLaMA | −4 |
+| ⚪ **community** | Hacker News AI, Reddit r/MachineLearning, r/artificial, r/OpenAI, r/LocalLLaMA, Claude/Anthropic 커뮤니티 | −4 |
 
 ### 소스 유형별 분류
 
 ```
-RSS       █████████████████████  24개  (OpenAI, Verge, TechCrunch, YouTube, Reddit 피드 등)
+RSS       ███████████████████████  27개  (OpenAI, Verge, TechCrunch, YouTube, Reddit 피드 등)
 GitHub    █████                   6개  (주요 AI org 릴리스)
 arXiv     ████                    4개  (cs.AI / cs.LG / cs.CL / cs.CV)
 Website   ███                     3개  (커스텀 크롤러)
                                 ───
-                                 37개
+                                 40개
 ```
 
-> 등급별 분포: official 12 · mainstream 10 · developer_signal 6 · research 4 · community 5
+> 등급별 분포: official 12 · mainstream 10 · developer_signal 7 · research 4 · community 7
 
 ---
 
@@ -232,6 +232,8 @@ final_score = min(100, editorial_score + cluster_size_bonus)
 
 1차 선정은 아래 토픽 할당량과 소스 캡을 엄격하게 적용합니다.
 선택 섹션이 `target_sections`보다 적으면 2차 **image-aware backfill**을 실행해 원본 대표 이미지가 있는 고품질 후보를 우선 보강합니다.
+
+> 현재 코드 리뷰 메모: backfill은 생성형 SVG 폴백 덕분에 이미지 없는 후보도 보강할 수 있지만, 운영 품질을 높이려면 `enabled` 소스 토글 반영, 날짜별 render 통계 필터링, 신규 소스 필수 필드 검증, generated SVG의 관리자 재렌더 경로 일관성을 우선 점검하세요.
 
 | 토픽 | 최대 섹션 수 |
 |------|------------|
@@ -483,7 +485,7 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 | 리포트 목록 | `/reports` | 생성된 날짜별 리포트 목록과 검토 진입 |
 | 신규 리포트 | `/reports/new` | 5그룹 옵션 + 라이브 미리보기 + Run 실행 |
 | 검토 | `/reports/:date` | 섹션 reorder · edit · regenerate · PDF 다운로드 · 재렌더 · Publish (Live 모드는 발행된 HTML iframe) |
-| 소스 | `/sources` | 37개 소스 토글 · 신규 소스 추가 · registry yaml 반영 |
+| 소스 | `/sources` | 40개 소스 토글 · 신규 소스 추가 · registry yaml 반영 |
 | 정책 | `/policy` | 점수·할당량·선정 정책 런타임 오버라이드 + `[Persist to yaml]` |
 | 설정 | `/settings` | 앱 테마 · 기본 출력 테마 · 브라우저별 Run 기본값 · 발행 기본값 |
 
@@ -505,7 +507,7 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 ![Review report](docs/screenshots/news-studio-03-review.png)
 
 #### 소스 (`/sources`)
-37개 소스 등급별 그룹화 · 토글 · Add Source 다이얼로그.
+40개 소스 등급별 그룹화 · 토글 · Add Source 다이얼로그.
 
 ![Sources](docs/screenshots/news-studio-04-sources.png)
 
@@ -588,11 +590,15 @@ make proxy
 make backup
 ```
 
+최근 로컬 검증 기준(2026-05-16): `make test`에 해당하는 단위 테스트 350개, 통합 테스트 10개, UI Vitest 118개, `npm run build`, 디자인 토큰 체크는 통과했습니다. 다만 현재 `make lint`는 `app/generation/section_generator.py`의 fallback 분기와 `scripts/crawl_refero_styles.py`의 unused import 때문에 실패합니다. CI는 단위 테스트와 디자인 토큰만 기본 gate로 두고 있으므로, 린트/통합/UI 검증은 병합 전 로컬에서 별도로 확인하세요.
+
 > `make`은 `.venv/bin/python`을 강제합니다. 미존재 시 친절한 에러와 함께 `uv venv --python 3.11` 가이드를 출력합니다. 백업 cron 등록은 `0 23 * * * cd <repo> && make backup`을 crontab에 추가하세요.
 
 ### 소스 추가
 
 `data/sources_registry.yaml`에 항목 추가:
+
+> 필수 필드 주의: `rss`/`website`는 `url`, `github`는 `org`, `arxiv`는 `category`가 필요합니다. 웹앱의 Add Source는 YAML에 atomic append하지만, 타입별 필수 필드 검증이 아직 완전하지 않으므로 잘못된 항목은 다음 collect 단계에서 실패할 수 있습니다.
 
 ```yaml
 - name: My AI Blog
