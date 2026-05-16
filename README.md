@@ -494,27 +494,27 @@ cd ui && npm run dev            # http://localhost:5173 (개발 HMR, 별도 uvic
 #### 대시보드 (`/`)
 오늘 카드 · Quick actions · Run history & Calendar 분할(월별 · 90일 추세 탭).
 
-![Dashboard](docs/screenshots/news-studio-01-dashboard.png)
+![Dashboard](docs/screenshots/news-studio-01-dashboard.png?v=20260516)
 
 #### 리포트 목록 (`/reports`)
 모든 리포트 표 · 상태 pill · 발행 시각 · HTML/PDF 인라인 미리보기.
 
-![Reports list](docs/screenshots/news-studio-02-reports.png)
+![Reports list](docs/screenshots/news-studio-02-reports.png?v=20260516)
 
 #### 검토 (`/reports/:date`)
 섹션 reorder · 단일 섹션 편집 · regenerate · 발행 HTML iframe.
 
-![Review report](docs/screenshots/news-studio-03-review.png)
+![Review report](docs/screenshots/news-studio-03-review.png?v=20260516)
 
 #### 소스 (`/sources`)
 40개 소스 등급별 그룹화 · 토글 · Add Source 다이얼로그.
 
-![Sources](docs/screenshots/news-studio-04-sources.png)
+![Sources](docs/screenshots/news-studio-04-sources.png?v=20260516)
 
 #### 정책 (`/policy`)
 런타임 오버라이드 폼 · 정책 우선순위 안내 · `[Persist to yaml]`.
 
-![Policy form](docs/screenshots/news-studio-05-policy.png)
+![Policy form](docs/screenshots/news-studio-05-policy.png?v=20260516)
 
 ### 주요 API 엔드포인트
 
