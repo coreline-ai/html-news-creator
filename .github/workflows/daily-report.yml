@@ -1,8 +1,17 @@
 name: Daily AI Trend Report
 
 on:
-  schedule:
-    - cron: "0 22 * * *"  # 07:00 KST
+  # NOTE: scheduled run is intentionally disabled. This workflow assumes a
+  # reachable Postgres + a local LLM proxy at 127.0.0.1:4317, neither of
+  # which exists on a GitHub-hosted runner. Running it on the schedule
+  # therefore fails every night (DATABASE_URL='' → SQLAlchemy parse error,
+  # or OPENAI_BASE_URL unreachable). Re-enable only on a self-hosted runner
+  # that can reach the operator's local services, OR after configuring
+  # cloud Postgres + a cloud-reachable OpenAI-compatible endpoint via
+  # secrets/vars. The daily run is currently driven from the operator's
+  # machine via `make run` or a local crontab.
+  # schedule:
+  #   - cron: "0 22 * * *"  # 07:00 KST
   workflow_dispatch:
     inputs:
       date:

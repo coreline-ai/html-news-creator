@@ -157,7 +157,7 @@ html-news-creator/
 ├── scripts/
 │   └── run_daily.py         # 파이프라인 진입점 (CLI)
 ├── .github/workflows/
-│   ├── daily-report.yml     # 매일 22:00 UTC 자동 실행
+│   ├── daily-report.yml     # 수동 트리거 전용 (개인 사용 시나리오로 cron 비활성, README §🚀 참고)
 │   └── ci.yml               # 푸시/PR 단위 테스트
 ├── migrations/              # SQL 마이그레이션 (001_initial.sql)
 ├── dev-plan/                # 작업 계획서·리뷰 노트
@@ -626,27 +626,42 @@ section_quotas:
 
 ## 🚀 배포 (GitHub Actions)
 
-### 자동 실행
+### 실행 모드 — **수동 트리거 전용**
+
+이 워크플로는 운영자의 로컬 Postgres + 로컬 LLM 프록시(`127.0.0.1:4317`)에 의존하므로 GitHub-hosted runner의 cron 스케줄로는 **구조적으로 작동 불가**합니다(`DATABASE_URL` 빈 값 → SQLAlchemy 파싱 실패, 또는 `OPENAI_BASE_URL` 도달 불가). 자동 cron은 [`daily-report.yml`](.github/workflows/daily-report.yml)에서 주석 처리되어 있으며, `workflow_dispatch`로만 호출됩니다.
 
 ```yaml
 # .github/workflows/daily-report.yml
-# 매일 22:00 UTC (07:00 KST) 자동 실행
 on:
-  schedule:
-    - cron: "0 22 * * *"
-  workflow_dispatch:        # 수동 트리거 지원
+  # schedule:                # cron 비활성 — 위 사유로 매번 실패
+  #   - cron: "0 22 * * *"
+  workflow_dispatch:          # 수동 트리거 전용
 ```
 
-### 필요 Secrets
+일간 실행은 운영자 본인 머신에서 직접 돌리는 것이 권장됩니다.
+
+```bash
+# 즉시 실행
+make run
+
+# crontab (예: 매일 07:00 KST)
+0 7 * * * cd /path/to/html-news-creator && make run >> $HOME/.logs/html-news-creator-daily.log 2>&1
+```
+
+스케줄 재활성화는 다음 중 하나가 충족된 뒤에만 시도하세요:
+- **Self-hosted runner**가 운영자의 로컬 Postgres + LLM 프록시에 도달 가능
+- **클라우드 Postgres**(예: Supabase/Neon) + **클라우드 LLM 엔드포인트**(OpenAI 정식 키 또는 hosted proxy)로 모든 secret/var 채움
+
+### 필요 Secrets (수동 트리거 또는 향후 스케줄 재활성화 시)
 
 | Secret | 설명 |
 |--------|------|
-| `DATABASE_URL` | PostgreSQL 연결 문자열 |
+| `DATABASE_URL` | PostgreSQL 연결 문자열 (필수 — 빈 값이면 `''` 파싱 에러로 즉시 실패) |
 | `OPENAI_API_KEY` | OpenAI 또는 호환 프록시 키 |
-| `NETLIFY_AUTH_TOKEN` | Netlify 배포 토큰 |
+| `NETLIFY_AUTH_TOKEN` | Netlify 배포 토큰 (없어도 로컬 정적 publish로 폴백) |
 | `NETLIFY_SITE_ID` | 배포 대상 사이트 ID |
 | `SLACK_WEBHOOK_URL` | 완료 알림 (선택) |
-| `GITHUB_TOKEN` | GitHub API 수집용 (선택, 없으면 익명) |
+| `GITHUB_PAT` | GitHub API 수집용 (선택, 없으면 익명 fallback) |
 
 ---
 
